@@ -1,0 +1,6 @@
+# .bat 必须是 CRLF。
+# cmd.exe 解析 LF 结尾的批处理会把中文行拆断成「命令的一半」+「另一半」，
+# 实测会让整个脚本报一堆莫名其妙的语法错误。git 默认可能把它规范化成 LF，
+# 这里钉死，避免换台机器 clone 下来就坏。
+*.bat text eol=crlf
+*.cmd text eol=crlf

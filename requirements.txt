@@ -1,0 +1,12 @@
+# 仅「旧版 Python 脚本」naming_system.py 需要这些依赖。
+# 网页版（web/index.html）是纯前端实现，不需要安装任何东西。
+#
+# 安装：pip install -r requirements.txt
+# 注：本机当前只装了 Python 2.7，跑这个脚本需要先装 Python 3.10+。
+
+lunar-python>=1.3.10   # 精准八字排盘（可选，缺失时退回内置近似算法）
+pypinyin>=0.51.0       # 姓名拼音（可选）
+httpx>=0.27.0          # 联网重名查询与 LLM 调用（可选）
+fastapi>=0.110.0       # 启动 --api 模式时需要
+uvicorn>=0.29.0        # 启动 --api 模式时需要
+pydantic>=2.6.0        # 启动 --api 模式时需要

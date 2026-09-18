@@ -1,0 +1,42 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "取名系统：运行全部测试",
+			"type": "shell",
+			"command": "node tests/core.test.js; if ($LASTEXITCODE -eq 0) { node tests/lexicon.test.js } else { exit $LASTEXITCODE }",
+			"problemMatcher": [],
+			"group": { "kind": "test", "isDefault": true },
+			"presentation": { "reveal": "always", "panel": "dedicated" }
+		},
+		{
+			"label": "取名系统：打包发布",
+			"type": "shell",
+			"command": "node tools/build-dist.js",
+			"problemMatcher": [],
+			"group": { "kind": "build", "isDefault": true },
+			"presentation": { "reveal": "always", "panel": "dedicated" }
+		},
+		{
+			"label": "取名系统：打包（固化联网数据）",
+			"type": "shell",
+			"command": "node tools/build-dist.js --bake",
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated" }
+		},
+		{
+			"label": "取名系统：体检联网数据源",
+			"type": "shell",
+			"command": "node tools/probe-sources.js",
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated" }
+		},
+		{
+			"label": "取名系统：打包并刷新部署产物（docs/）",
+			"type": "shell",
+			"command": "node tools/build-dist.js; if ($LASTEXITCODE -eq 0) { node tools/sync-pages.js } else { exit $LASTEXITCODE }",
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated" }
+		}
+	]
+}

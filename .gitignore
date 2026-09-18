@@ -1,0 +1,17 @@
+# 构建产物（用 打包.bat 重新生成，不入库）
+dist/
+
+# 测试日志（每次运行测试都会重写）
+tests/last-run.txt
+tests/lexicon-last-run.txt
+
+# 联网词库的导出文件 —— 里面是第三方数据，不要提交
+# （「词库管理」→ 导出数据文件 默认落在 tools/ 或 data/）
+tools/naming-lexicon-*.json
+data/synced*.json
+
+# 编辑器 / 系统
+.vscode/*.local.json
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>取名系统 · 五行八字</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>取 名 系 统<span class="seal">八字</span></h1>
+    <p>生辰八字 · 五行喜用 · 字义诗词 · 音韵谐音 · 小名建议 · 重名热度 · 可联网扩充词库</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="view-switch" id="viewSwitch" role="group" aria-label="视图切换">
+      <button type="button" data-view="naming" aria-pressed="true">取 名</button>
+      <button type="button" data-view="lexicon">词 库 管 理<span class="dot" id="lexDot" hidden></span></button>
+    </div>
+  </div>
+
+  <div class="layout" id="viewNaming">
+
+    <!-- ============ 左侧表单 ============ -->
+    <form class="panel form-panel" id="form" autocomplete="off">
+      <h2>起名条件</h2>
+      <p class="hint">填得越全，结果越贴。只填姓氏也能用。</p>
+
+      <div class="field">
+        <label for="surname">姓氏 <span class="sub">支持复姓，如「欧阳」</span></label>
+        <input type="text" id="surname" list="surnameList" maxlength="2"
+               placeholder="请输入姓氏" value="李">
+        <datalist id="surnameList"></datalist>
+        <p class="hint" id="surnameInfo" style="margin:6px 0 0"></p>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="strokes">姓氏笔画 <span class="sub">康熙</span></label>
+          <input type="number" id="strokes" min="1" max="40" value="7">
+        </div>
+        <div class="field">
+          <label>性别</label>
+          <div class="segmented" id="genderSeg" role="group">
+            <button type="button" data-v="男">男</button>
+            <button type="button" data-v="女">女</button>
+            <button type="button" data-v="中性" aria-pressed="true">不限</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>名字用字</label>
+          <div class="segmented" id="lenSeg" role="group">
+            <button type="button" data-v="1">单字</button>
+            <button type="button" data-v="2" aria-pressed="true">双字</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="top">生成数量</label>
+          <input type="number" id="top" min="3" max="60" value="12">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="style">风格偏好</label>
+        <select id="style"></select>
+      </div>
+
+      <div class="field">
+        <label for="city">出生城市 <span class="sub">选填，用来自动填经度</span></label>
+        <input type="text" id="city" list="cityList" placeholder="如：成都" autocomplete="off">
+        <datalist id="cityList"></datalist>
+        <p class="hint" id="cityHint" style="margin:6px 0 0"></p>
+      </div>
+
+      <div class="field">
+        <label for="birth">出生时间 <span class="sub">选填，用于补五行</span></label>
+        <input type="datetime-local" id="birth">
+        <p class="hint" id="baziHint" style="margin:6px 0 0"></p>
+      </div>
+
+      <div class="field">
+        <label>喜用神 <span class="sub">不填则按八字自动推断</span></label>
+        <div class="wx-chips" id="xiSeg"></div>
+      </div>
+
+      <div class="field">
+        <label for="keywords">寓意关键词 <span class="sub">逗号分隔</span></label>
+        <input type="text" id="keywords" placeholder="如：智慧,坚韧">
+      </div>
+
+      <details class="advanced">
+        <summary>高级选项</summary>
+
+        <div class="field">
+          <label for="taboo">避用字 <span class="sub">名字中不要出现</span></label>
+          <input type="text" id="taboo" placeholder="如：梓,涵">
+        </div>
+
+        <div class="field">
+          <label for="mustInclude">必含字 <span class="sub">结果中必须包含</span></label>
+          <input type="text" id="mustInclude" placeholder="如：清">
+        </div>
+
+        <label class="check" style="margin-bottom:12px">
+          <input type="checkbox" id="useTST">
+          <span>启用真太阳时（按经度与均时差校正时柱）</span>
+        </label>
+
+        <label class="check" style="margin-bottom:12px">
+          <input type="checkbox" id="useSC">
+          <span>四川话谐音提示（需先在「词库管理」同步蜀拼字表）</span>
+        </label>
+
+        <div class="field">
+          <label for="longitude">出生地经度 <span class="sub">东经，选城市会自动填</span></label>
+          <!-- step 必须是 any：城市表里是两位小数（如成都 104.07），
+               若写 step="0.1" 会因不是 0.1 的整数倍而使整个表单校验失败，
+               而该字段又在折叠面板里，浏览器报错提示不可见。 -->
+          <input type="number" id="longitude" step="any" min="-180" max="180"
+                 placeholder="120 = 东八区标准经线">
+        </div>
+      </details>
+
+      <div style="margin-top:18px">
+        <button type="submit" class="btn" id="go">开 始 取 名</button>
+      </div>
+    </form>
+
+    <!-- ============ 右侧结果 ============ -->
+    <section class="results" id="results">
+      <div class="panel empty" id="empty">
+        <div class="glyph">名</div>
+        <p>填好条件后点击「开始取名」</p>
+        <p style="font-size:12.5px">系统会先排出八字、定出喜用神，再据此筛选用字</p>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============ 词库管理视图（联网扩充） ============ -->
+  <section class="panel lex-panel" id="viewLexicon" hidden></section>
+
+  <div class="foot-note">
+    <p><b>关于算法</b>　节气按真实太阳黄经计算（Meeus 低精度公式，误差 1–8 分钟），
+       年柱以立春换年、月柱以十二节换柱，可选真太阳时。五行力量用「天干 + 地支藏干加权 + 月令加成」，
+       身强身弱按同党/异党力量比判定，喜用神取身强宜克泄耗、身弱宜生扶。</p>
+    <p><b>关于谐音</b>　采用「带声调的音节序列」比对，例如「范统」会命中「饭桶」，
+       而「范彤」「李思琪」「杨威」不会被误判。「无语」「沉默」这类轻度负面谐音只提示、不淘汰。</p>
+    <p><b>关于重名热度</b>　<b>不是真实重名率数据</b>，而是基于近年常见新生儿用字整理的本地参考值，
+       仅用于判断名字偏冷门还是偏热门。真实重名率需调用官方接口，浏览器端无法直连。</p>
+    <p><b>关于小名</b>　小名不重新生成，而是从选中的大名里衍生
+       （叠字 / 小X / 阿X / X儿 / 单字）。评价时会查普通话谐音（有则淘汰）、
+       与姓氏连读谐音（扣分）、四川话撞词（扣分）、用字是否偏硬。</p>
+    <p><b>关于四川话检测</b>　用蜀拼字表把名字转成四川话读音再比对负面词。
+       四川话有系统性读音归并（金=京、心=星、林=凌），会在普通话里不存在的谐音，
+       所以普通话没问题不等于四川话没问题。
+       <b>该数据来自第三方项目且未声明授权，个别读音与成都话有出入，因此只做提示、不淘汰。</b></p>
+    <p><b>关于出生城市</b>　内置 234 个城市经纬度，选城市自动填经度。
+       经度差 1° = 真太阳时差 4 分钟，会影响时柱乃至日柱，填了更准。</p>
+    <p><b>关于结果排序</b>　结果不是单纯按分数从高到低排。完全按分数排会出现
+       「前 10 名全部以同一个字开头」——那是一个字 + 十种搭配，不是一个候选集。
+       因此系统加了「同位不重字」约束：按分数从高到低扫描，限制同一个字在同一个位置
+       出现的次数，首字全不重复的一批先给出来。<b>所以名次靠前的分数不一定严格递减</b>，
+       这是为了让你看到真正不同的选择。点「换一批」可以一直往后看。</p>
+    <p><b>关于同音替换</b>　嫌某个字这些年被用滥了，可以看「同音可换」——
+       推荐的替换字与原名读音相同、五行一致（换完八字的补益关系不变），
+       并优先给出热度更低的字。每条都标出了换成之后的总分变化。
+       <b>如果换字后会撞上新的谐音，该候选会直接丢弃，宁可少给建议。</b></p>
+    <p><b>关于偏旁重复</b>　「李浅涵」三字全带氵、「李诗语」两字全带讠，念着不别扭但写出来笨重。
+       系统会提示这种情况。<b>仅作提示、不参与评分</b>：偏旁表只覆盖内置字库的 278 个字，
+       联网扩充的字查不到，若拿它扣分会暗中拉低「联网加字」后的分数，属于数据缺陷污染排序。</p>
+    <p><b>关于并排对比</b>　勾选几个中意的名字，点「并排对比」逐项对照
+       （总分 / 五行 / 三才五格 / 热度 / 谐音 / 偏旁 / 诗词 / 小名）。
+       对比跨批次保留，可以「换一批」继续挑，选中的不会丢。</p>
+    <p><b>关于数理</b>　三才五格采用康熙笔画，属姓名学「数理派」，与八字喜用神体系未必一致，仅作参考。</p>
+    <p><b>关于字库</b>　内置 278 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
+       可在「词库管理」里联网更新：拉取公开的汉字拼音表、新华字典与诗词库，
+       并把字库外的字加入进来。数据缓存在浏览器本地，更新一次后离线也可用。</p>
+    <p><b>关于联网数据的可信度</b>　拼音、部首、释义、诗词都有公开数据源，可直接采用；
+       但<b>康熙笔画与姓名学五行没有权威公开数据集</b>，联网加入的字只能按部首规则推断，
+       界面会标注「推断」并要求人工核对，<b>请勿当作权威结果</b>。</p>
+  </div>
+
+</div>
+
+<!-- 数据层 -->
+<script src="js/data/chars.js"></script>
+<script src="js/data/surnames.js"></script>
+<script src="js/data/poetry.js"></script>
+<script src="js/data/homophone.js"></script>
+<script src="js/data/popularity.js"></script>
+<script src="js/data/fanti.js"></script>
+<script src="js/data/sources.js"></script>
+<script src="js/data/cities.js"></script>
+<script src="js/data/sichuan.js"></script>
+<script src="js/data/nickname.js"></script>
+<script src="js/data/radicals.js"></script>
+<!-- 核心层 -->
+<script src="js/core/wuxing.js"></script>
+<script src="js/core/calendar.js"></script>
+<script src="js/core/bazi.js"></script>
+<script src="js/core/wuge.js"></script>
+<script src="js/core/pinyin.js"></script>
+<script src="js/core/poetry-lib.js"></script>
+<script src="js/core/score.js"></script>
+<script src="js/core/generator.js"></script>
+<script src="js/core/net.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/infer.js"></script>
+<script src="js/core/dialect.js"></script>
+<!-- radical / variant 依赖 CHAR_LIST / CHAR_DB，必须在 lexicon 之后 -->
+<script src="js/core/lexicon.js"></script>
+<script src="js/core/radical.js"></script>
+<script src="js/core/variant.js"></script>
+<script src="js/core/nickname.js"></script>
+<!-- 界面层 -->
+<script src="js/ui/sync-ui.js"></script>
+<script src="js/ui/app.js"></script>
+
+</body>
+</html>
