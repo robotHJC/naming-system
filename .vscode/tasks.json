@@ -6,37 +6,64 @@
 			"type": "shell",
 			"command": "node tests/core.test.js; if ($LASTEXITCODE -eq 0) { node tests/lexicon.test.js } else { exit $LASTEXITCODE }",
 			"problemMatcher": [],
-			"group": { "kind": "test", "isDefault": true },
-			"presentation": { "reveal": "always", "panel": "dedicated" }
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
 		},
 		{
 			"label": "取名系统：打包发布",
 			"type": "shell",
 			"command": "node tools/build-dist.js",
 			"problemMatcher": [],
-			"group": { "kind": "build", "isDefault": true },
-			"presentation": { "reveal": "always", "panel": "dedicated" }
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
 		},
 		{
 			"label": "取名系统：打包（固化联网数据）",
 			"type": "shell",
 			"command": "node tools/build-dist.js --bake",
 			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated" }
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
 		},
 		{
 			"label": "取名系统：体检联网数据源",
 			"type": "shell",
 			"command": "node tools/probe-sources.js",
 			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated" }
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
 		},
 		{
 			"label": "取名系统：打包并刷新部署产物（docs/）",
 			"type": "shell",
 			"command": "node tools/build-dist.js; if ($LASTEXITCODE -eq 0) { node tools/sync-pages.js } else { exit $LASTEXITCODE }",
 			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated" }
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "取名系统：检查部署环境",
+			"type": "shell",
+			"command": "$g = Get-Command gh -ErrorAction SilentlyContinue; if ($g) { Write-Host \"gh: $($g.Source)\"; gh --version } else { Write-Host 'gh: 未安装' }; Write-Host '--- 远程 ---'; git remote -v; Write-Host '--- 分支 ---'; git status -sb",
+			"problemMatcher": []
 		}
 	]
 }

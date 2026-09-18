@@ -540,6 +540,62 @@ python -m http.server 8000 --directory dist/取名系统-完整版
 
 ---
 
+## 部署到 GitHub Pages
+
+仓库里已经准备好了：`docs/` 就是 Pages 产物，`git` 仓库已初始化并完成首次提交。
+
+### 更新部署产物
+
+改了代码之后，**两步走**（或直接跑 VS Code 任务「打包并刷新部署产物」）：
+
+```bash
+node tools/build-dist.js    # 或双击 打包.bat
+node tools/sync-pages.js    # 把单文件版同步到 docs/
+```
+
+`sync-pages.js` 会先自检单文件版**有没有外部引用**（有的话部署上去必然 404），通过才写盘。
+
+### 首次部署
+
+```bash
+# 1. 在 github.com 新建一个空仓库（不要勾选 README/.gitignore），假设叫 naming-system
+# 2. 关联并推送（会弹出 Git Credential Manager 让你登录一次）
+git remote add origin https://github.com/<你的用户名>/naming-system.git
+git push -u origin main
+```
+
+```
+# 3. 仓库 → Settings → Pages
+#    Source: Deploy from a branch
+#    Branch: main   Folder: /docs
+#    保存，等 1 分钟左右
+```
+
+访问地址是 `https://<你的用户名>.github.io/naming-system/`。
+
+> **注意**：免费账号的 Pages **只能用于 public 仓库**。
+> 若仓库设为 private，Pages 需要付费计划，`/docs` 方式会被禁用。
+
+### 为什么部署单文件版而不是完整版文件夹
+
+1. **零外部引用**：一个请求加载完，没有相对路径问题（目录名是中文，避免任何编码意外）
+2. **不会漏同步**：改完源码只要覆盖一个文件，不会出现「改了某个 js 但忘了拷进部署目录」
+3. **HTTP 源下功能更全**：IndexedDB 与 CORS 都是正常行为，
+   联网扩充词库、词库缓存比 `file://` 打开可靠得多
+
+`.nojekyll` 是必须的：不跳过 Jekyll 的话，Pages 会额外跑一遍 Jekyll 构建，
+既慢又可能因为特殊字符失败。
+
+### 部署上去之后要注意的
+
+- **第三方数据不会被部署**：`dist/` 已加入 `.gitignore`，
+  且打包脚本目前不固化任何联网数据（`固化数据：未找到导出文件`）。
+  用户可以自己在页面上联网拉取，那是浏览器直接访问公开数据源。
+- **方言数据默认关闭**：蜀拼表与四川方言词汇的来源仓库未声明授权，
+  所以默认不勾选。这是数据合规上的刻意选择，请不要在部署时打开默认开关。
+
+---
+
 ## 已知局限
 
 - **字库只有 278 字，而且漏掉了当代最流行的一批用字**：
