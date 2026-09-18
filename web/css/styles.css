@@ -596,6 +596,31 @@ input::placeholder { color: #b6b0a4; }
   letter-spacing: .04em;
 }
 
+/* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */
+.nc-poetry-kind {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: rgba(141, 116, 64, .16);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  vertical-align: 1px;
+}
+
+.nc-poetry-kind.good {
+  background: var(--gold);
+  color: #fff;
+}
+
+/* 同篇出处信号很弱（诗词库扩到上千首后几乎人人都有），视觉上压暗 */
+.nc-poetry.weak {
+  border-left-color: #d8cdb0;
+  background: #fbf8f0;
+  color: #8a7f66;
+}
+
 /* 名字卡片底部信息 */
 .nc-foot {
   display: flex;

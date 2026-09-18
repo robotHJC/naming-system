@@ -7,7 +7,7 @@ const path = require('path');
 
 const BASE = path.join(__dirname, '..', 'web', 'js');
 [
-  'data/chars.js', 'data/surnames.js', 'data/poetry.js',
+  'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
@@ -281,9 +281,31 @@ section('7. 名字生成与性能');
     `约束后 ${new Set(res.map(r => r.chars[0])).size}/${res.length}`);
   console.log(`  不约束：${rawTop.map(r => r.name).join(' ')}`);
   console.log(`  约　束：${res.map(r => r.name).join(' ')}`);
-  ok('多样性确实提升了首字分散度',
-    new Set(res.map(r => r.chars[0])).size > rawFirsts,
-    rawFirsts + ' → ' + new Set(res.map(r => r.chars[0])).size);
+
+  /* 断言的是「契约」而不是「改善量」。
+   * 原先写成 `约束后的去重数 > 不约束的去重数`，字库扩充后失效了 ——
+   * 池子变大，纯按分数排前 8 名碰巧也分散开了，于是对照差值为 0。
+   * 那是测试写得不稳：多样性约束本身与数据无关，不该靠比较来验证。 */
+  const DEEP = NS.Generator.runSync(
+    NS.Generator.plan({ surname: '李', gender: '女', length: 2, top: 24 }));
+  const deepFirsts = DEEP.map(r => r.chars[0]);
+  ok('前 24 名首字两两不同（约束是硬性的，与数据无关）',
+    new Set(deepFirsts).size === 24, new Set(deepFirsts).size + '/24');
+  /* 每个位置上的任何一个字，都不允许超过上限次数出现。
+   * 第一轮 cap = 1，所以前 24 名里同一个字不得在同一位置重复。 */
+  const posRepeats = [];
+  for (let pos = 0; pos < 2; pos++) {
+    const seen = Object.create(null);
+    deepFirsts.length && DEEP.forEach(r => {
+      const c = r.chars[pos];
+      seen[c] = (seen[c] || 0) + 1;
+    });
+    Object.keys(seen).forEach(c => {
+      if (seen[c] > 1) posRepeats.push('第' + (pos + 1) + '字 ' + c + '×' + seen[c]);
+    });
+  }
+  ok('前 24 名里没有字在同一位置重复', posRepeats.length === 0, posRepeats.join(', '));
+
   ok('多样性没有把质量拖垮（与全局最高分差距 ≤ 15）',
     floor >= rawTop[0].score - 15,
     '最低 ' + floor + ' 分 vs 最高 ' + rawTop[0].score + ' 分');

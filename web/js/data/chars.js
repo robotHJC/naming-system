@@ -333,11 +333,29 @@
     return db;
   }
 
-  NS.CHAR_DB = parseChars(NS.RAW_CHARS);
+  NS.CHAR_DB = parseChars(
+    NS.RAW_CHARS.concat(NS.RAW_CHARS_EXTRA || []));
 
   NS.CHAR_LIST = Object.keys(NS.CHAR_DB).map(function (k) {
     return NS.CHAR_DB[k];
   });
+
+  /* 两部分各有多少字，以及补充部分实际生效了几个（重复的会被忽略）。
+   * 界面和测试靠它如实说明字库构成，而不是笼统报一个总数。 */
+  NS.CHAR_LIB_STATS = (function () {
+    var base = parseChars(NS.RAW_CHARS);
+    var extra = parseChars(NS.RAW_CHARS_EXTRA || []);
+    var extraLive = 0;
+    Object.keys(extra).forEach(function (ch) {
+      if (!base[ch]) extraLive++;
+    });
+    return {
+      base: Object.keys(base).length,
+      extraDeclared: Object.keys(extra).length,
+      extraApplied: extraLive,
+      total: Object.keys(NS.CHAR_DB).length
+    };
+  })();
 
   /* 字库中出现的所有风格标签，供界面下拉框使用 */
   NS.STYLE_TAGS = (function () {

@@ -1,14 +1,26 @@
 /* =========================================================================
  * score.js —— 名字评分
  *
- * 评分维度与总分与 Python 版保持一致（总分 100），便于对照：
- *   五行 30 · 音韵 15 · 寓意 15 · 性别 5 · 风格 5 · 三才五格 15 · 诗词 10 · 谐音 5
+ * 总分 100，维度与权重：
+ *   五行 30 · 音韵 15 · 寓意 15 · 性别 5 · 风格 5 · 三才五格 8
+ *   出处与搭配 17 · 谐音 5
  *
- * 改进：
- *   1. 谐音改为音节边界匹配（原版子串匹配会误杀「李诗涵」这类好名字）。
- *   2. 未提供生辰时，五行项按「名字内部五行搭配」给分，避免该项恒为 0、
- *      导致所有候选分数被拉平。
- *   3. 拆出「单字基础分」，让生成器可以先剪枝再枚举，性能提升几个数量级。
+ * 为什么权重这么调（实测驱动，不是拍脑袋）：
+ *   旧版是三才五格 15 / 出处 10（固定分），实测默认参数下前 20 名**全部 80 分**，
+ *   理由一模一样（五行不重复+声调错落+三才大吉+有出处）。
+ *   分数在 80 处封顶且人人都满分，排序就失去了区分度 ——
+ *   「李书云」和「李栗冬」得分完全相同，用户看到的是任意 20 个满足条件的组合，
+ *   而不是最好的 20 个。这就是「生搬硬套」的机制。
+ *
+ *   两处修正：
+ *   1. 三才五格 15 → 8。它属「数理派」，与名字好不好听基本不相关。
+ *   2. 出处从「固定 10 分」改成**分级**（见下）。诗词库扩到上千首后，
+ *      「两个字都出现在同一首诗里」实测命中率 100%，等于没有信息。
+ *
+ * 出处分级（这是新的区分度来源）：
+ *   相邻成词 17 —— 两个相邻的字在某一「句」里紧挨着出现过（望舒/静姝/琼琚）
+ *   同句　   9 —— 同一句里都有，但不挨着
+ *   同篇　   2 —— 只是同时出现在一首诗里（信号很弱，给一点点）
  * ========================================================================= */
 (function (global) {
   'use strict';
@@ -151,12 +163,28 @@
       return NS.Pinyin.splitSyllable(r.obj.pinyin).final;
     });
     if (uniq(tones) === tones.length) {
-      score += 8; reasons.push('声调错落');
+      score += 6; reasons.push('声调错落');
     } else if (uniq(tones) >= 2) {
-      score += 4;
+      score += 3;
     }
-    if (uniq(sms) === sms.length) score += 4;
+    if (uniq(sms) === sms.length) score += 3;
     if (uniq(yms) === yms.length) score += 3;
+
+    /* 平仄相间：汉语读起来顺口的根本。
+     * 声调 1、2 为平，3、4 为仄（轻声按仄处理）。
+     * 「思远」= 平仄、「静姝」= 仄平，都是好搭配；
+     * 「书云」= 平平、「栗冬」= 仄平…平平的名字读着偏平。 */
+    var pingze = tones.map(function (t) { return t === 1 || t === 2; });
+    var alternated = 0;
+    for (i = 1; i < pingze.length; i++) {
+      if (pingze[i] !== pingze[i - 1]) alternated++;
+    }
+    if (alternated === pingze.length - 1) {
+      score += 3;
+      reasons.push('平仄相间');
+    } else if (alternated > 0) {
+      score += 1.5;
+    }
 
     /* ---- 3. 寓意 / 关键词（15）---- */
     var kwTotal = rows.reduce(function (a, r) { return a + r.kwScore; }, 0);
@@ -178,7 +206,10 @@
     score += styleTotal;
     if (styleTotal >= 2.5 && ctx.style) reasons.push(ctx.style + '风格');
 
-    /* ---- 6. 三才五格（15）---- */
+    /* ---- 6. 三才五格（8）----
+     * 旧版给 15，实测它把「五行/音韵/寓意」这些真需求盖过去了。
+     * 它属于「数理派」，与八字喜用神不同源，也不是「好不好听」的指标，
+     * 因此降权到 8，只作为参考。 */
     var givenStrokes = rows.map(function (r) { return r.obj.strokes; });
     var wk = ctx.surnameStrokes.join(',') + '|' + givenStrokes.join(',');
     var wuge = ctx.wugeCache[wk];
@@ -188,26 +219,51 @@
     }
     detail.wuge = wuge;
     if (wuge.三才吉凶 === '大吉') {
-      score += 15; reasons.push('三才' + wuge.三才 + '大吉');
+      score += 8; reasons.push('三才' + wuge.三才 + '大吉');
     } else if (wuge.三才吉凶 === '中吉') {
-      score += 10;
+      score += 5;
     } else {
-      score += 3;
+      score += 2;
     }
 
-    /* ---- 7. 诗词出处（10）---- */
+    /* ---- 7. 出处与搭配（17）---- */
     var charsKey = rows.map(function (r) { return r.char; }).join('');
-    var src;
+    var given = charsKey.split('');
+    var adj, sameLine, samePoem;
+
     if (charsKey in ctx.poetryCache) {
-      src = ctx.poetryCache[charsKey];
+      var cached = ctx.poetryCache[charsKey];
+      adj = cached.adj; sameLine = cached.line; samePoem = cached.poem;
     } else {
-      src = NS.Poetry.findSource(charsKey.split(''));
-      ctx.poetryCache[charsKey] = src;
+      /* 从强到弱依次查，命中就停 */
+      adj = NS.Poetry.findAdjacent(given);
+      sameLine = adj ? null : NS.Poetry.findLine(given);
+      samePoem = (adj || sameLine) ? null : NS.Poetry.findSource(given);
+      cached = { adj: adj, line: sameLine, poem: samePoem };
+      ctx.poetryCache[charsKey] = cached;
     }
-    if (src) {
-      score += 10;
-      detail.poetry = src;
-      reasons.push('出自《' + src.source + '》');
+
+    if (adj) {
+      /* 经典来源（诗经/楚辞/唐诗/宋词/千家诗…）才算满分的「出处成词」；
+       * 蒙书与散文里凑出来的词只给一半 —— 实测「亦书」来自古文观止、
+       * 「念一」来自「每一念」，都不是词。见 NON_CLASSIC_SOURCES。 */
+      var full = adj.classic !== false;
+      score += full ? 17 : 9;
+      detail.poetry = adj;
+      detail.pairKind = full ? 'classic' : 'weak';
+      reasons.push(full
+        ? '出处成词「' + adj.pair + '」'
+        : '疑似成词「' + adj.pair + '」（非诗词类出处）');
+    } else if (sameLine) {
+      score += 5;
+      detail.poetry = sameLine;
+      detail.pairKind = 'line';
+      reasons.push('出自《' + sameLine.source + '》同句');
+    } else if (samePoem) {
+      score += 1;
+      detail.poetry = samePoem;
+      detail.pairKind = 'poem';
+      reasons.push('出自《' + samePoem.source + '》');
     }
 
     /* ---- 8. 谐音（5）---- */

@@ -17,7 +17,8 @@ const path = require('path');
 
 const BASE = path.join(__dirname, '..', 'web', 'js');
 [
-  'data/chars.js', 'data/surnames.js', 'data/poetry.js', 'data/homophone.js',
+  'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
+  'data/homophone.js',
   'data/popularity.js', 'data/fanti.js', 'data/sources.js',
   'data/cities.js', 'data/sichuan.js', 'data/nickname.js', 'data/radicals.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
@@ -615,7 +616,20 @@ section('6e. 偏旁重复检测');
    * 「梓」是字库里的第一个字，当初就是漏了它——这条断言就是为它加的。 */
   const MUST_GROUP = ['梓', '楠', '森', '林', '澜', '沐', '涵', '萱', '瑞', '琪',
     '悦', '思', '念', '秋', '秀', '律', '德', '彤', '彦', '安', '宇',
-    '峰', '铭', '锦', '心', '忆', '金', '水', '叶', '诗'];
+    '峰', '铭', '锦', '心', '忆', '金', '水', '叶', '诗',
+    /* 字库扩充后新增的高频字，同样不能漏。
+     * 不列「航」「轩」—— 它们的部首（舟/车）在字库里没有第二个同族字，
+     * 强行建一个只有一个字的分组永远不会触发，没有意义。 */
+    '芝', '芳', '萌', '萍', '蓝', '瑜', '琳', '琦', '晨', '星',
+    '宸', '翠', '翔', '浩', '温', '棠', '语', '诺'];
+  /* 不在名单里但应该已归组的，单独报告一下，避免静默漏掉 */
+  const SHOULD_GROUP = MUST_GROUP.concat(['菲', '茜', '荷', '蓉', '茗', '洲', '淇',
+    '淳', '泠', '槿', '榆', '梵', '琬', '珩', '璇', '璐', '玥', '瑄', '琅',
+    '旻', '晞']);
+  const missingGroup = SHOULD_GROUP.filter(
+    c => libSet.has(c) && NS.Radical.groupsOf(c).length === 0);
+  eq('新增用字应当都已归入偏旁组', missingGroup.length, 0,
+    '漏了：' + missingGroup.join(''));
   const ungrouped = MUST_GROUP.filter(
     c => libSet.has(c) && NS.Radical.groupsOf(c).length === 0);
   eq('高频起名用字必须已归组', ungrouped.length, 0,
@@ -697,27 +711,40 @@ section('6f. 同音替换建议');
 /* ---------------- 6g. 词库外的同音字 ---------------- */
 section('6g. 词库外同音字（联网拼音表）');
 {
-  /* 字库只有 278 字，「书」在内层只能换出「舒」。
-   * 而联网同步来的拼音表有两万多字，「姝」「淑」「澍」都在里面——
-   * 不利用它，「换个更冷门的字」这个需求就满足不了。 */
+  /* 这两个是「测试用」字：人为塞进热度表，模拟「热度表认得、但字库没有」。
+   * 不能依赖真实数据里还剩几个这样的字 —— 字库补齐后会是 0 个，
+   * 用例就会失败在「数据」上而不是「逻辑」上（补齐最后一个缺字「蓝」时就踩到了）。 */
+  const OUT_A = '昶', OUT_B = '翀';
+  ok('测试用字确实不在字库里（前提成立）',
+    !NS.CHAR_DB[OUT_A] && !NS.CHAR_DB[OUT_B],
+    OUT_A + '/' + OUT_B);
+  NS.HEAT[OUT_A] = 60;
+  NS.HEAT[OUT_B] = 65;
+
+  /* 顺带如实报告：热度表里的起名用字还有多少没进字库 */
+  const stillOut = Object.keys(NS.HEAT)
+    .filter(ch => !NS.CHAR_DB[ch] && /^[\u4e00-\u9fff]$/.test(ch));
+  console.log('  热度表里仍未进字库的起名用字：' + stillOut.length + ' 个' +
+    (stillOut.length ? '（' + stillOut.join('') + '）' : ' —— 已全部收录'));
+
   eq('未同步拼音表时外层为空',
     NS.Variant.outerCandidates(NS.CHAR_DB['书'], []).length, 0);
 
-  NS.Lexicon.applyPinyin({
-    '姝': { pinyin: 'shu', tone: 1 },
-    '淑': { pinyin: 'shu', tone: 1 },
-    '澍': { pinyin: 'shu', tone: 4 },
-    '疋': { pinyin: 'shu', tone: 1 },
-    '鲭': { pinyin: 'qing', tone: 1 },
-    '魑': { pinyin: 'chi', tone: 1 }
-  });
-  NS.Lexicon.applyDict({
-    '姝': [9, '女', 'shū', '美好，美女'],
-    '淑': [11, '氵', 'shū', '温和善良'],
-    '澍': [15, '氵', 'shù', '及时雨'],
-    '疋': [5, '疋', 'shū', '同「匹」'],
-    '鲭': [19, '鱼', 'qīng', '鲭鱼']
-  });
+  /* 造拼音表：OUT_A / OUT_B 挂到 shu 上；
+   * 澍 / 疋 / 鲭 是**热度表不认得**的字，必须被门槛挡掉。 */
+  const pyFixture = {}, dictFixture = {};
+  pyFixture[OUT_A] = { pinyin: 'shu', tone: 1 };
+  pyFixture[OUT_B] = { pinyin: 'shu', tone: 4 };
+  pyFixture['澍'] = { pinyin: 'shu', tone: 4 };
+  pyFixture['疋'] = { pinyin: 'shu', tone: 1 };
+  pyFixture['鲭'] = { pinyin: 'qing', tone: 1 };
+  dictFixture[OUT_A] = [10, '氵', 'shū', '测试释义 A'];
+  dictFixture[OUT_B] = [13, '氵', 'shù', '测试释义 B'];
+  dictFixture['澍'] = [15, '氵', 'shù', '及时雨'];
+  dictFixture['疋'] = [5, '疋', 'shū', '同「匹」'];
+  dictFixture['鲭'] = [19, '鱼', 'qīng', '鲭鱼'];
+  NS.Lexicon.applyPinyin(pyFixture);
+  NS.Lexicon.applyDict(dictFixture);
 
   /* 索引是带缓存的，必须靠 dataVersion 失效，否则同步完仍推荐不出字 */
   const v0 = NS.Lexicon.dataVersion;
@@ -749,13 +776,13 @@ section('6g. 词库外同音字（联网拼音表）');
     NS.Variant.outerCandidates(NS.CHAR_DB['清'], [])
       .every(o => o.char !== '鲭'));
 
-  const shu11 = out.filter(o => o.char === '淑')[0];
-  ok('外层五行按部首推断（淑 的氵 → 水）', shu11 && shu11.wuxing === '水',
-    shu11 ? shu11.wuxing : '(缺)');
-  /* 字典里的 11 是简体笔画，康熙笔画要加上部首增量：氵 → 水 多 1 画，所以是 12。
+  const aOpt = out.filter(o => o.char === OUT_A)[0];
+  ok('外层五行按部首推断（字典部首 氵 → 水）', aOpt && aOpt.wuxing === '水',
+    aOpt ? aOpt.wuxing : '(缺)');
+  /* 字典里的 10 是简体笔画，康熙笔画要加上部首增量：氵 → 水 多 1 画，所以是 11。
    * 这条断言同时锁住「字典只给简体、康熙靠推断」这个事实。 */
-  ok('外层笔画 = 字典简体 11 + 氵部首增量 1 = 康熙 12',
-    shu11 && shu11.strokes === 12, shu11 ? String(shu11.strokes) : '(缺)');
+  ok('外层笔画 = 字典简体 10 + 氵部首增量 1 = 康熙 11',
+    aOpt && aOpt.strokes === 11, aOpt ? String(aOpt.strokes) : '(缺)');
 
   /* 整名替换：内层（分数可靠）必须排在外层之前 */
   const plan = NS.Generator.plan({ surname: '李', length: 2, top: 12 });

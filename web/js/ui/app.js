@@ -735,9 +735,23 @@
       card.appendChild(vbox);
     }
 
-    /* 诗词 */
+    /* 诗词出处。分级显示 —— 「出处成词」和「同篇出处」的含金量差很多，
+     * 不加区分的话，用户无从判断这条出处是不是硬凑的。 */
     if (item.poetry) {
-      var po = el('div', 'nc-poetry');
+      var KIND_LABEL = {
+        classic: '出处成词',
+        weak: '疑似成词',
+        line: '同句出处',
+        poem: '同篇出处'
+      };
+      var kind = item.pairKind || 'poem';
+      var po = el('div', 'nc-poetry' + (kind === 'poem' ? ' weak' : ''));
+      var head = el('span', 'nc-poetry-kind' + (kind === 'classic' ? ' good' : ''),
+        KIND_LABEL[kind] || '出处');
+      if (kind === 'classic' && item.poetry.pair) {
+        head.textContent = KIND_LABEL.classic + '「' + item.poetry.pair + '」';
+      }
+      po.appendChild(head);
       po.appendChild(document.createTextNode('「' + item.poetry.line + '」'));
       po.appendChild(el('span', 'src',
         '—— 《' + item.poetry.source + '》·' + item.poetry.title));

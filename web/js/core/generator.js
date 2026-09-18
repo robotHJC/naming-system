@@ -245,6 +245,7 @@
       styles: combo.map(function (c) { return c.styles; }),
       wuge: ev.detail.wuge,
       poetry: ev.detail.poetry,
+      pairKind: ev.detail.pairKind,
       homophone: ev.detail.homophone,
       heat: ev.detail.heat
     };

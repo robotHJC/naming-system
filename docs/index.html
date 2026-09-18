@@ -603,6 +603,31 @@ input::placeholder { color: #b6b0a4; }
   letter-spacing: .04em;
 }
 
+/* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */
+.nc-poetry-kind {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: rgba(141, 116, 64, .16);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  vertical-align: 1px;
+}
+
+.nc-poetry-kind.good {
+  background: var(--gold);
+  color: #fff;
+}
+
+/* 同篇出处信号很弱（诗词库扩到上千首后几乎人人都有），视觉上压暗 */
+.nc-poetry.weak {
+  border-left-color: #d8cdb0;
+  background: #fbf8f0;
+  color: #8a7f66;
+}
+
 /* 名字卡片底部信息 */
 .nc-foot {
   display: flex;
@@ -1562,15 +1587,23 @@ details.more > summary:hover { color: var(--jade); }
        并优先给出热度更低的字。每条都标出了换成之后的总分变化。
        <b>如果换字后会撞上新的谐音，该候选会直接丢弃，宁可少给建议。</b></p>
     <p><b>关于偏旁重复</b>　「李浅涵」三字全带氵、「李诗语」两字全带讠，念着不别扭但写出来笨重。
-       系统会提示这种情况。<b>仅作提示、不参与评分</b>：偏旁表只覆盖内置字库的 278 个字，
-       联网扩充的字查不到，若拿它扣分会暗中拉低「联网加字」后的分数，属于数据缺陷污染排序。</p>
+       系统会提示这种情况。<b>仅作提示、不参与评分</b>：偏旁表是手工维护的，
+       只覆盖字库里的常用字（并非全部 373 字），联网扩充的字查不到；
+       若拿它扣分会暗中拉低「联网加字」后的分数，属于数据缺陷污染排序。</p>
     <p><b>关于并排对比</b>　勾选几个中意的名字，点「并排对比」逐项对照
        （总分 / 五行 / 三才五格 / 热度 / 谐音 / 偏旁 / 诗词 / 小名）。
        对比跨批次保留，可以「换一批」继续挑，选中的不会丢。</p>
     <p><b>关于数理</b>　三才五格采用康熙笔画，属姓名学「数理派」，与八字喜用神体系未必一致，仅作参考。</p>
-    <p><b>关于字库</b>　内置 278 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
+    <p><b>关于字库</b>　内置 373 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
        可在「词库管理」里联网更新：拉取公开的汉字拼音表、新华字典与诗词库，
        并把字库外的字加入进来。数据缓存在浏览器本地，更新一次后离线也可用。</p>
+    <p><b>关于出处分级</b>　诗词出处分成四档，含金量差很多，卡片上会标出来：
+       <b>出处成词</b>指名字的两个字在某一句诗里<b>紧挨着、顺序相同</b>地出现过
+       （如「望秋」← 唐诗「登舟望秋月」，「若云」← 楚辞「敌若云」）；
+       <b>同句</b>指同在一句但不是孪着；<b>同篇</b>只是同在一首诗里 ——
+       诗词库扩到上千首后几乎人人都能命中，所以只给很少的分，卡片上会压暗显示。
+       古文观止、幼学琼林、千字文、声律启蒙这类散文与蒙书不算有效出处，
+       因为它们里面任意两字都能凑上（实测会产出「亦书」「林望」这类假出处）。</p>
     <p><b>关于联网数据的可信度</b>　拼音、部首、释义、诗词都有公开数据源，可直接采用；
        但<b>康熙笔画与姓名学五行没有权威公开数据集</b>，联网加入的字只能按部首规则推断，
        界面会标注「推断」并要求人工核对，<b>请勿当作权威结果</b>。</p>
@@ -1579,6 +1612,172 @@ details.more > summary:hover { color: var(--jade); }
 </div>
 
 <!-- 数据层 -->
+<!-- chars-extra 必须在 chars.js 之前：chars.js 解析时会合并它 -->
+<script>
+/* =========================================================================
+ * chars-extra.js —— 字库补充用字
+ *
+ * 为什么需要这个文件
+ * ---------------------------------------------------------------
+ * 原字库只有 278 字，实测漏掉了当代最流行的一批起名用字
+ * （轩 浩 宸 子 欣 嘉 怡 玥 诺 奕 语 妍 瑜 晨 俊 雅 琳 婷 娴 淑 姝 蓝 青 …），
+ * 也漏掉了《诗经》《楚辞》里最常用于取名的字（姝 荇 芩 苓 蘅 雎 琬 珩 怀 望 舒 …）。
+ *
+ * 直接后果有两个：
+ *   1. 生成不出「李思远」「李静姝」这类真正好听的名字 —— 字根本不在库里
+ *   2. 「诗词出处」这一项失效 —— 想凑出有出处的名字，但缺字凑不出来
+ *
+ * 五行口径
+ * ---------------------------------------------------------------
+ * 不是我自己定的，是从现有 278 字**反推**出来的规则，保证前后一致：
+ *
+ *   部首派（原字库 100% 一致，直接沿用）：
+ *     氵→水  木→木  艹→木  钅→金  日→火  山→土  土→土  雨→水
+ *     竹→木  刂→金  冫→水  鸟→水  贝→水  辶→土  囗→土  禾→金  彳→火
+ *
+ *   字义派（原字库里这些部首本来就不一致，按字义定）：
+ *     亻→多土   宀→多土   女→多土   忄→多火   口→混杂   心→混杂
+ *
+ * 康熙笔画
+ * ---------------------------------------------------------------
+ * 全部按「部首笔画 + 部件笔画」实算，不是估的。两个关键点：
+ *
+ *   1. 艹 在康熙字典里写作「艸」，算 **6 画**（不是简体的 3 画），
+ *      所以没有简化的艹部字：康熙笔画 = 简体笔画 + 3。
+ *      验证：原字库的 若 简体 8 → 康熙 11，芸 7 → 10，芮 7 → 10，全部 +3。
+ *   2. 氵 在康熙里是「水」= 4 画，所以：康熙笔画 = 简体笔画 + 1。
+ *      验证：原字库的 沐 简体 7 → 康熙 8，沛 7 → 8。
+ *
+ * 因此本文件**只收录「繁体写法与简体相同」的字**，
+ * 这样上面的加法就是精确值。像「蓝」（繁體 藍 = 20 画）、「丽」（麗 = 19 画）
+ * 这类整体简化的字，笔画按真正的繁体写法录入，不做 +3 之类的机械换算。
+ *
+ * 格式与 chars.js 完全一致（末尾是康熙笔画）：
+ *     字|拼音|声调|五行|性别|风格(逗号分隔)|寓意|康熙笔画
+ * 解析规则也一致：8 段才有效，同一个字重复出现时「先出现的优先」，
+ * 所以本文件里的字不会覆盖 chars.js 中已有的条目。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  NS.RAW_CHARS_EXTRA = [
+
+    /* ---------------- 艹（木，康熙 = 简体 + 3） ---------------- */
+    '芝|zhi|1|木|女|古风,文雅|芝兰，寓意高洁芬芳|10',
+    '芳|fang|1|木|女|温柔,文雅|芬芳，寓意美好名声|10',
+    '菲|fei|1|木|女|温柔,文雅|芳菲，寓意繁盛美好|14',
+    '萌|meng|2|木|中性|自然,灵动|萌芽，寓意生机初发|14',
+    '萍|ping|2|木|女|自然|浮萍，寓意清雅随和|14',
+    '荇|xing|4|木|女|古风,清冷|荇菜，诗经中的水草|12',
+    '芩|qin|2|木|女|古风|黄芩，药草，寓意质朴|10',
+    '苓|ling|2|木|女|古风,清冷|茯苓，寓意灵秀|11',
+    '蔓|man|4|木|女|温柔|蔓草绵延，寓意长久|17',
+    '蘅|heng|2|木|女|古风,清冷|杜蘅，香草，寓意清雅|22',
+    '茗|ming|2|木|中性|文雅|茶芽，寓意清雅淡泊|12',
+    '茜|qian|4|木|女|温柔,灵动|茜草，寓意明艳|12',
+    '荀|xun|2|木|男|古风,文雅|香草，寓意芬芳|12',
+    '荷|he|2|木|女|古风,清冷|荷花，寓意出淤泥不染|13',
+    '蓉|rong|2|木|女|温柔|芙蓉，寓意美好|16',
+    '莘|shen|1|木|中性|文雅|莘莘，寓意繁盛|13',
+    '荃|quan|2|木|中性|文雅|香草，寓意纯善|12',
+    '菀|wan|3|木|女|温柔|茂盛，寓意生机|14',
+    /* 蓝是整体简化字（繁體 藍），艹 的那套 +3 换算在这里不适用，
+     * 笔画按真正的繁体写法录入：藍 = 艹 6 + 監 14 = 20。 */
+    '蓝|lan|2|木|中性|自然,清冷|蓝草，寓意澄澈|20',
+
+    /* ---------------- 氵（水，康熙 = 简体 + 1） ---------------- */
+    '洲|zhou|1|水|男|大气,自然|水中陆地，寓意志向|10',
+    '涘|si|4|水|中性|古风,清冷|水边，寓意边界|11',
+    '沚|zhi|3|水|中性|古风,清冷|水中小洲，寓意清雅|8',
+    '温|wen|1|水|中性|温柔|温和，寓意温润如玉|13',
+    '浩|hao|4|水|男|大气|浩大，寓意胸襟广阔|11',
+    '淇|qi|2|水|女|古风,清冷|淇水，诗经中反复出现|12',
+    '淳|chun|2|水|男|文雅|淳厚，寓意质朴|12',
+    '泠|ling|2|水|女|清冷|清泠，寓意澄澈|9',
+
+    /* ---------------- 木（木，康熙 = 简体） ---------------- */
+    '棠|tang|2|木|女|古风,文雅|海棠，寓意明丽|12',
+    '槿|jin|3|木|女|古风,温柔|木槿，寓意坚韧温柔|15',
+    '榆|yu|2|木|中性|自然|榆树，寓意坚实|13',
+    '梵|fan|4|木|中性|清冷|清净，寓意澄明|11',
+
+    /* ---------------- 王（金，康熙 = 简体 + 1） ---------------- */
+    '瑜|yu|2|金|中性|文雅|美玉，寓意美好|14',
+    '琬|wan|3|金|女|古风,温柔|美玉，寓意温润|13',
+    '珩|heng|2|金|中性|古风|佩玉，寓意端正|11',
+    '璇|xuan|2|金|女|古风|美玉，寓意珍贵|16',
+    '璐|lu|4|金|女|温柔|美玉，寓意纯洁|18',
+    '琚|ju|1|金|中性|古风|佩玉，寓意相守|13',
+    '玥|yue|4|金|女|古风|神珠，寓意珍贵|9',
+    '瑄|xuan|1|金|中性|文雅|璧玉，寓意端正|14',
+    '琅|lang|2|金|中性|文雅|美玉，寓意清朗|12',
+    '玦|jue|2|金|男|古风|佩玉，寓意决断|9',
+
+    /* ---------------- 日（火，康熙 = 简体） ---------------- */
+    '晨|chen|2|火|中性|大气,自然|清晨，寓意朝气|11',
+    '星|xing|1|火|中性|自然,灵动|星辰，寓意明亮|9',
+    '旻|min|2|火|中性|文雅|秋天，寓意高远|8',
+    '晞|xi|1|火|女|清冷|破晓，寓意初见光明|11',
+
+    /* ---------------- 热度表里高频、上一版漏收的最后几个 ---------------- */
+    '宸|chen|2|金|中性|古风,大气|北极星居所，寓意尊贵|10',
+    '奕|yi|4|木|中性|文雅,大气|盛大，寓意神采奕奕|9',
+    '琳|lin|2|金|女|文雅|美玉，寓意珍奇|13',
+    '琦|qi|2|金|中性|文雅|美玉，寓意不凡|13',
+    '翔|xiang|2|土|男|大气|飞翔，寓意高远|12',
+
+    /* ---------------- 五行按字义定的单字 ---------------- */
+    '航|hang|2|水|男|大气|航行，寓意志远|10',
+    '子|zi|3|水|中性|简约|子女，寓意传承|3',
+    '一|yi|1|土|中性|简约|专一，寓意纯粹|1',
+    '可|ke|3|木|中性|温柔|可爱可亲，寓意温婉|5',
+    '嘉|jia|1|木|中性|文雅|美好，寓意嘉善|14',
+    '雅|ya|3|木|中性|文雅|高雅，寓意不俗|12',
+    '欣|xin|1|木|中性|温柔|欣喜，寓意欢愉|8',
+    '怡|yi|2|火|女|温柔|和悦，寓意安乐|9',
+    '俊|jun|4|土|男|大气|才智出众，寓意杰出|9',
+    '妍|yan|2|土|女|温柔|美好，寓意明艳|7',
+    '姝|shu|1|土|女|古风|美好，诗经「静女其姝」|9',
+    '婷|ting|2|土|女|温柔|婷婷，寓意秀美|12',
+    '娟|juan|1|土|女|温柔|秀丽，寓意清秀|10',
+    '娜|na|4|土|女|温柔|婀娜，寓意柔美|10',
+    '燕|yan|4|土|女|古风|燕子，寓意春意|16',
+    '青|qing|1|金|中性|清冷|青翠，寓意生机|8',
+    '翠|cui|4|金|女|清冷|翠绿，寓意鲜活|14',
+    '豪|hao|2|水|男|大气|豪迈，寓意气魄|14',
+    '知|zhi|1|火|中性|文雅|智慧，寓意明理|8',
+    '微|wei|1|火|女|清冷|精微，寓意细致|13',
+    '舟|zhou|1|金|男|大气|舟船，寓意行远|6',
+    '玉|yu|4|木|中性|文雅|美玉，寓意温润|5',
+    '幽|you|1|土|女|清冷|幽静，寓意沉静|9',
+    '修|xiu|1|金|男|文雅|修养，寓意自持|10',
+    '望|wang|4|水|中性|大气|期望，寓意远望|11',
+    '言|yan|2|木|中性|文雅|言辞，寓意笃信|7',
+    '建|jian|4|木|男|大气|建立，寓意为功|9',
+    '哲|zhe|2|火|男|文雅|智慧，寓意明哲|10',
+    '柔|rou|2|金|女|温柔|柔美，寓意温顺|9',
+    '语|yu|3|木|中性|文雅|语言，寓意善言|14',
+    '诺|nuo|4|火|中性|大气|承诺，寓意守信|16',
+    '轩|xuan|1|土|男|大气|轩昂，寓意气度|10',
+    '淑|shu|1|水|女|温柔|淑良，寓意贤善|12',
+    '娴|xian|2|土|女|文雅|娴静，寓意雅致|15',
+    '莹|ying|2|木|女|清冷|晶莹，寓意明澈|15',
+    '华|hua|2|水|男|大气|光华，寓意光彩|14',
+    '国|guo|2|木|男|大气|国家，寓意为重|11',
+    '辉|hui|1|水|男|大气|光辉，寓意显耀|15',
+    '洁|jie|2|水|女|清冷|洁净，寓意清白|16',
+    '颖|ying|3|木|女|文雅|聪颖，寓意敏慧|16',
+    '军|jun|1|木|男|大气|军人，寓意刚毅|9',
+    '强|qiang|2|木|男|大气|刚强，寓意坚毅|11',
+    '硕|shuo|4|土|男|大气|丰硕，寓意有成|14',
+    '丽|li|4|火|女|温柔|美丽，寓意妍好|19',
+    '艳|yan|4|土|女|温柔|明艳，寓意鲜明|24'
+  ];
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
 <script>
 /* =========================================================================
  * chars.js —— 起名用字库
@@ -1915,11 +2114,29 @@ details.more > summary:hover { color: var(--jade); }
     return db;
   }
 
-  NS.CHAR_DB = parseChars(NS.RAW_CHARS);
+  NS.CHAR_DB = parseChars(
+    NS.RAW_CHARS.concat(NS.RAW_CHARS_EXTRA || []));
 
   NS.CHAR_LIST = Object.keys(NS.CHAR_DB).map(function (k) {
     return NS.CHAR_DB[k];
   });
+
+  /* 两部分各有多少字，以及补充部分实际生效了几个（重复的会被忽略）。
+   * 界面和测试靠它如实说明字库构成，而不是笼统报一个总数。 */
+  NS.CHAR_LIB_STATS = (function () {
+    var base = parseChars(NS.RAW_CHARS);
+    var extra = parseChars(NS.RAW_CHARS_EXTRA || []);
+    var extraLive = 0;
+    Object.keys(extra).forEach(function (ch) {
+      if (!base[ch]) extraLive++;
+    });
+    return {
+      base: Object.keys(base).length,
+      extraDeclared: Object.keys(extra).length,
+      extraApplied: extraLive,
+      total: Object.keys(NS.CHAR_DB).length
+    };
+  })();
 
   /* 字库中出现的所有风格标签，供界面下拉框使用 */
   NS.STYLE_TAGS = (function () {
@@ -2793,6 +3010,29 @@ details.more > summary:hover { color: var(--jade); }
     dict: '汉字字典'
   };
 
+  /* 这些集合产出的「句内相邻二字」不算真正的取名出处。
+   * 用黑名单而不是白名单：诗词与诸子典籍都适合取名，只有这几种是噪声源。
+   *
+   * 实测依据（未过滤时确实排进了前 30）：
+   *   古文观止「而史官亦书之於其傳」 → 产出「亦书」（虚词搭配，不是词）
+   *   古文观止「望林巒而有失」       → 产出「林望」（诗里其实是「望林」）
+   *   幼学琼林 / 千字文              → 四字格堆砌，任意两字都能凑
+   *   声律启蒙                        → 本身就是为对仗拼字的读物
+   *   幽梦影                          → 清代小品，格言体
+   */
+  NS.NON_CLASSIC_SOURCES = {
+    '古文观止': 1,
+    '幽梦影': 1,
+    '幼学琼林': 1,
+    '增广贤文': 1,
+    '声律启蒙': 1,
+    '千字文': 1
+  };
+
+  NS.isClassicSource = function (name) {
+    return !NS.NON_CLASSIC_SOURCES[name];
+  };
+
   NS.formatSize = function (n) {
     if (!n && n !== 0) return '未知';
     if (n > 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
@@ -3177,17 +3417,17 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '氵',
       label: '三点水 / 水字底',
-      chars: '淼清澈涵澜波洋海江河湖涛潮汐洛潇湘渭源渊泽润泓沛沁沐灏潜水'
+      chars: '淼清澈涵澜波洋海江河湖涛潮汐洛潇湘渭源渊泽润泓沛沁沐灏潜水洲涘沚温浩淇淳泠'
     },
     {
       name: '木',
       label: '木字旁',
-      chars: '梓楠森林栋梁楷松柏桐枫梅桃桂梦桦杰权榛栗榕棋'
+      chars: '梓楠森林栋梁楷松柏桐枫梅桃桂梦桦杰权榛栗榕棋棠槿榆梵'
     },
     {
       name: '艹',
       label: '草字头',
-      chars: '若芸芮芊芷菡茉茵菁苏荣茂萱蕙蕴薇蕾苍蔚'
+      chars: '若芸芮芊芷菡茉茵菁苏荣茂萱蕙蕴薇蕾苍蔚芝芳菲萌萍荇芩苓蔓蘅茗茜荀荷蓉莘荃菀蓝'
     },
     {
       name: '钅',
@@ -3197,7 +3437,12 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '日',
       label: '日字旁',
-      chars: '晗昕昊昱晟曦曜晖暖明昭旭景晴智'
+      chars: '晗昕昊昱晟曦曜晖暖明昭旭景晴智晨星旻晞'
+    },
+    {
+      name: '羽',
+      label: '羽字旁',
+      chars: '翠翔'
     },
     {
       name: '火',
@@ -3212,7 +3457,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '王',
       label: '王字旁',
-      chars: '瑞珊珠珍珂琪瑾琛珺珏瑛'
+      chars: '瑞珊珠珍珂琪瑾琛珺珏瑛瑜琬珩璇璐琚玥瑄琅玦琳琦'
     },
     {
       name: '土',
@@ -3232,7 +3477,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '宀',
       label: '宝盖头',
-      chars: '宁宇安宜容宣寒'
+      chars: '宁宇安宜容宣寒宸'
     },
     {
       name: '竹',
@@ -3297,7 +3542,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '讠',
       label: '言字旁',
-      chars: '谦诗'
+      chars: '谦诗语诺'
     },
     {
       name: '贝',
@@ -4212,31 +4457,86 @@ details.more > summary:hover { color: var(--jade); }
   var SPLIT_RE = /[，。！？；、\n\r]/;
   var CACHE_LIMIT = 300000;
 
+  function isCJK(ch) {
+    return ch >= '\u4e00' && ch <= '\u9fff';
+  }
+
+  /* 否定词：如果一对相邻字的前一个字是这些，说明它们是词组的后半截，
+   * 不能当成独立的二字词。
+   * 实测：楚辞「终刚强兮不可凌」会被切成「可凌」并当成出处，
+   * 于是排出了一个叫「李可凌」的名字 —— 那其实是「不可 + 凌」。 */
+  var NEGATION = {
+    '不': 1, '无': 1, '未': 1, '非': 1, '莫': 1, '勿': 1,
+    '弗': 1, '毋': 1, '蓞': 1, '岂': 1, '奚': 1, '亡': 1
+  };
+
   var Poetry = {
     poems: [],
     index: Object.create(null),
+    /* 句内相邻二字 → 首次出现的诗篇下标。
+     * 这是「出处」真正有区分度的那一层：
+     * 光是「两个字都出现在某一首诗里」在诗词库扩到上千首之后几乎必然命中
+     * （实测默认参数下 20/20 全部有出处），等于没有信息；
+     * 而两个字在某一「句」里紧挨着出现，基本就是一个现成的词
+     * （「静姝」「思齐」「望舒」「琼琚」都是这种）。 */
+    bigrams: Object.create(null),
+    bigramCount: 0,
     builtinCount: 0,
     _cache: Object.create(null),
     _cacheSize: 0,
+    _lineCache: Object.create(null),
+    _lineCacheSize: 0,
 
     rebuild: function () {
       this.poems = (NS.RAW_POEMS || []).map(function (p) {
         return { source: p[0], title: p[1], content: p[2] };
       });
       this.index = Object.create(null);
+      this.bigrams = Object.create(null);
+      this.bigramCount = 0;
+      this.bigramClassic = 0;
+
+      /* 每个集合算不算「适合取名的经典来源」，预先算好避免内层重复判断 */
+      var classic = this.poems.map(function (p) {
+        return NS.isClassicSource ? NS.isClassicSource(p.source) : true;
+      });
+
       for (var i = 0; i < this.poems.length; i++) {
         var content = this.poems[i].content;
         var seen = Object.create(null);
         for (var j = 0; j < content.length; j++) {
           var ch = content.charAt(j);
-          if (ch < '\u4e00' || ch > '\u9fff') continue;
+          if (!isCJK(ch)) continue;
           if (seen[ch]) continue;
           seen[ch] = 1;
           (this.index[ch] || (this.index[ch] = [])).push(i);
         }
+        /* 建「句内相邻二字」索引：按标点切句，只在句内取相邻对 */
+        var lines = content.split(SPLIT_RE);
+        for (var li = 0; li < lines.length; li++) {
+          var line = lines[li].trim();
+          for (var m = 0; m + 1 < line.length; m++) {
+            var a = line.charAt(m), b = line.charAt(m + 1);
+            if (!isCJK(a) || !isCJK(b)) continue;
+            /* 前一个字是否定词 → 这一对是词组的后半截，不入索引 */
+            if (m > 0 && NEGATION[line.charAt(m - 1)]) continue;
+            var key = a + b;
+            if (this.bigrams[key] === undefined) {
+              this.bigrams[key] = i;
+              this.bigramCount++;
+              if (classic[i]) this.bigramClassic++;
+            } else if (classic[i] && !classic[this.bigrams[key]]) {
+              /* 已经收录过，但来源是蒙书/散文类；换成经典出处。
+               * 只存一个下标，所以内存不因此翻倍。 */
+              this.bigrams[key] = i;
+            }
+          }
+        }
       }
       this._cache = Object.create(null);
       this._cacheSize = 0;
+      this._lineCache = Object.create(null);
+      this._lineCacheSize = 0;
       return this;
     },
 
@@ -4290,8 +4590,89 @@ details.more > summary:hover { color: var(--jade); }
       };
     },
 
-    _search: function (chars) {
-      /* 先按「诗篇列表长度」升序，最短的先求交，代价最小 */
+    /**
+     * 句内相邻成词：名字里有一对**顺序相同**且紧挨着的字在诗里也这样出现过。
+     * 两字名查一次，三字名依次查两个相邻对。
+     *
+     * 只认正序。早期版本允许反向（查 b+a）来多凑命中，结果把「望林」变成了
+     * 「林望」、「白水」变成了「水白」、「每一念」变成了「念一」——
+     * 字序一反词义就完全变了，那不是出处，是巧合。如今宁可少给。
+     *
+     * @returns {{source,title,line,pair,classic}|null}
+     */
+    findAdjacent: function (chars) {
+      if (!chars || chars.length < 2) return null;
+      for (var i = 0; i + 1 < chars.length; i++) {
+        var hit = this._pair(chars[i], chars[i + 1]);
+        if (hit) return hit;
+      }
+      return null;
+    },
+
+    _pair: function (a, b) {
+      var idx = this.bigrams[a + b];
+      if (idx === undefined) return null;
+      var poem = this.poems[idx];
+      return {
+        source: poem.source,
+        title: poem.title,
+        line: this._lineWith(poem.content, a + b),
+        pair: a + b,
+        classic: NS.isClassicSource ? NS.isClassicSource(poem.source) : true
+      };
+    },
+
+    /** 在诗里找「含这个二字词」的那一句原文 */
+    _lineWith: function (content, pair) {
+      var lines = content.split(SPLIT_RE);
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i].indexOf(pair) >= 0) return lines[i].trim();
+      }
+      return this.extractLine(content, pair.split(''));
+    },
+
+    /**
+     * 同一句里同时含全部字（比「同篇」强，比「相邻」弱）。
+     * 只扫前若干个候选篇，避免在大诗词库上退化成全量扫描。
+     */
+    findLine: function (chars) {
+      if (!chars || chars.length < 2) return null;
+      var key = 'L' + chars.slice().sort().join('');
+      if (key in this._lineCache) return this._lineCache[key];
+      var result = this._findLine(chars);
+      if (this._lineCacheSize > CACHE_LIMIT) {
+        this._lineCache = Object.create(null);
+        this._lineCacheSize = 0;
+      }
+      this._lineCache[key] = result;
+      this._lineCacheSize++;
+      return result;
+    },
+
+    _findLine: function (chars) {
+      var cands = this._candidates(chars);
+      if (!cands) return null;
+      var LIMIT = 40;
+      for (var i = 0; i < cands.length && i < LIMIT; i++) {
+        var poem = this.poems[cands[i]];
+        var lines = poem.content.split(SPLIT_RE);
+        for (var j = 0; j < lines.length; j++) {
+          var line = lines[j].trim();
+          if (!line) continue;
+          var ok = true;
+          for (var k = 0; k < chars.length; k++) {
+            if (line.indexOf(chars[k]) < 0) { ok = false; break; }
+          }
+          if (ok) {
+            return { source: poem.source, title: poem.title, line: line };
+          }
+        }
+      }
+      return null;
+    },
+
+    /** 同时含全部字的诗篇下标数组；无则 null */
+    _candidates: function (chars) {
       var lists = [];
       for (var i = 0; i < chars.length; i++) {
         var ids = this.index[chars[i]];
@@ -4299,12 +4680,10 @@ details.more > summary:hover { color: var(--jade); }
         lists.push(ids);
       }
       lists.sort(function (a, b) { return a.length - b.length; });
-
       var candidates = lists[0];
       for (var k = 1; k < lists.length; k++) {
-        var other = lists[k];
         var set = Object.create(null);
-        for (var s = 0; s < other.length; s++) set[other[s]] = 1;
+        for (var s = 0; s < lists[k].length; s++) set[lists[k][s]] = 1;
         var next = [];
         for (var c = 0; c < candidates.length; c++) {
           if (set[candidates[c]]) next.push(candidates[c]);
@@ -4312,8 +4691,13 @@ details.more > summary:hover { color: var(--jade); }
         candidates = next;
         if (!candidates.length) return null;
       }
+      return candidates;
+    },
 
-      var poem = this.poems[candidates[0]];
+    _search: function (chars) {
+      var cands = this._candidates(chars);
+      if (!cands) return null;
+      var poem = this.poems[cands[0]];
       return {
         source: poem.source,
         title: poem.title,
@@ -4354,14 +4738,26 @@ details.more > summary:hover { color: var(--jade); }
 /* =========================================================================
  * score.js —— 名字评分
  *
- * 评分维度与总分与 Python 版保持一致（总分 100），便于对照：
- *   五行 30 · 音韵 15 · 寓意 15 · 性别 5 · 风格 5 · 三才五格 15 · 诗词 10 · 谐音 5
+ * 总分 100，维度与权重：
+ *   五行 30 · 音韵 15 · 寓意 15 · 性别 5 · 风格 5 · 三才五格 8
+ *   出处与搭配 17 · 谐音 5
  *
- * 改进：
- *   1. 谐音改为音节边界匹配（原版子串匹配会误杀「李诗涵」这类好名字）。
- *   2. 未提供生辰时，五行项按「名字内部五行搭配」给分，避免该项恒为 0、
- *      导致所有候选分数被拉平。
- *   3. 拆出「单字基础分」，让生成器可以先剪枝再枚举，性能提升几个数量级。
+ * 为什么权重这么调（实测驱动，不是拍脑袋）：
+ *   旧版是三才五格 15 / 出处 10（固定分），实测默认参数下前 20 名**全部 80 分**，
+ *   理由一模一样（五行不重复+声调错落+三才大吉+有出处）。
+ *   分数在 80 处封顶且人人都满分，排序就失去了区分度 ——
+ *   「李书云」和「李栗冬」得分完全相同，用户看到的是任意 20 个满足条件的组合，
+ *   而不是最好的 20 个。这就是「生搬硬套」的机制。
+ *
+ *   两处修正：
+ *   1. 三才五格 15 → 8。它属「数理派」，与名字好不好听基本不相关。
+ *   2. 出处从「固定 10 分」改成**分级**（见下）。诗词库扩到上千首后，
+ *      「两个字都出现在同一首诗里」实测命中率 100%，等于没有信息。
+ *
+ * 出处分级（这是新的区分度来源）：
+ *   相邻成词 17 —— 两个相邻的字在某一「句」里紧挨着出现过（望舒/静姝/琼琚）
+ *   同句　   9 —— 同一句里都有，但不挨着
+ *   同篇　   2 —— 只是同时出现在一首诗里（信号很弱，给一点点）
  * ========================================================================= */
 (function (global) {
   'use strict';
@@ -4504,12 +4900,28 @@ details.more > summary:hover { color: var(--jade); }
       return NS.Pinyin.splitSyllable(r.obj.pinyin).final;
     });
     if (uniq(tones) === tones.length) {
-      score += 8; reasons.push('声调错落');
+      score += 6; reasons.push('声调错落');
     } else if (uniq(tones) >= 2) {
-      score += 4;
+      score += 3;
     }
-    if (uniq(sms) === sms.length) score += 4;
+    if (uniq(sms) === sms.length) score += 3;
     if (uniq(yms) === yms.length) score += 3;
+
+    /* 平仄相间：汉语读起来顺口的根本。
+     * 声调 1、2 为平，3、4 为仄（轻声按仄处理）。
+     * 「思远」= 平仄、「静姝」= 仄平，都是好搭配；
+     * 「书云」= 平平、「栗冬」= 仄平…平平的名字读着偏平。 */
+    var pingze = tones.map(function (t) { return t === 1 || t === 2; });
+    var alternated = 0;
+    for (i = 1; i < pingze.length; i++) {
+      if (pingze[i] !== pingze[i - 1]) alternated++;
+    }
+    if (alternated === pingze.length - 1) {
+      score += 3;
+      reasons.push('平仄相间');
+    } else if (alternated > 0) {
+      score += 1.5;
+    }
 
     /* ---- 3. 寓意 / 关键词（15）---- */
     var kwTotal = rows.reduce(function (a, r) { return a + r.kwScore; }, 0);
@@ -4531,7 +4943,10 @@ details.more > summary:hover { color: var(--jade); }
     score += styleTotal;
     if (styleTotal >= 2.5 && ctx.style) reasons.push(ctx.style + '风格');
 
-    /* ---- 6. 三才五格（15）---- */
+    /* ---- 6. 三才五格（8）----
+     * 旧版给 15，实测它把「五行/音韵/寓意」这些真需求盖过去了。
+     * 它属于「数理派」，与八字喜用神不同源，也不是「好不好听」的指标，
+     * 因此降权到 8，只作为参考。 */
     var givenStrokes = rows.map(function (r) { return r.obj.strokes; });
     var wk = ctx.surnameStrokes.join(',') + '|' + givenStrokes.join(',');
     var wuge = ctx.wugeCache[wk];
@@ -4541,26 +4956,51 @@ details.more > summary:hover { color: var(--jade); }
     }
     detail.wuge = wuge;
     if (wuge.三才吉凶 === '大吉') {
-      score += 15; reasons.push('三才' + wuge.三才 + '大吉');
+      score += 8; reasons.push('三才' + wuge.三才 + '大吉');
     } else if (wuge.三才吉凶 === '中吉') {
-      score += 10;
+      score += 5;
     } else {
-      score += 3;
+      score += 2;
     }
 
-    /* ---- 7. 诗词出处（10）---- */
+    /* ---- 7. 出处与搭配（17）---- */
     var charsKey = rows.map(function (r) { return r.char; }).join('');
-    var src;
+    var given = charsKey.split('');
+    var adj, sameLine, samePoem;
+
     if (charsKey in ctx.poetryCache) {
-      src = ctx.poetryCache[charsKey];
+      var cached = ctx.poetryCache[charsKey];
+      adj = cached.adj; sameLine = cached.line; samePoem = cached.poem;
     } else {
-      src = NS.Poetry.findSource(charsKey.split(''));
-      ctx.poetryCache[charsKey] = src;
+      /* 从强到弱依次查，命中就停 */
+      adj = NS.Poetry.findAdjacent(given);
+      sameLine = adj ? null : NS.Poetry.findLine(given);
+      samePoem = (adj || sameLine) ? null : NS.Poetry.findSource(given);
+      cached = { adj: adj, line: sameLine, poem: samePoem };
+      ctx.poetryCache[charsKey] = cached;
     }
-    if (src) {
-      score += 10;
-      detail.poetry = src;
-      reasons.push('出自《' + src.source + '》');
+
+    if (adj) {
+      /* 经典来源（诗经/楚辞/唐诗/宋词/千家诗…）才算满分的「出处成词」；
+       * 蒙书与散文里凑出来的词只给一半 —— 实测「亦书」来自古文观止、
+       * 「念一」来自「每一念」，都不是词。见 NON_CLASSIC_SOURCES。 */
+      var full = adj.classic !== false;
+      score += full ? 17 : 9;
+      detail.poetry = adj;
+      detail.pairKind = full ? 'classic' : 'weak';
+      reasons.push(full
+        ? '出处成词「' + adj.pair + '」'
+        : '疑似成词「' + adj.pair + '」（非诗词类出处）');
+    } else if (sameLine) {
+      score += 5;
+      detail.poetry = sameLine;
+      detail.pairKind = 'line';
+      reasons.push('出自《' + sameLine.source + '》同句');
+    } else if (samePoem) {
+      score += 1;
+      detail.poetry = samePoem;
+      detail.pairKind = 'poem';
+      reasons.push('出自《' + samePoem.source + '》');
     }
 
     /* ---- 8. 谐音（5）---- */
@@ -4853,6 +5293,7 @@ details.more > summary:hover { color: var(--jade); }
       styles: combo.map(function (c) { return c.styles; }),
       wuge: ev.detail.wuge,
       poetry: ev.detail.poetry,
+      pairKind: ev.detail.pairKind,
       homophone: ev.detail.homophone,
       heat: ev.detail.heat
     };
@@ -8477,9 +8918,23 @@ details.more > summary:hover { color: var(--jade); }
       card.appendChild(vbox);
     }
 
-    /* 诗词 */
+    /* 诗词出处。分级显示 —— 「出处成词」和「同篇出处」的含金量差很多，
+     * 不加区分的话，用户无从判断这条出处是不是硬凑的。 */
     if (item.poetry) {
-      var po = el('div', 'nc-poetry');
+      var KIND_LABEL = {
+        classic: '出处成词',
+        weak: '疑似成词',
+        line: '同句出处',
+        poem: '同篇出处'
+      };
+      var kind = item.pairKind || 'poem';
+      var po = el('div', 'nc-poetry' + (kind === 'poem' ? ' weak' : ''));
+      var head = el('span', 'nc-poetry-kind' + (kind === 'classic' ? ' good' : ''),
+        KIND_LABEL[kind] || '出处');
+      if (kind === 'classic' && item.poetry.pair) {
+        head.textContent = KIND_LABEL.classic + '「' + item.poetry.pair + '」';
+      }
+      po.appendChild(head);
       po.appendChild(document.createTextNode('「' + item.poetry.line + '」'));
       po.appendChild(el('span', 'src',
         '—— 《' + item.poetry.source + '》·' + item.poetry.title));
