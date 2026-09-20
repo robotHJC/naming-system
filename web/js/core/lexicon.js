@@ -308,6 +308,25 @@
         return Promise.reject(new Error('没有选择任何数据源'));
       }
 
+      /* 诗词、蒙学、经部这些文本源**全都是繁体**，必须靠繁简对照表转成简体，
+       * 否则入库的出处是繁体，跟简体名字永远匹配不上 —— 而且不会报错。
+       *
+       * 这里做一条通用规则：只要选了任意文本源，就自动把繁简对照表带上。
+       * 不用每个源各自声明依赖，也就不会漏；以后新增文本源自动受保护。
+       * 判断依据是「不是那几种特殊格式」，而不是「是诗词」——
+       * 这样新格式也会被覆盖到。 */
+      function isTextSource(s) {
+        return !(s.format === 'fanti' || s.format === 'pinyin' ||
+          s.format === 'xinhua' || s.format === 'shupin' ||
+          s.format === 'fangyan');
+      }
+      var autoAdded = [];
+      if (sources.some(isTextSource) &&
+        !sources.some(function (s) { return s.id === 'fanti'; })) {
+        var ft = NS.SOURCE_BY_ID['fanti'];
+        if (ft) { sources.push(ft); autoAdded.push('fanti'); }
+      }
+
       /* 大文件先下载，避免小文件下完在等大文件时误以为卡住；
        * 但标记了 first 的源（繁简表）必须最先处理，
        * 否则诗词会以「繁简表还不全」的状态被解析入库。 */
@@ -317,7 +336,7 @@
       });
 
       ensureLoaded();
-      var report = { success: [], failed: [], added: {} };
+      var report = { success: [], failed: [], added: {}, autoAdded: autoAdded };
 
       return sources.reduce(function (chain, src) {
         return chain.then(function () {

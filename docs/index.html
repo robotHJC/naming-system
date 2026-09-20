@@ -2504,6 +2504,25 @@ details.more > summary:hover { color: var(--jade); }
     <p><b>关于字库</b>　内置 <span class="lib-count">?</span> 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
        可在「词库管理」里联网更新：拉取公开的汉字拼音表、新华字典与诗词库，
        并把字库外的字加入进来。数据缓存在浏览器本地，更新一次后离线也可用。</p>
+    <p><b>关于取名的「出处」</b>　一句诗里紧挨着的两个字，往往就是一个现成的词
+       ——「静姝」「望舒」「琼琚」都是这样来的，所以系统把「<b>句内相邻二字</b>」
+       作为出处的依据。可联网同步的文本源现有 20 余种：诗经、楚辞、论语、孟子、
+       大学、中庸、三字经、弟子规、唐诗三百首、千家诗、水墨唐诗、宋词三百首、
+       南唐二主词、花间集、曹操诗集、纳兰词、幽梦影、声律启蒙、增广贤文、千字文、
+       幼学琼林、古文观止等。
+       这些文本<b>全都是繁体</b>，必须靠「繁简对照表」转成简体才能和简体名字匹配，
+       所以只要勾了任意文本源，系统会自动把繁简对照表一起带上（否则会静默失效）。</p>
+    <p><b>哪些源收、哪些不收，是实测过的</b>　判断标准是「抽出的相邻二字里，
+       两个字都在内置字库内的比例」—— 只有这种才真能用于取名。
+       已知的好源可作基准：诗经 5.1%、唐诗三百首 5.7%。
+       三字经 5.3%、大学 6.9%、中庸 8.2%、南唐二主词 7.5%、曹操诗集 6.4%、
+       花间集 5.8% 都在基准之上，故收录。
+       而<b>朱子家训</b>（1.8%）与<b>文字蒙求</b>（1.6%）比已被拉黑的「古文观止」（4.1%）还低，
+       实测抽出来的是「明即／即起／要內／外整」和「從人／從又／從口」这类碎词，
+       收进来只是凑数，<b>故决定不收</b>。
+       <b>元曲</b>（2.9%）也一样不收：它有 10800 篇、抽出 188514 个相邻二字，
+       但落在字库内的只有 2.9%，而且会占掉诗篇上限的 27%，产出比最差。
+       判断脚本见 <code>tools/_src-quality.js</code>，任何人都可以自己跑一遍复核。</p>
     <p><b>关于结果排序</b>　结果不是单纯按分数从高到低排。完全按分数排会出现
        「前 10 名全部以同一个字开头」——那是一个字 + 十种搭配，不是一个候选集。
        因此系统加了「同位不重字」约束：按分数从高到低扫描，限制同一个字在同一个位置
@@ -4953,6 +4972,133 @@ details.more > summary:hover { color: var(--jade); }
         '浏览器端只取第一卷。',
       urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%AE%8B%E8%AF%8D/ci.song.0.json')
     },
+    {
+      id: 'songci300',
+      group: 'poetry',
+      name: '宋词三百首',
+      format: 'songci',
+      size: 151283,
+      defaultOn: true,
+      desc: '上疆村民编选的宋词精选本，与「宋词第一卷」不同 ——' +
+        '这是选家挑过的名篇，用字比全量分卷讲究。含 黄孝迈、周邦彦、姜夔 等。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master',
+        '%E5%AE%8B%E8%AF%8D/%E5%AE%8B%E8%AF%8D%E4%B8%89%E7%99%BE%E9%A6%96.json')
+    },
+
+    /* ---------------- 蒙学：三字经 ----------------
+     * 三字经、弟子规都是繁体、三字一句的韵文，
+     * 靠 fanti 源转成简体后才能匹配；fanti 标了 first:true，会最先处理。
+     *
+     * 这里曾经还打算收「朱子家训」和「文字蒙求」，实测后放弃了：
+     * 「句内相邻二字」这个抽取方式对它们几乎完全失效 ——
+     *   朱子家训：「明即 即起 要內 外整 既昏 昏便 自檢」，几乎全是碎词
+     *   文字蒙求：「省聲(101) 從人(54) 從又(49) 從口(43)」+「二卷 卷刻 字率 帳簿」，
+     *               是文字学术语堆砌
+     * 两者的「相邻二字落在内置字库内」的比例只有 1.8% / 1.6%，
+     * 比已经被拉黑的「古文观止」（4.1%）还低。收进来只是凑数。
+     * 实测脚本见 tools/_src-quality.js。 */
+    {
+      id: 'sanzijing',
+      group: 'poetry',
+      name: '三字经',
+      format: 'mengxue',
+      size: 7430,
+      defaultOn: true,
+      desc: '王应麟撰，最通行的蒙学韵文。「玉不琢，不成器」「为人子，方少时」' +
+        '「勤有功，戏无益」等句都常被取名引用。原文为繁体，由繁简表自动转简体。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E8%92%99%E5%AD%A6/sanzijing-new.json')
+    },
+    {
+      id: 'dizigui',
+      group: 'poetry',
+      name: '弟子规',
+      format: 'mengxue',
+      size: 5378,
+      defaultOn: false,
+      desc: '李毓秀撰，三字一句的言行规范。偏训诫语气，' +
+        '而且「母呼」「母命」「母責」这类碎词偏多，取名可引的雅句不如三字经。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E8%92%99%E5%AD%A6/dizigui.json')
+    },
+
+    /* ---------------- 四书 ----------------
+     * 「四书」里论语已单独收录（chinese-poetry 有独立的「论语」目录），
+     * 这里补大学、中庸、孟子。大学与中庸都很短且名句密度极高。 */
+    {
+      id: 'daxue',
+      group: 'poetry',
+      name: '大学',
+      format: 'mengxue',
+      size: 6767,
+      defaultOn: true,
+      desc: '「苟日新，日日新，又日新」「在明明德」「在止于至善」' +
+        '「修身齐家治国平天下」—— 名句密度最高的短篇。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%9B%9B%E4%B9%A6%E4%BA%94%E7%BB%8F/daxue.json')
+    },
+    {
+      id: 'zhongyong',
+      group: 'poetry',
+      name: '中庸',
+      format: 'mengxue',
+      size: 13889,
+      defaultOn: true,
+      desc: '「博学之，审问之，慎思之，明辨之，笃行之」' +
+        '「君子之道，淡而不厌」等。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%9B%9B%E4%B9%A6%E4%BA%94%E7%BB%8F/zhongyong.json')
+    },
+    {
+      id: 'mengzi',
+      group: 'poetry',
+      name: '孟子',
+      format: 'mengxue',
+      size: 146745,
+      defaultOn: false,
+      desc: '「浩然之气」「富贵不能淫，贫贱不能移」「老吾老以及人之老」等。' +
+        '散文体，句内相邻二字里虚词搭配较多。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%9B%9B%E4%B9%A6%E4%BA%94%E7%BB%8F/mengzi.json')
+    },
+
+    /* ---------------- 五代词与曹操诗 ---------------- */
+    {
+      id: 'nantang',
+      group: 'poetry',
+      name: '南唐二主词（李璟·李煜）',
+      format: 'mengxue',
+      size: 71500,
+      defaultOn: true,
+      desc: '李煜、李璟全部词作。「一江春水向东流」「林花谢了春红」' +
+        '「梦里不知身是客」—— 用字清丽，是取名的上等出处。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master',
+        '%E4%BA%94%E4%BB%A3%E8%AF%97%E8%AF%8D/nantang/poetrys.json')
+    },
+    {
+      id: 'huajianji1',
+      group: 'poetry',
+      name: '花间集（卷一）',
+      format: 'mengxue',
+      size: 28137,
+      defaultOn: true,
+      desc: '温庭筠、韦庄等，最早的文人词总集。辞藻浓艳，' +
+        '偏柔美一路（「明灭」「鬓云」「蛾眉」）。全十卷共约 250KB，这里只取第一卷。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master',
+        '%E4%BA%94%E4%BB%A3%E8%AF%97%E8%AF%8D/huajianji/huajianji-1-juan.json')
+    },
+    {
+      id: 'caocao',
+      group: 'poetry',
+      name: '曹操诗集',
+      format: 'mengxue',
+      size: 16894,
+      defaultOn: true,
+      desc: '「对酒当歌，人生几何」「日月之行，若出其中」' +
+        '「老骥伏枥，志在千里」—— 四言诗气象开阔，适合取大气一路的字。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E6%9B%B9%E6%93%8D%E8%AF%97%E9%9B%86/caocao.json')
+    },
+
+    /* 这里原本还打算收「元曲」（4 MB）。实测放弃：
+     * 10800 篇、抽出 188514 个相邻二字，但落在内置字库内的只有 2.9%
+     * ——比已拉黑的千字文（3.9%）、古文观止（4.1%）都低。
+     * 而且要占掉诗篇上限（MAX_POEMS=40000）的 27%，产出比最差。
+     * 同批被实测否掉的还有朱子家训（1.8%）与文字蒙求（1.6%），理由见上文。 */
 
     /* ---------------- 方言：四川话 ---------------- */
     {
@@ -10024,6 +10170,25 @@ details.more > summary:hover { color: var(--jade); }
         return Promise.reject(new Error('没有选择任何数据源'));
       }
 
+      /* 诗词、蒙学、经部这些文本源**全都是繁体**，必须靠繁简对照表转成简体，
+       * 否则入库的出处是繁体，跟简体名字永远匹配不上 —— 而且不会报错。
+       *
+       * 这里做一条通用规则：只要选了任意文本源，就自动把繁简对照表带上。
+       * 不用每个源各自声明依赖，也就不会漏；以后新增文本源自动受保护。
+       * 判断依据是「不是那几种特殊格式」，而不是「是诗词」——
+       * 这样新格式也会被覆盖到。 */
+      function isTextSource(s) {
+        return !(s.format === 'fanti' || s.format === 'pinyin' ||
+          s.format === 'xinhua' || s.format === 'shupin' ||
+          s.format === 'fangyan');
+      }
+      var autoAdded = [];
+      if (sources.some(isTextSource) &&
+        !sources.some(function (s) { return s.id === 'fanti'; })) {
+        var ft = NS.SOURCE_BY_ID['fanti'];
+        if (ft) { sources.push(ft); autoAdded.push('fanti'); }
+      }
+
       /* 大文件先下载，避免小文件下完在等大文件时误以为卡住；
        * 但标记了 first 的源（繁简表）必须最先处理，
        * 否则诗词会以「繁简表还不全」的状态被解析入库。 */
@@ -10033,7 +10198,7 @@ details.more > summary:hover { color: var(--jade); }
       });
 
       ensureLoaded();
-      var report = { success: [], failed: [], added: {} };
+      var report = { success: [], failed: [], added: {}, autoAdded: autoAdded };
 
       return sources.reduce(function (chain, src) {
         return chain.then(function () {
@@ -13432,6 +13597,12 @@ details.more > summary:hover { color: var(--jade); }
         self.refreshStatus();
 
         var okN = report.success.length, failN = report.failed.length;
+        /* 诗词/蒙学/经部数据都是繁体。用户可能只勾了其中一个，
+         * 这时系统会自动补上繁简对照表 —— 得告诉他，否则会以为多下了东西。 */
+        if (report.autoAdded && report.autoAdded.length) {
+          self.log('已自动加入「繁简对照表」：诗词、蒙学、经部数据都是繁体，' +
+            '不转成简体就跟简体名字匹配不上（而且不会报错）。', 'warn');
+        }
         self.log('更新完成：成功 ' + okN + ' 个，失败 ' + failN + ' 个。',
           failN ? 'warn' : 'ok');
         if (okN) {

@@ -12,64 +12,18 @@
  * ========================================================================= */
 'use strict';
 
-const SOURCES = [
-  {
-    id: 'pinyin',
-    name: '拼音数据（含声调）· mozillazg/pinyin-data',
-    url: 'https://raw.githubusercontent.com/mozillazg/pinyin-data/master/pinyin.txt',
-    kind: 'text',
-    note: 'U+4E00: yī  # 一 —— 覆盖基本区全部汉字，可用来补全拼音与声调'
-  },
-  {
-    id: 'xinhua',
-    name: '汉字字典（拼音/部首/笔画/释义）· pwxcoo/chinese-xinhua',
-    url: 'https://raw.githubusercontent.com/pwxcoo/chinese-xinhua/master/data/word.json',
-    kind: 'json',
-    note: '约 27MB，含 word/oldword/strokes/pinyin/radicals/explanation'
-  },
-  {
-    id: 'shijing',
-    name: '诗经 · chinese-poetry',
-    url: 'https://raw.githubusercontent.com/chinese-poetry/chinese-poetry/master/%E8%AF%97%E7%BB%8F/shijing.json',
-    kind: 'json',
-    note: '约 157KB，含 title/chapter/content'
-  },
-  {
-    id: 'tangshi',
-    name: '唐诗三百首 · chinese-poetry',
-    url: 'https://raw.githubusercontent.com/chinese-poetry/chinese-poetry/master/json/tangshisanbaishou.json',
-    kind: 'json',
-    note: '含 author/paragraphs'
-  },
-  {
-    id: 'songci',
-    name: '宋词三百首 · chinese-poetry',
-    url: 'https://raw.githubusercontent.com/chinese-poetry/chinese-poetry/master/%E5%AE%8B%E8%AF%8D/songci300.json',
-    kind: 'json',
-    note: '含 author/rhythmic/paragraphs'
-  },
-  {
-    id: 'lunyu',
-    name: '论语 · chinese-poetry',
-    url: 'https://raw.githubusercontent.com/chinese-poetry/chinese-poetry/master/%E8%AE%BA%E8%AF%AD/lunyu.json',
-    kind: 'json',
-    note: '含 chapter/paragraphs'
-  },
-  {
-    id: 'daodejing',
-    name: '道德经 · chinese-poetry',
-    url: 'https://raw.githubusercontent.com/chinese-poetry/chinese-poetry/master/%E9%81%93%E5%BE%B7%E7%BB%8F/daodejing.json',
-    kind: 'json',
-    note: '含 chapter/paragraphs'
-  },
-  {
-    id: 'chuci',
-    name: '楚辞 · chinese-poetry',
-    url: 'https://raw.githubusercontent.com/chinese-poetry/chinese-poetry/master/%E6%A5%9A%E8%BE%9E/chuci.json',
-    kind: 'json',
-    note: '含 title/section/author/content'
-  }
-];
+/* 数据源清单**统一从 web/js/data/sources.js 读**，这里不再维护副本。
+ *
+ * 这里原来硬编码了一份，结果和 sources.js 漂移得很厉害，三处都是
+ * 「从没成功过、但也没人发现」：
+ *   · 「道德经」用的是 .../道德经/daodejing.json —— 该仓库根本没这个目录
+ *   · 「宋词三百首」用的是 songci300.json —— 真实文件名是 宋词三百首.json
+ *   · 「唐诗三百首」用的是 .../json/tangshisanbaishou.json —— 实际在 蒙学/ 下
+ * 复用同一个清单，就不会再出现这种漂移。 */
+const path = require('path');
+require(path.join(__dirname, '..', 'web', 'js', 'data', 'sources.js'));
+const NS = globalThis.NS;
+const SOURCES = NS.SOURCES;
 
 const TIMEOUT_MS = 20000;
 const FULL = process.argv.includes('--full');
@@ -80,12 +34,12 @@ function fmtSize(n) {
   return n + ' B';
 }
 
-async function probe(src) {
+async function probeUrl(url) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   const t0 = Date.now();
   try {
-    const res = await fetch(src.url, {
+    const res = await fetch(url, {
       signal: ctrl.signal,
       /* 模拟 file:// 页面发起的请求：浏览器在这种情况会带 Origin: null */
       headers: { Origin: 'null', 'User-Agent': 'naming-system-probe' }
@@ -102,17 +56,29 @@ async function probe(src) {
     }
 
     return {
-      src, status: res.status, ok: res.ok, acao,
+      url, status: res.status, ok: res.ok, acao,
       size: len ? Number(len) : (body ? body.length : null),
       body, ms: Date.now() - t0,
       corsOk: acao === '*' || acao === 'null'
     };
   } catch (e) {
-    return { src, ok: false, error: e.name === 'AbortError' ? '超时' : e.message,
+    return { url, ok: false, error: e.name === 'AbortError' ? '超时' : e.message,
       ms: Date.now() - t0 };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** 依次尝试主地址与镜像地址，返回第一个成功的 —— 顺便验证镜像真的可用 */
+async function probe(src) {
+  const urls = src.urls || [];
+  let last = null;
+  for (let i = 0; i < urls.length; i++) {
+    const r = await probeUrl(urls[i]);
+    if (r.ok) { r.mirror = (i > 0); return r; }
+    last = r;
+  }
+  return last || { ok: false, error: '该源没有配置任何地址' };
 }
 
 /** 粗略统计条目数，让使用者知道数据够不够用 */
@@ -156,12 +122,13 @@ function summarize(id, text) {
       console.log(`    状态 ${r.status}   大小 ${r.size ? fmtSize(r.size) : '未知'}` +
         `   耗时 ${r.ms}ms   CORS ${r.acao || '（未返回）'}` +
         (r.corsOk ? '  → 纯前端可直连' : '  → 纯前端无法直连，需要本地服务代理'));
+      if (r.mirror) console.log('    注意：主地址不可用，实际走的是镜像地址');
       const s = summarize(src.id, r.body);
       if (s) console.log(`    数据量：${s}`);
     } else {
       console.log(`    失败：${r.error || ('HTTP ' + r.status)}   耗时 ${r.ms}ms`);
     }
-    console.log(`    说明：${src.note}`);
+    console.log(`    说明：${src.desc || ''}`);
     console.log('');
   }
 

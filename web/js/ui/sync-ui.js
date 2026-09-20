@@ -439,6 +439,12 @@
         self.refreshStatus();
 
         var okN = report.success.length, failN = report.failed.length;
+        /* 诗词/蒙学/经部数据都是繁体。用户可能只勾了其中一个，
+         * 这时系统会自动补上繁简对照表 —— 得告诉他，否则会以为多下了东西。 */
+        if (report.autoAdded && report.autoAdded.length) {
+          self.log('已自动加入「繁简对照表」：诗词、蒙学、经部数据都是繁体，' +
+            '不转成简体就跟简体名字匹配不上（而且不会报错）。', 'warn');
+        }
         self.log('更新完成：成功 ' + okN + ' 个，失败 ' + failN + ' 个。',
           failN ? 'warn' : 'ok');
         if (okN) {

@@ -192,6 +192,133 @@
         '浏览器端只取第一卷。',
       urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%AE%8B%E8%AF%8D/ci.song.0.json')
     },
+    {
+      id: 'songci300',
+      group: 'poetry',
+      name: '宋词三百首',
+      format: 'songci',
+      size: 151283,
+      defaultOn: true,
+      desc: '上疆村民编选的宋词精选本，与「宋词第一卷」不同 ——' +
+        '这是选家挑过的名篇，用字比全量分卷讲究。含 黄孝迈、周邦彦、姜夔 等。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master',
+        '%E5%AE%8B%E8%AF%8D/%E5%AE%8B%E8%AF%8D%E4%B8%89%E7%99%BE%E9%A6%96.json')
+    },
+
+    /* ---------------- 蒙学：三字经 ----------------
+     * 三字经、弟子规都是繁体、三字一句的韵文，
+     * 靠 fanti 源转成简体后才能匹配；fanti 标了 first:true，会最先处理。
+     *
+     * 这里曾经还打算收「朱子家训」和「文字蒙求」，实测后放弃了：
+     * 「句内相邻二字」这个抽取方式对它们几乎完全失效 ——
+     *   朱子家训：「明即 即起 要內 外整 既昏 昏便 自檢」，几乎全是碎词
+     *   文字蒙求：「省聲(101) 從人(54) 從又(49) 從口(43)」+「二卷 卷刻 字率 帳簿」，
+     *               是文字学术语堆砌
+     * 两者的「相邻二字落在内置字库内」的比例只有 1.8% / 1.6%，
+     * 比已经被拉黑的「古文观止」（4.1%）还低。收进来只是凑数。
+     * 实测脚本见 tools/_src-quality.js。 */
+    {
+      id: 'sanzijing',
+      group: 'poetry',
+      name: '三字经',
+      format: 'mengxue',
+      size: 7430,
+      defaultOn: true,
+      desc: '王应麟撰，最通行的蒙学韵文。「玉不琢，不成器」「为人子，方少时」' +
+        '「勤有功，戏无益」等句都常被取名引用。原文为繁体，由繁简表自动转简体。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E8%92%99%E5%AD%A6/sanzijing-new.json')
+    },
+    {
+      id: 'dizigui',
+      group: 'poetry',
+      name: '弟子规',
+      format: 'mengxue',
+      size: 5378,
+      defaultOn: false,
+      desc: '李毓秀撰，三字一句的言行规范。偏训诫语气，' +
+        '而且「母呼」「母命」「母責」这类碎词偏多，取名可引的雅句不如三字经。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E8%92%99%E5%AD%A6/dizigui.json')
+    },
+
+    /* ---------------- 四书 ----------------
+     * 「四书」里论语已单独收录（chinese-poetry 有独立的「论语」目录），
+     * 这里补大学、中庸、孟子。大学与中庸都很短且名句密度极高。 */
+    {
+      id: 'daxue',
+      group: 'poetry',
+      name: '大学',
+      format: 'mengxue',
+      size: 6767,
+      defaultOn: true,
+      desc: '「苟日新，日日新，又日新」「在明明德」「在止于至善」' +
+        '「修身齐家治国平天下」—— 名句密度最高的短篇。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%9B%9B%E4%B9%A6%E4%BA%94%E7%BB%8F/daxue.json')
+    },
+    {
+      id: 'zhongyong',
+      group: 'poetry',
+      name: '中庸',
+      format: 'mengxue',
+      size: 13889,
+      defaultOn: true,
+      desc: '「博学之，审问之，慎思之，明辨之，笃行之」' +
+        '「君子之道，淡而不厌」等。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%9B%9B%E4%B9%A6%E4%BA%94%E7%BB%8F/zhongyong.json')
+    },
+    {
+      id: 'mengzi',
+      group: 'poetry',
+      name: '孟子',
+      format: 'mengxue',
+      size: 146745,
+      defaultOn: false,
+      desc: '「浩然之气」「富贵不能淫，贫贱不能移」「老吾老以及人之老」等。' +
+        '散文体，句内相邻二字里虚词搭配较多。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E5%9B%9B%E4%B9%A6%E4%BA%94%E7%BB%8F/mengzi.json')
+    },
+
+    /* ---------------- 五代词与曹操诗 ---------------- */
+    {
+      id: 'nantang',
+      group: 'poetry',
+      name: '南唐二主词（李璟·李煜）',
+      format: 'mengxue',
+      size: 71500,
+      defaultOn: true,
+      desc: '李煜、李璟全部词作。「一江春水向东流」「林花谢了春红」' +
+        '「梦里不知身是客」—— 用字清丽，是取名的上等出处。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master',
+        '%E4%BA%94%E4%BB%A3%E8%AF%97%E8%AF%8D/nantang/poetrys.json')
+    },
+    {
+      id: 'huajianji1',
+      group: 'poetry',
+      name: '花间集（卷一）',
+      format: 'mengxue',
+      size: 28137,
+      defaultOn: true,
+      desc: '温庭筠、韦庄等，最早的文人词总集。辞藻浓艳，' +
+        '偏柔美一路（「明灭」「鬓云」「蛾眉」）。全十卷共约 250KB，这里只取第一卷。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master',
+        '%E4%BA%94%E4%BB%A3%E8%AF%97%E8%AF%8D/huajianji/huajianji-1-juan.json')
+    },
+    {
+      id: 'caocao',
+      group: 'poetry',
+      name: '曹操诗集',
+      format: 'mengxue',
+      size: 16894,
+      defaultOn: true,
+      desc: '「对酒当歌，人生几何」「日月之行，若出其中」' +
+        '「老骥伏枥，志在千里」—— 四言诗气象开阔，适合取大气一路的字。',
+      urls: gh('chinese-poetry/chinese-poetry', 'master', '%E6%9B%B9%E6%93%8D%E8%AF%97%E9%9B%86/caocao.json')
+    },
+
+    /* 这里原本还打算收「元曲」（4 MB）。实测放弃：
+     * 10800 篇、抽出 188514 个相邻二字，但落在内置字库内的只有 2.9%
+     * ——比已拉黑的千字文（3.9%）、古文观止（4.1%）都低。
+     * 而且要占掉诗篇上限（MAX_POEMS=40000）的 27%，产出比最差。
+     * 同批被实测否掉的还有朱子家训（1.8%）与文字蒙求（1.6%），理由见上文。 */
 
     /* ---------------- 方言：四川话 ---------------- */
     {
