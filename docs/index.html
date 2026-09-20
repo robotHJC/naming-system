@@ -1846,6 +1846,19 @@ details.more > summary:hover { color: var(--jade); }
   vertical-align: middle;
 }
 
+/* 表单底部的填写记录说明（恢复了内容时会多一个清除按钮） */
+.pref-hint {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 11.5px;
+  line-height: 1.85;
+}
+
+.pref-hint .btn {
+  margin-top: 4px;
+}
+
 /* 窄屏：候选池表格改为卡片式堆叠，避免横向滚动 */
 @media (max-width: 720px) {
   .pool-table thead { display: none; }
@@ -2019,6 +2032,8 @@ details.more > summary:hover { color: var(--jade); }
       <div style="margin-top:18px">
         <button type="submit" class="btn" id="go">开 始 取 名</button>
       </div>
+
+      <p class="hint pref-hint" id="prefHint"></p>
     </form>
 
     <!-- ============ 右侧结果 ============ -->
@@ -10259,6 +10274,166 @@ details.more > summary:hover { color: var(--jade); }
 </script>
 <script>
 /* =========================================================================
+ * prefs.js —— 界面填写记录（表单草稿）
+ *
+ * 用户需求：「加一个填写缓存，不然每次打开都要重新填写信息」
+ *
+ * 存什么、不存什么
+ * ---------------------------------------------------------------
+ * 存**用户填的条件**：姓氏、生辰、性别、名字字数、风格、寓意关键词、
+ * 避用字、必含字、偏好/避用部首、手工指定的喜用神、经度与真太阳时开关。
+ *
+ * **不存结果**。生成出来的名字列表每次打开都重新算 ——
+ * 一来结果依赖当时的数据（联网同步过词库就不一样了），
+ * 二来把上次的结果原样端出来，用户会以为那是「按现在条件算的」。
+ * 条件记住就够了，这是他真正不想每次重填的东西。
+ *
+ * 为什么单独一个键
+ * ---------------------------------------------------------------
+ * 与联网词库（pinyinMap/dict/poems…）和候选池（namePool）分开存。
+ * 早先踩过「清空联网词库把候选池一起删了」的坑，所以这里从一开始
+ * 就把 prefs 列为**不属于联网词库**的独立键，Lexicon.reset() 不会碰它。
+ *
+ * 生辰八字会存在本地浏览器里 —— 这一点在界面上明说，
+ * 并提供「清除填写记录」。表单里本来就已经有生辰，不存下来
+ * 就等于每次都要重新输一遍，得不偿失。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  var KEY = 'prefs';
+  var cache = null;
+  var loadPromise = null;
+
+  /* 只认识这些键 —— 防止历史上写进去的脏字段被一路带下去。
+   * 加新字段时记得同时加到这里，否则存了也读不回来。 */
+  var ALLOWED = {
+    /* 主表单 */
+    surname: 1, strokes: 1, birth: 1, longitude: 1, useTST: 1, city: 1,
+    style: 1, top: 1, keywords: 1, taboo: 1, mustInclude: 1, useSC: 1,
+    /* 状态（不在 input 里，单独存） */
+    gender: 1, givenLength: 1, xiManual: 1, radPicked: 1, radCustom: 1,
+    radMode: 1,
+    /* 候选池 / 评估页的生辰输入，按前缀区分 */
+    evBirth: 1, evLongitude: 1, evUseTST: 1, evGender: 1,
+    plBirth: 1, plLongitude: 1, plUseTST: 1, plGender: 1,
+    /* 元信息 */
+    savedAt: 1
+  };
+
+  function sanitize(obj) {
+    var out = {};
+    Object.keys(obj || {}).forEach(function (k) {
+      if (ALLOWED[k] && obj[k] !== undefined) out[k] = obj[k];
+    });
+    return out;
+  }
+
+  /**
+   * 读取全部填写记录
+   * @returns {Promise<Object>} 空对象表示没有记录
+   */
+  function load() {
+    if (cache) return Promise.resolve(cache);
+    if (loadPromise) return loadPromise;
+    loadPromise = NS.Store.get(KEY).then(function (v) {
+      cache = (v && typeof v === 'object') ? sanitize(v) : {};
+      return cache;
+    }).catch(function () {
+      cache = {};
+      return cache;
+    });
+    return loadPromise;
+  }
+
+  /**
+   * 合并保存（只覆盖传入的字段，其余保留）
+   * @param {Object} patch
+   */
+  function save(patch) {
+    var clean = sanitize(patch);
+    return load().then(function () {
+      Object.keys(clean).forEach(function (k) { cache[k] = clean[k]; });
+      cache.savedAt = new Date().toISOString();
+      return NS.Store.set(KEY, cache);
+    }).then(function () { return cache; });
+  }
+
+  /** 整份覆盖（用于调用方已经拼好完整对象时） */
+  function replace(obj) {
+    cache = sanitize(obj);
+    cache.savedAt = new Date().toISOString();
+    return NS.Store.set(KEY, cache).then(function () { return cache; });
+  }
+
+  function clear() {
+    cache = {};
+    loadPromise = null;
+    return NS.Store.del(KEY).then(function () { return true; });
+  }
+
+  /** 有没有存过东西（界面据此决定要不要显示「已恢复填写记录」） */
+  function hasData() {
+    return load().then(function () {
+      return Object.keys(cache).filter(function (k) {
+        return k !== 'savedAt';
+      }).length > 0;
+    });
+  }
+
+  /* ---------------- 防抖 ---------------- */
+
+  var timer = null;
+
+  /**
+   * 防抖保存。表单每次 input 都触发，不防抖会把存储写爆
+   * （IndexedDB 写入是异步事务，连续写会排队）。
+   * @param {Function} collect 返回要保存的对象
+   * @param {number} [wait=600]
+   */
+  function saveSoon(collect, wait) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () {
+      timer = null;
+      var patch;
+      try { patch = collect(); } catch (e) { return; }
+      save(patch);
+    }, wait === undefined ? 600 : wait);
+  }
+
+  /** 立即 flush（离开页面时用，避免最后一次输入丢失） */
+  function flush(collect) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (collect) {
+      try { return save(collect()); } catch (e) { /* 忽略 */ }
+    }
+    return Promise.resolve(cache);
+  }
+
+  function _resetCache() {
+    cache = null;
+    loadPromise = null;
+    if (timer) { clearTimeout(timer); timer = null; }
+  }
+
+  NS.Prefs = {
+    load: load,
+    save: save,
+    replace: replace,
+    clear: clear,
+    hasData: hasData,
+    saveSoon: saveSoon,
+    flush: flush,
+    ALLOWED: ALLOWED,
+    _resetCache: _resetCache
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
  * nickname.js —— 小名（乳名）建议
  *
  * 不做独立的小名用字库，而是**从已选中的大名里衍生**：
@@ -11567,14 +11742,79 @@ details.more > summary:hover { color: var(--jade); }
         '　生肖 <b>' + r.bazi.shengxiao + '</b>' +
         (r.bazi.nayin ? '　纳音 <b>' + r.bazi.nayin.name + '</b>' : '');
     }
-    inp.addEventListener('change', update);
-    inp.addEventListener('input', update);
-    lon.addEventListener('input', update);
-    tst.addEventListener('change', update);
+    inp.addEventListener('change', updateAndSave);
+    inp.addEventListener('input', updateAndSave);
+    lon.addEventListener('input', updateAndSave);
+    tst.addEventListener('change', updateAndSave);
     /* 首帧就要把提示填上（可能沿用了主表单的值） */
     setTimeout(update, 0);
 
+    /* ---- 填写记录：恢复本页上次填的值，并在改动时存回去 ----
+     * 与主表单共用 NS.Prefs，键按前缀区分（evBirth / plBirth …）。 */
+    function persist() {
+      if (!NS.Prefs) return;
+      var patch = {};
+      patch[p + 'Birth'] = inp.value;
+      patch[p + 'Longitude'] = lon.value;
+      patch[p + 'UseTST'] = tst.checked;
+      if (seg) {
+        var on = seg.querySelector('button[aria-pressed="true"]');
+        if (on) patch[p + 'Gender'] = on.dataset.v;
+      }
+      NS.Prefs.saveSoon(function () { return patch; }, 500);
+    }
+    function updateAndSave() { update(); persist(); }
+
+    if (NS.Prefs) {
+      NS.Prefs.load().then(function (saved) {
+        if (!saved) return;
+        var hit = false;
+        if (saved[p + 'Birth'] !== undefined) { inp.value = saved[p + 'Birth']; hit = true; }
+        if (saved[p + 'Longitude'] !== undefined) { lon.value = saved[p + 'Longitude']; hit = true; }
+        if (saved[p + 'UseTST'] !== undefined) { tst.checked = !!saved[p + 'UseTST']; hit = true; }
+        if (seg && saved[p + 'Gender']) {
+          Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
+            b.setAttribute('aria-pressed',
+              b.dataset.v === saved[p + 'Gender'] ? 'true' : 'false');
+          });
+          hit = true;
+        }
+        if (hit) update();
+      }).catch(function () { /* 忽略 */ });
+    }
+
     return box;
+  }
+
+  /* 已经与主表单同步过的前缀。只同步一次 ——
+   * 否则每次切回该视图都会把用户清掉的生辰又填回去。 */
+  var syncedFromMain = Object.create(null);
+
+  /**
+   * 从「取名」页把生辰同步过来。
+   *
+   * 为什么需要这一步：本组件在启动时构建，那一刻主表单的填写记录
+   * 可能还没恢复完（异步），所以初始化时读到的是空值。
+   * 视图显示时再补一次，才能拿到主表单里的生辰。
+   *
+   * 只在目标为空、且没同步过时填 —— 不覆盖用户在本页自己填的值。
+   */
+  function syncFromMain(p) {
+    if (syncedFromMain[p]) return;
+    syncedFromMain[p] = true;
+    var dt = $(p + 'Birth'), lonEl = $(p + 'Longitude');
+    var mainBirth = $('birth'), mainLon = $('longitude');
+    if (dt && mainBirth && !dt.value && mainBirth.value) {
+      dt.value = mainBirth.value;
+    }
+    if (lonEl && mainLon && !lonEl.value && mainLon.value) {
+      lonEl.value = mainLon.value;
+    }
+    var h = $(p + 'BaziHint');
+    if (h) {
+      /* 触发一次提示刷新（用 input 事件最省事，不必重算一套逻辑） */
+      if (dt) dt.dispatchEvent(new Event('input'));
+    }
   }
 
   /**
@@ -11612,7 +11852,10 @@ details.more > summary:hover { color: var(--jade); }
     };
   }
 
-  NS.BirthForm = { render: render, read: read, parseLocal: parseLocal };
+  NS.BirthForm = {
+    render: render, read: read, parseLocal: parseLocal,
+    syncFromMain: syncFromMain
+  };
 
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -11888,6 +12131,8 @@ details.more > summary:hover { color: var(--jade); }
     if (!root) return;
     root.hidden = false;
     if (!root.firstChild) render();
+    /* 同评估页：显示时从「取名」页补一次生辰 */
+    if (NS.BirthForm) NS.BirthForm.syncFromMain('pl');
 
     NS.Pool.list().then(function (items) {
       var bf = NS.BirthForm.read('pl');
@@ -12169,7 +12414,13 @@ details.more > summary:hover { color: var(--jade); }
 
   NS.EvalUI = {
     init: function (rootEl) { root = rootEl; render(); },
-    refresh: function () { if (!root || !root.firstChild) render(); root.hidden = false; },
+    refresh: function () {
+      if (!root || !root.firstChild) render();
+      root.hidden = false;
+      /* 评估页有自己一套生辰输入，显示时从「取名」页补一次 ——
+       * 启动时主表单的填写记录可能还没恢复完，那时读到的是空值。 */
+      if (NS.BirthForm) NS.BirthForm.syncFromMain('ev');
+    },
     /** 供候选池跳转过来时预填名字（不自动评估，让用户自己确认生辰） */
     preset: function (surname, given) {
       if (!root || !root.firstChild) render();
@@ -12363,6 +12614,138 @@ details.more > summary:hover { color: var(--jade); }
   }
 
   /* ---------------- 视图切换 ---------------- */
+
+  /* ---------------- 填写记录（表单草稿） ----------------
+   *
+   * 用户需求：「加一个填写缓存，不然每次打开都要重新填写信息」。
+   *
+   * 只缓存**填的条件**，不缓存**结果** ——
+   * 结果依赖当前数据（联网同步过词库就不一样了），
+   * 而且把上次的结果原样端出来，用户会以为那是「按现在条件算的」。
+   * 条件记住就够了，这是他真正不想每次重填的东西。
+   * ------------------------------------------------ */
+
+  /* 要缓存的表单控件，key 就是元素 id */
+  var PREF_IDS = ['surname', 'strokes', 'birth', 'longitude', 'useTST', 'city',
+    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC'];
+
+  /** 收集当前表单状态（含不在 input 里的那些 state） */
+  function collectPrefs() {
+    var p = {};
+    PREF_IDS.forEach(function (id) {
+      var e = $(id);
+      if (!e) return;
+      p[id] = (e.type === 'checkbox') ? !!e.checked : e.value;
+    });
+    p.gender = state.gender;
+    p.givenLength = state.givenLength;
+    p.xiManual = Object.keys(state.xiManual);
+    p.radPicked = state.radPicked.slice();
+    var rc = $('radCustom');
+    if (rc) p.radCustom = rc.value;
+    var ra = $('radAll');
+    if (ra) p.radMode = ra.checked ? 'all' : 'any';
+    return p;
+  }
+
+  /** 设置分段控件的选中项 */
+  function setSegmented(id, value) {
+    var wrap = $(id);
+    if (!wrap) return false;
+    var hit = false;
+    Array.prototype.forEach.call(wrap.querySelectorAll('button'), function (b) {
+      var on = String(b.dataset.v) === String(value);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) hit = true;
+    });
+    return hit;
+  }
+
+  /**
+   * 把记录写回表单
+   * @returns {boolean} 是否确实恢复了内容
+   */
+  function applyPrefs(p) {
+    if (!p) return false;
+    var any = false;
+    PREF_IDS.forEach(function (id) {
+      var e = $(id);
+      if (!e || p[id] === undefined) return;
+      if (e.type === 'checkbox') e.checked = !!p[id];
+      else e.value = p[id];
+      any = true;
+    });
+
+    if (p.gender && setSegmented('genderSeg', p.gender)) {
+      state.gender = p.gender; any = true;
+    }
+    if (p.givenLength && setSegmented('lenSeg', String(p.givenLength))) {
+      state.givenLength = parseInt(p.givenLength, 10) || 2; any = true;
+    }
+
+    /* 手工指定的喜用神 */
+    if (p.xiManual && p.xiManual.length) {
+      state.xiManual = Object.create(null);
+      p.xiManual.forEach(function (w) { state.xiManual[w] = 1; });
+      var xiBox = $('xiSeg');
+      if (xiBox) {
+        Array.prototype.forEach.call(xiBox.querySelectorAll('button'), function (b) {
+          b.setAttribute('aria-pressed', state.xiManual[b.dataset.v] ? 'true' : 'false');
+        });
+      }
+      any = true;
+    }
+
+    /* 偏好部首（按钮选的） */
+    if (p.radPicked && p.radPicked.length) {
+      state.radPicked = p.radPicked.slice();
+      if (typeof syncRadChips === 'function') syncRadChips();
+      any = true;
+    }
+    if (p.radMode) {
+      var ra = $('radAll');
+      if (ra) ra.checked = (p.radMode === 'all');
+    }
+    return any;
+  }
+
+  function savePrefsNow() {
+    return NS.Prefs.flush(collectPrefs);
+  }
+
+  /** 表单底部那行说明 + 清除入口 */
+  function renderPrefHint(restored, when) {
+    var h = $('prefHint');
+    if (!h) return;
+    h.innerHTML = '';
+    if (!restored) {
+      h.textContent = '填写内容会自动记住，下次打开不用重新填。' +
+        '（只记条件，不记结果；生辰保存在本机浏览器里）';
+      return;
+    }
+    var whenText = '';
+    if (when) {
+      var d = new Date(when);
+      if (!isNaN(d.getTime())) {
+        whenText = '（' + d.toLocaleString('zh-CN',
+          { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) +
+          ' 保存）';
+      }
+    }
+    h.innerHTML = '已恢复上次填写的条件' + esc(whenText) +
+      '。<b>只恢复了填写内容，名字没有沿用上次结果</b>（重新点「开始取名」即可）。';
+    var b = el('button', 'btn tiny ghost', '清除填写记录');
+    b.type = 'button';
+    b.style.marginLeft = '8px';
+    b.addEventListener('click', function () {
+      NS.Prefs.clear().then(function () {
+        b.textContent = '已清除';
+        b.disabled = true;
+        setTimeout(function () { renderPrefHint(false); }, 900);
+      });
+    });
+    h.appendChild(b);
+  }
 
   /* ---------------- 部首偏好 ---------------- */
 
@@ -13829,10 +14212,46 @@ details.more > summary:hover { color: var(--jade); }
     $('useTST').addEventListener('change', updateBaziHint);
     $('form').addEventListener('submit', onSubmit);
 
+    /* 任何表单改动都**防抖**存一次。
+     * 不防抖会把存储写爆：每次按键都开一个 IndexedDB 写事务会排队堆积。 */
+    ['input', 'change'].forEach(function (evt) {
+      $('form').addEventListener(evt, function () {
+        NS.Prefs.saveSoon(collectPrefs);
+      });
+    });
+    /* 分段控件与部首 chip 不是原生控件，不会冒泡 input/change，单独挂 */
+    ['genderSeg', 'lenSeg', 'xiSeg', 'radSeg'].forEach(function (id) {
+      var e2 = $(id);
+      if (e2) e2.addEventListener('click', function () {
+        NS.Prefs.saveSoon(collectPrefs);
+      });
+    });
+    /* 关页面/切后台时立即落盘，避免最后一次输入还在防抖窗口里就丢了 */
+    global.addEventListener('pagehide', savePrefsNow);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') savePrefsNow();
+    });
+
     updateSurname();
     updateBaziHint();
 
-    /* URL 参数支持：?surname=李&gender=女&birth=2024-05-20T10:00&style=古风 */
+    /* 先恢复填写记录，**再**处理 URL 参数 ——
+     * URL 是用户这次明确指定的，优先级必须高于上次的记录。 */
+    NS.Prefs.load().then(function (p) {
+      var restored = applyPrefs(p);
+      updateSurname();
+      updateBaziHint();
+      renderPrefHint(restored, p && p.savedAt);
+      applyUrlParams();
+    }).catch(function () {
+      renderPrefHint(false);
+      applyUrlParams();
+    });
+  }
+
+  /* URL 参数支持：?surname=李&gender=女&birth=2024-05-20T10:00&style=古风
+   * 单独抽出来，是因为它必须在「恢复填写记录」之后执行才有意义。 */
+  function applyUrlParams() {
     try {
       var q = new URLSearchParams(global.location.search);
       if (q.get('surname')) $('surname').value = q.get('surname');

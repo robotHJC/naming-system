@@ -27,7 +27,8 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/net.js', 'core/infer.js', 'core/dialect.js',
   'core/lexicon.js', 'core/radical.js', 'core/variant.js',
-  'core/hexagram.js', 'core/zodiac.js', 'core/report.js', 'core/pool.js'
+  'core/hexagram.js', 'core/zodiac.js', 'core/report.js', 'core/pool.js',
+  'core/prefs.js'
 ].forEach(f => require(path.join(BASE, f)));
 
 const NS = globalThis.NS;
@@ -1253,6 +1254,63 @@ section('7. 打包固化的预置数据（模拟新电脑首次打开）');
 
   await NS.Pool.clear();
   NS.Pool._resetCache();
+
+  /* ---------------- 10. 填写记录（表单草稿） ----------------
+   *
+   * 用户需求：「加一个填写缓存，不然每次打开都要重新填写信息」。
+   * 关键是两条：只存条件不存结果；且不能像候选池那样被
+   * 「清空联网词库」连带删掉（那个坑刚踩过）。
+   * ------------------------------------------------ */
+  section('10. 填写记录');
+
+  NS.Prefs._resetCache();
+  await NS.Prefs.clear();
+  eq('初始为空', await NS.Prefs.hasData(), false);
+
+  await NS.Prefs.save({
+    surname: '郝', birth: '2026-05-20T10:00', gender: '女',
+    givenLength: 2, style: '文雅', keywords: '智慧',
+    radPicked: ['艹', '宀'], xiManual: ['木'], useTST: true
+  });
+  const pf = await NS.Prefs.load();
+  eq('姓氏存下来了', pf.surname, '郝');
+  eq('生辰存下来了', pf.birth, '2026-05-20T10:00');
+  eq('性别存下来了', pf.gender, '女');
+  ok('数组字段（部首/喜用神）存下来了',
+    Array.isArray(pf.radPicked) && pf.radPicked.length === 2 &&
+    Array.isArray(pf.xiManual) && pf.xiManual[0] === '木',
+    JSON.stringify({ r: pf.radPicked, x: pf.xiManual }));
+  ok('布尔字段存下来了', pf.useTST === true);
+  ok('带保存时间戳', !!pf.savedAt);
+  console.log('  已存字段：' + Object.keys(pf).filter(k => k !== 'savedAt').join('、'));
+
+  /* 合并保存：不传的字段不该被清掉 */
+  await NS.Prefs.save({ surname: '李' });
+  const pf2 = await NS.Prefs.load();
+  eq('合并保存后新值生效', pf2.surname, '李');
+  eq('合并保存不会清掉其他字段', pf2.birth, '2026-05-20T10:00');
+
+  /* 只认白名单字段 —— 防止历史脏字段被一路带下去 */
+  await NS.Prefs.save({ 乱七八糟: 'x', surname: '郝' });
+  const pf3 = await NS.Prefs.load();
+  ok('白名单以外的字段被丢弃', pf3['乱七八糟'] === undefined,
+    Object.keys(pf3).join(','));
+
+  /* **关键回归**：清空联网词库不能连带清掉填写记录 */
+  await NS.Store.set('dict', { '测': [8, '讠', 'cè', '测试'] });
+  await NS.Lexicon.reset();
+  eq('清空联网词库后字典没了', await NS.Store.get('dict'), null);
+  eq('清空联网词库**不影响**填写记录',
+    (await NS.Prefs.load()).surname, '郝');
+
+  await NS.Lexicon.discardIncompatible({ state: 'stale', saved: 0, current: 9 });
+  eq('自动清理不兼容数据时也不动填写记录',
+    (await NS.Prefs.load()).surname, '郝');
+
+  /* 清除 */
+  await NS.Prefs.clear();
+  NS.Prefs._resetCache();
+  eq('清除后为空', await NS.Prefs.hasData(), false);
 
   console.log('\n' + '='.repeat(52));
   console.log(`通过 ${pass} 项，失败 ${fail} 项`);

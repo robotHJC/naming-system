@@ -135,14 +135,79 @@
         '　生肖 <b>' + r.bazi.shengxiao + '</b>' +
         (r.bazi.nayin ? '　纳音 <b>' + r.bazi.nayin.name + '</b>' : '');
     }
-    inp.addEventListener('change', update);
-    inp.addEventListener('input', update);
-    lon.addEventListener('input', update);
-    tst.addEventListener('change', update);
+    inp.addEventListener('change', updateAndSave);
+    inp.addEventListener('input', updateAndSave);
+    lon.addEventListener('input', updateAndSave);
+    tst.addEventListener('change', updateAndSave);
     /* 首帧就要把提示填上（可能沿用了主表单的值） */
     setTimeout(update, 0);
 
+    /* ---- 填写记录：恢复本页上次填的值，并在改动时存回去 ----
+     * 与主表单共用 NS.Prefs，键按前缀区分（evBirth / plBirth …）。 */
+    function persist() {
+      if (!NS.Prefs) return;
+      var patch = {};
+      patch[p + 'Birth'] = inp.value;
+      patch[p + 'Longitude'] = lon.value;
+      patch[p + 'UseTST'] = tst.checked;
+      if (seg) {
+        var on = seg.querySelector('button[aria-pressed="true"]');
+        if (on) patch[p + 'Gender'] = on.dataset.v;
+      }
+      NS.Prefs.saveSoon(function () { return patch; }, 500);
+    }
+    function updateAndSave() { update(); persist(); }
+
+    if (NS.Prefs) {
+      NS.Prefs.load().then(function (saved) {
+        if (!saved) return;
+        var hit = false;
+        if (saved[p + 'Birth'] !== undefined) { inp.value = saved[p + 'Birth']; hit = true; }
+        if (saved[p + 'Longitude'] !== undefined) { lon.value = saved[p + 'Longitude']; hit = true; }
+        if (saved[p + 'UseTST'] !== undefined) { tst.checked = !!saved[p + 'UseTST']; hit = true; }
+        if (seg && saved[p + 'Gender']) {
+          Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
+            b.setAttribute('aria-pressed',
+              b.dataset.v === saved[p + 'Gender'] ? 'true' : 'false');
+          });
+          hit = true;
+        }
+        if (hit) update();
+      }).catch(function () { /* 忽略 */ });
+    }
+
     return box;
+  }
+
+  /* 已经与主表单同步过的前缀。只同步一次 ——
+   * 否则每次切回该视图都会把用户清掉的生辰又填回去。 */
+  var syncedFromMain = Object.create(null);
+
+  /**
+   * 从「取名」页把生辰同步过来。
+   *
+   * 为什么需要这一步：本组件在启动时构建，那一刻主表单的填写记录
+   * 可能还没恢复完（异步），所以初始化时读到的是空值。
+   * 视图显示时再补一次，才能拿到主表单里的生辰。
+   *
+   * 只在目标为空、且没同步过时填 —— 不覆盖用户在本页自己填的值。
+   */
+  function syncFromMain(p) {
+    if (syncedFromMain[p]) return;
+    syncedFromMain[p] = true;
+    var dt = $(p + 'Birth'), lonEl = $(p + 'Longitude');
+    var mainBirth = $('birth'), mainLon = $('longitude');
+    if (dt && mainBirth && !dt.value && mainBirth.value) {
+      dt.value = mainBirth.value;
+    }
+    if (lonEl && mainLon && !lonEl.value && mainLon.value) {
+      lonEl.value = mainLon.value;
+    }
+    var h = $(p + 'BaziHint');
+    if (h) {
+      /* 触发一次提示刷新（用 input 事件最省事，不必重算一套逻辑） */
+      if (dt) dt.dispatchEvent(new Event('input'));
+    }
   }
 
   /**
@@ -180,6 +245,9 @@
     };
   }
 
-  NS.BirthForm = { render: render, read: read, parseLocal: parseLocal };
+  NS.BirthForm = {
+    render: render, read: read, parseLocal: parseLocal,
+    syncFromMain: syncFromMain
+  };
 
 })(typeof window !== 'undefined' ? window : globalThis);

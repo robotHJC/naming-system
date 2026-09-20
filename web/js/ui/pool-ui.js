@@ -269,6 +269,8 @@
     if (!root) return;
     root.hidden = false;
     if (!root.firstChild) render();
+    /* 同评估页：显示时从「取名」页补一次生辰 */
+    if (NS.BirthForm) NS.BirthForm.syncFromMain('pl');
 
     NS.Pool.list().then(function (items) {
       var bf = NS.BirthForm.read('pl');

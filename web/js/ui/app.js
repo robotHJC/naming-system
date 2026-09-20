@@ -176,6 +176,138 @@
 
   /* ---------------- 视图切换 ---------------- */
 
+  /* ---------------- 填写记录（表单草稿） ----------------
+   *
+   * 用户需求：「加一个填写缓存，不然每次打开都要重新填写信息」。
+   *
+   * 只缓存**填的条件**，不缓存**结果** ——
+   * 结果依赖当前数据（联网同步过词库就不一样了），
+   * 而且把上次的结果原样端出来，用户会以为那是「按现在条件算的」。
+   * 条件记住就够了，这是他真正不想每次重填的东西。
+   * ------------------------------------------------ */
+
+  /* 要缓存的表单控件，key 就是元素 id */
+  var PREF_IDS = ['surname', 'strokes', 'birth', 'longitude', 'useTST', 'city',
+    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC'];
+
+  /** 收集当前表单状态（含不在 input 里的那些 state） */
+  function collectPrefs() {
+    var p = {};
+    PREF_IDS.forEach(function (id) {
+      var e = $(id);
+      if (!e) return;
+      p[id] = (e.type === 'checkbox') ? !!e.checked : e.value;
+    });
+    p.gender = state.gender;
+    p.givenLength = state.givenLength;
+    p.xiManual = Object.keys(state.xiManual);
+    p.radPicked = state.radPicked.slice();
+    var rc = $('radCustom');
+    if (rc) p.radCustom = rc.value;
+    var ra = $('radAll');
+    if (ra) p.radMode = ra.checked ? 'all' : 'any';
+    return p;
+  }
+
+  /** 设置分段控件的选中项 */
+  function setSegmented(id, value) {
+    var wrap = $(id);
+    if (!wrap) return false;
+    var hit = false;
+    Array.prototype.forEach.call(wrap.querySelectorAll('button'), function (b) {
+      var on = String(b.dataset.v) === String(value);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) hit = true;
+    });
+    return hit;
+  }
+
+  /**
+   * 把记录写回表单
+   * @returns {boolean} 是否确实恢复了内容
+   */
+  function applyPrefs(p) {
+    if (!p) return false;
+    var any = false;
+    PREF_IDS.forEach(function (id) {
+      var e = $(id);
+      if (!e || p[id] === undefined) return;
+      if (e.type === 'checkbox') e.checked = !!p[id];
+      else e.value = p[id];
+      any = true;
+    });
+
+    if (p.gender && setSegmented('genderSeg', p.gender)) {
+      state.gender = p.gender; any = true;
+    }
+    if (p.givenLength && setSegmented('lenSeg', String(p.givenLength))) {
+      state.givenLength = parseInt(p.givenLength, 10) || 2; any = true;
+    }
+
+    /* 手工指定的喜用神 */
+    if (p.xiManual && p.xiManual.length) {
+      state.xiManual = Object.create(null);
+      p.xiManual.forEach(function (w) { state.xiManual[w] = 1; });
+      var xiBox = $('xiSeg');
+      if (xiBox) {
+        Array.prototype.forEach.call(xiBox.querySelectorAll('button'), function (b) {
+          b.setAttribute('aria-pressed', state.xiManual[b.dataset.v] ? 'true' : 'false');
+        });
+      }
+      any = true;
+    }
+
+    /* 偏好部首（按钮选的） */
+    if (p.radPicked && p.radPicked.length) {
+      state.radPicked = p.radPicked.slice();
+      if (typeof syncRadChips === 'function') syncRadChips();
+      any = true;
+    }
+    if (p.radMode) {
+      var ra = $('radAll');
+      if (ra) ra.checked = (p.radMode === 'all');
+    }
+    return any;
+  }
+
+  function savePrefsNow() {
+    return NS.Prefs.flush(collectPrefs);
+  }
+
+  /** 表单底部那行说明 + 清除入口 */
+  function renderPrefHint(restored, when) {
+    var h = $('prefHint');
+    if (!h) return;
+    h.innerHTML = '';
+    if (!restored) {
+      h.textContent = '填写内容会自动记住，下次打开不用重新填。' +
+        '（只记条件，不记结果；生辰保存在本机浏览器里）';
+      return;
+    }
+    var whenText = '';
+    if (when) {
+      var d = new Date(when);
+      if (!isNaN(d.getTime())) {
+        whenText = '（' + d.toLocaleString('zh-CN',
+          { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) +
+          ' 保存）';
+      }
+    }
+    h.innerHTML = '已恢复上次填写的条件' + esc(whenText) +
+      '。<b>只恢复了填写内容，名字没有沿用上次结果</b>（重新点「开始取名」即可）。';
+    var b = el('button', 'btn tiny ghost', '清除填写记录');
+    b.type = 'button';
+    b.style.marginLeft = '8px';
+    b.addEventListener('click', function () {
+      NS.Prefs.clear().then(function () {
+        b.textContent = '已清除';
+        b.disabled = true;
+        setTimeout(function () { renderPrefHint(false); }, 900);
+      });
+    });
+    h.appendChild(b);
+  }
+
   /* ---------------- 部首偏好 ---------------- */
 
   /** 建候选部首按钮。每个按钮右上角标出字库里有几个这样的字，
@@ -1641,10 +1773,46 @@
     $('useTST').addEventListener('change', updateBaziHint);
     $('form').addEventListener('submit', onSubmit);
 
+    /* 任何表单改动都**防抖**存一次。
+     * 不防抖会把存储写爆：每次按键都开一个 IndexedDB 写事务会排队堆积。 */
+    ['input', 'change'].forEach(function (evt) {
+      $('form').addEventListener(evt, function () {
+        NS.Prefs.saveSoon(collectPrefs);
+      });
+    });
+    /* 分段控件与部首 chip 不是原生控件，不会冒泡 input/change，单独挂 */
+    ['genderSeg', 'lenSeg', 'xiSeg', 'radSeg'].forEach(function (id) {
+      var e2 = $(id);
+      if (e2) e2.addEventListener('click', function () {
+        NS.Prefs.saveSoon(collectPrefs);
+      });
+    });
+    /* 关页面/切后台时立即落盘，避免最后一次输入还在防抖窗口里就丢了 */
+    global.addEventListener('pagehide', savePrefsNow);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') savePrefsNow();
+    });
+
     updateSurname();
     updateBaziHint();
 
-    /* URL 参数支持：?surname=李&gender=女&birth=2024-05-20T10:00&style=古风 */
+    /* 先恢复填写记录，**再**处理 URL 参数 ——
+     * URL 是用户这次明确指定的，优先级必须高于上次的记录。 */
+    NS.Prefs.load().then(function (p) {
+      var restored = applyPrefs(p);
+      updateSurname();
+      updateBaziHint();
+      renderPrefHint(restored, p && p.savedAt);
+      applyUrlParams();
+    }).catch(function () {
+      renderPrefHint(false);
+      applyUrlParams();
+    });
+  }
+
+  /* URL 参数支持：?surname=李&gender=女&birth=2024-05-20T10:00&style=古风
+   * 单独抽出来，是因为它必须在「恢复填写记录」之后执行才有意义。 */
+  function applyUrlParams() {
     try {
       var q = new URLSearchParams(global.location.search);
       if (q.get('surname')) $('surname').value = q.get('surname');

@@ -1839,6 +1839,19 @@ details.more > summary:hover { color: var(--jade); }
   vertical-align: middle;
 }
 
+/* 表单底部的填写记录说明（恢复了内容时会多一个清除按钮） */
+.pref-hint {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 11.5px;
+  line-height: 1.85;
+}
+
+.pref-hint .btn {
+  margin-top: 4px;
+}
+
 /* 窄屏：候选池表格改为卡片式堆叠，避免横向滚动 */
 @media (max-width: 720px) {
   .pool-table thead { display: none; }

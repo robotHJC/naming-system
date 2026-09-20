@@ -252,7 +252,13 @@
 
   NS.EvalUI = {
     init: function (rootEl) { root = rootEl; render(); },
-    refresh: function () { if (!root || !root.firstChild) render(); root.hidden = false; },
+    refresh: function () {
+      if (!root || !root.firstChild) render();
+      root.hidden = false;
+      /* 评估页有自己一套生辰输入，显示时从「取名」页补一次 ——
+       * 启动时主表单的填写记录可能还没恢复完，那时读到的是空值。 */
+      if (NS.BirthForm) NS.BirthForm.syncFromMain('ev');
+    },
     /** 供候选池跳转过来时预填名字（不自动评估，让用户自己确认生辰） */
     preset: function (surname, given) {
       if (!root || !root.firstChild) render();
