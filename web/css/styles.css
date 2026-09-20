@@ -1027,7 +1027,7 @@ details.more > summary:hover { color: var(--jade); }
   font-variant-numeric: tabular-nums;
 }
 
-.result-bar .actions { display: flex; gap: 8px; }
+.result-bar .actions { display: flex; gap: 8px; align-items: center; }
 
 /* 错误提示 */
 .alert {
@@ -1407,6 +1407,80 @@ details.more > summary:hover { color: var(--jade); }
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------- 底部那条分页 ---------------- */
+
+/* 名字一路看完，滚到底部就地换一批，不用再翻回页面顶部。
+ * 「换一批」做成实心主按钮：这里是整个底部唯一想让人点的东西，
+ * 用 ghost 白底按钮会和「加入对比」「加入候选池」混成一片。
+ * 同时撑到 42px 高 —— 底部按钮是手指最常点的地方。 */
+.pager-bottom {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.pager-bottom .pager-btns {
+  flex: 1;
+  justify-content: space-between;
+}
+
+.pager-bottom .btn {
+  min-height: 42px;
+  padding: 10px 18px;
+}
+
+.pager-bottom .pager-next {
+  background: linear-gradient(135deg, var(--jade) 0%, var(--jade-light) 100%);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 16px -9px rgba(47, 93, 80, .9);
+}
+
+.pager-bottom .pager-next:hover:not(:disabled) {
+  color: #fff;
+  border-color: transparent;
+  transform: translateY(-1px);
+}
+
+/* ---------------- 结果工具条里的「简洁模式」开关 ---------------- */
+
+/* .check 已经是 flex + 居中了，这里只补不换行与分隔感，
+ * 否则窄屏上「简洁模式」四个字会和「复制这一批」挤成一团 */
+.dens-toggle {
+  white-space: nowrap;
+  padding-right: 6px;
+  margin-right: 2px;
+  border-right: 1px solid var(--line);
+}
+
+/* ---------------- 简洁模式的名字卡片 ---------------- */
+
+/* 折叠掉字义/小名/出处/热度条/五格之后，卡片本来就矮了一大截，
+ * 这里再把内边距与评分环收紧一点，一屏能多放两三个名字。 */
+.name-card.compact {
+  padding: 13px 16px 11px;
+}
+
+.name-card.compact .nc-head { gap: 10px; }
+.name-card.compact .nc-reasons { margin-top: 8px; }
+
+.name-card.compact .score-ring {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+}
+
+.name-card.compact .score-ring::after { inset: 5px; }
+.name-card.compact .score-ring .num { font-size: 16.5px; }
+.name-card.compact .score-ring .unit { font-size: 8.5px; margin-top: 1px; }
+
+.name-card.compact .nc-foot { margin-top: 8px; padding-top: 9px; }
+.name-card.compact .more { margin-top: 8px; }
+
+/* 简洁模式下 <details> 里装着折叠起来的补充信息，
+ * 展开时让它和下面的五格表之间有正常间距 */
+.name-card.compact .more-body .nc-extra { margin-bottom: 6px; }
 
 /* ---------------- 并排对比 ---------------- */
 

@@ -627,10 +627,12 @@ section('6e. 偏旁重复检测');
   eq('「蕾」部首为艹（不归雨）',
     NS.Radical.groupsOf('蕾').map(g => g.name).join(','), '艹');
 
-  /* 表外的字（联网加入的）必须如实报告，不能猜 */
-  const r6 = NS.Radical.check('昶澜');
+  /* 表外的字（联网加入的）必须如实报告，不能猜。
+   * 原来用的是「昶」，后来它被收进字库并归入「日」组，
+   * 这条断言就失去了前提 —— 换成一个永远不会归组的生僻字。 */
+  const r6 = NS.Radical.check('龘澜');
   ok('表外字进入 unknown 而不是被猜',
-    r6.unknown.indexOf('昶') >= 0, JSON.stringify(r6.unknown));
+    r6.unknown.indexOf('龘') >= 0, JSON.stringify(r6.unknown));
 
   ok('提示文案含偏旁与用字',
     NS.Radical.describe(r2).indexOf('氵') >= 0 &&
@@ -771,7 +773,14 @@ section('6g. 词库外同音字（联网拼音表）');
   /* 这两个是「测试用」字：人为塞进热度表，模拟「热度表认得、但字库没有」。
    * 不能依赖真实数据里还剩几个这样的字 —— 字库补齐后会是 0 个，
    * 用例就会失败在「数据」上而不是「逻辑」上（补齐最后一个缺字「蓝」时就踩到了）。 */
-  const OUT_A = '昶', OUT_B = '翀';
+  /* 这两个字必须真的在字库外，否则整组断言的前提就不成立。
+   *
+   * 原来写死的是 昶 和 翀，后来它们被正式收进字库，
+   * 于是 out 变空数组，821 行的 out[0].sameTone 直接抛
+   * TypeError 把整个测试文件带崩（连日志都没写出来）。
+   * 现在改用两个永远不会进起名字库的生僻字/异体字，
+   * 并把下面「取第一个」的断言改成先判空。 */
+  const OUT_A = '儖', OUT_B = '鯦';
   ok('测试用字确实不在字库里（前提成立）',
     !NS.CHAR_DB[OUT_A] && !NS.CHAR_DB[OUT_B],
     OUT_A + '/' + OUT_B);
@@ -818,7 +827,10 @@ section('6g. 词库外同音字（联网拼音表）');
   ok('字库内的字不会重复出现在外层', out.every(o => !NS.CHAR_DB[o.char]));
   ok('外层只取同音字', out.every(o => o.pinyin === 'shu'),
     out.map(o => o.pinyin).join(','));
-  eq('外层同声调的排前面', out[0].sameTone, true);
+  /* 先判空再取值：直接写 out[0].sameTone 会在空数组时抛异常，
+   * 把后面所有断言一起带走，看起来像「测试崩了」而不是「这条挂了」 */
+  ok('同声调的排在最前面', !!out[0] && out[0].sameTone === true,
+    out[0] ? String(out[0].sameTone) : '(外层为空)');
 
   /* 关键门槛：只推荐热度表认得的字。
    * 不设这个门，拼音表里两万字都会进来，实测会把「儖」（异体字）

@@ -41,6 +41,8 @@
     /* 状态（不在 input 里，单独存） */
     gender: 1, givenLength: 1, xiManual: 1, radPicked: 1, radCustom: 1,
     radMode: 1,
+    /* 结果列表的「简洁模式」开关（名字卡片默认折叠，一屏能多看好几个） */
+    compact: 1,
     /* 候选池 / 评估页的生辰输入，按前缀区分 */
     evBirth: 1, evLongitude: 1, evUseTST: 1, evGender: 1,
     plBirth: 1, plLongitude: 1, plUseTST: 1, plGender: 1,

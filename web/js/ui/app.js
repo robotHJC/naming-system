@@ -51,6 +51,10 @@
     ctx: null,
     page: 0,
     onlyKw: false,
+    /* 简洁模式：名字卡片折叠掉字义/小名/出处/五格。
+     * 用户的原始抱怨是「想换下一批还得翻回最上面」——
+     * 页面越短这个问题越轻，所以默认打开。 */
+    compact: true,
     /* 勾选待对比的名字（跨批次保留） */
     picked: [],
     /* 选中的偏好部首（按钮选的；手输的另算） */
@@ -200,6 +204,7 @@
     });
     p.gender = state.gender;
     p.givenLength = state.givenLength;
+    p.compact = !!state.compact;
     p.xiManual = Object.keys(state.xiManual);
     p.radPicked = state.radPicked.slice();
     var rc = $('radCustom');
@@ -267,6 +272,9 @@
       var ra = $('radAll');
       if (ra) ra.checked = (p.radMode === 'all');
     }
+    /* 简洁模式是界面偏好，不代表「填了内容」，所以不计入 any ——
+     * 否则只存过这一个开关也会提示「已恢复上次填写的条件」。 */
+    if (p.compact !== undefined) state.compact = !!p.compact;
     return any;
   }
 
@@ -939,7 +947,8 @@
   }
 
   function renderNameCard(item, rank) {
-    var card = el('div', 'panel name-card');
+    /* compact 类给 CSS 用：简洁模式下收紧内边距与行距 */
+    var card = el('div', 'panel name-card' + (state.compact ? ' compact' : ''));
 
     /* 同音替换建议：卡片摘要与详细分析共用一次计算，避免重复评分 */
     var variants = state.ctx
@@ -1028,8 +1037,13 @@
       card.appendChild(rs);
     }
 
+    /* 补充信息区：字义 / 小名 / 方言 / 同音替换 / 出处 / 热度条。
+     * 简洁模式下整块塞进卡片底部的 <details>，一屏能多看好几个名字。
+     * 用一层容器包住，折叠时只需移动一个节点。 */
+    var extra = el('div', 'nc-extra');
+
     /* 字义 */
-    card.appendChild(el('p', 'nc-meaning', item.meaning));
+    extra.appendChild(el('p', 'nc-meaning', item.meaning));
 
     /* 小名建议 —— 列出一组不同构词法的候选。
      * 用户反馈「小名也可以多样化，也不一定是叠词」：
@@ -1057,7 +1071,7 @@
       nick.appendChild(el('span', 'nc-nick-why',
         esc(nnList[0].pinyin) +
         (nnList[0].reasons.length ? '　' + esc(nnList[0].reasons.join(' · ')) : '')));
-      card.appendChild(nick);
+      extra.appendChild(nick);
     }
 
     /* 四川话提示 */
@@ -1073,7 +1087,7 @@
       sc.innerHTML = '四川话读作 <span class="sc-py">' +
         esc(item.sichuan.pinyin) + '</span>　' + parts.join('；') +
         '<span class="nc-nick-meta">（方言提示，不代表名字不好，请自行取舍）</span>';
-      card.appendChild(sc);
+      extra.appendChild(sc);
     }
 
     /* 同音替换：读音不变、五行尽量不变，换成更冷门的字 */
@@ -1104,7 +1118,7 @@
         (anyApprox ? '；<b>*</b> 为词库外同音字，五行按部首推断，仅供参考' : '') +
         '</span>');
       vbox.innerHTML = vparts.join('');
-      card.appendChild(vbox);
+      extra.appendChild(vbox);
     }
 
     /* 诗词出处。分级显示 —— 「出处成词」和「同篇出处」的含金量差很多，
@@ -1132,11 +1146,10 @@
       po.appendChild(document.createTextNode('「' + item.poetry.line + '」'));
       po.appendChild(el('span', 'src',
         '—— 《' + item.poetry.source + '》·' + item.poetry.title));
-      card.appendChild(po);
+      extra.appendChild(po);
     }
 
-    /* 底部：热度 + 五格摘要 */
-    var foot = el('div', 'nc-foot');
+    /* 底部信息：热度条 + 五格摘要 —— 属于补充信息，跟着折叠区走 */
     if (item.heat) {
       var heat = el('div', 'heat ' + item.heat.level);
       heat.appendChild(el('span', null, '重名热度'));
@@ -1146,15 +1159,20 @@
       track.appendChild(fill);
       heat.appendChild(track);
       heat.appendChild(el('span', null, item.heat.text));
-      foot.appendChild(heat);
+      extra.appendChild(heat);
     }
     if (item.wuge) {
       var wm = el('div', 'wuge-mini');
       wm.innerHTML = '天格 <b>' + item.wuge.天格 + '</b>　人格 <b>' +
         item.wuge.人格 + '</b>　地格 <b>' + item.wuge.地格 +
         '</b>　总格 <b>' + item.wuge.总格 + '</b>';
-      foot.appendChild(wm);
+      extra.appendChild(wm);
     }
+
+    /* 操作行：加入对比 / 加入候选池。
+     * 这两个不折叠 —— 「挑几个存进候选池」是主流程，
+     * 藏进 <details> 会让每一步都多一次点击。 */
+    var foot = el('div', 'nc-foot');
 
     /* 加入对比（跨批次保留，方便「换一批」后继续挑） */
     var pick = el('label', 'nc-pick');
@@ -1198,16 +1216,24 @@
     });
     foot.appendChild(poolBtn);
 
+    /* 补充信息放在操作行之前。行高顺序：名字 → 理由 → 补充信息 → 操作 → 详情 */
+    if (!state.compact) card.appendChild(extra);
     card.appendChild(foot);
 
-    /* 详情 */
+    /* 详情。简洁模式下这里还兼作「补充信息」的收纳处 ——
+     * 字义、小名、方言、同音替换、出处、热度条全塞进来，
+     * 卡片留在屏幕上不被遮的部分就只剩名字、分数、标签和一句理由。 */
     var more = document.createElement('details');
     more.className = 'more';
     var sum = document.createElement('summary');
-    sum.textContent = '查看详细分析';
+    sum.textContent = state.compact
+      ? '展开详情（字义 · 小名 · 出处 · 热度 · 五格）'
+      : '查看详细分析';
     more.appendChild(sum);
 
     var body = el('div', 'more-body');
+    /* 简洁模式才折叠；详细模式让 extra 平铺在卡片里，与旧版一致 */
+    if (state.compact) body.appendChild(extra);
 
     if (item.wuge) {
       var t = el('table', 'wuge-table');
@@ -1339,6 +1365,24 @@
     bar.appendChild(meta);
 
     var actions = el('div', 'actions');
+
+    /* 简洁模式开关。默认打开 —— 一屏能看好几个名字，
+     * 看中哪个再展开它的详情，比一上来就铺满长卡片好翻。
+     * 选择会记进填写记录，下次打开保持。 */
+    var densRow = el('label', 'check dens-toggle');
+    densRow.title = '折叠字义、小名、出处与五格，一屏显示更多名字';
+    var densCb = document.createElement('input');
+    densCb.type = 'checkbox';
+    densCb.checked = !!state.compact;
+    densCb.addEventListener('change', function () {
+      state.compact = densCb.checked;
+      renderPage();
+      savePrefsNow();
+    });
+    densRow.appendChild(densCb);
+    densRow.appendChild(el('span', null, '简洁模式'));
+    actions.appendChild(densRow);
+
     var copyBtn = el('button', 'btn ghost', '复制这一批');
     copyBtn.type = 'button';
     copyBtn.addEventListener('click', function () {
@@ -1357,25 +1401,7 @@
     stack.appendChild(bar);
 
     /* 分页条：候选已经过一次多样性排序，往后翻依然是不雷同的名字 */
-    var pager = el('div', 'pager');
-    var pagerNote = el('span', 'pager-note', '');
-    pager.appendChild(pagerNote);
-    var pagerBtns = el('div', 'pager-btns');
-    var prevBtn = el('button', 'btn ghost', '上一批');
-    prevBtn.type = 'button';
-    prevBtn.id = 'pagePrev';
-    var posLabel = el('span', 'pager-pos', '');
-    posLabel.id = 'pagePos';
-    var nextBtn = el('button', 'btn ghost', '换一批');
-    nextBtn.type = 'button';
-    nextBtn.id = 'pageNext';
-    prevBtn.addEventListener('click', function () { turnPage(-1); });
-    nextBtn.addEventListener('click', function () { turnPage(1); });
-    pagerBtns.appendChild(prevBtn);
-    pagerBtns.appendChild(posLabel);
-    pagerBtns.appendChild(nextBtn);
-    pager.appendChild(pagerBtns);
-    stack.appendChild(pager);
+    stack.appendChild(buildPager(true));
 
     /* 关键词筛选：五行/音韵的权重高于寓意，所以命中关键词的字未必能排进前列。
      * 与其悄悄埋没关键词，不如给用户一个「只看命中关键词」的开关。 */
@@ -1406,12 +1432,48 @@
     list.id = 'resultList';
     stack.appendChild(list);
 
+    /* 底部再来一条：名字一路看完想换下一批时，不必再翻回页面顶部 */
+    stack.appendChild(buildPager(false));
+
     var cmpBox = el('div', 'compare-box');
     cmpBox.id = 'compareBox';
     stack.appendChild(cmpBox);
 
     root.appendChild(stack);
     renderPage();
+  }
+
+  /**
+   * 分页条。上、下各一条。
+   *
+   * 用 class 而不是 id：一个文档里 id 只能有一个，
+   * 而 updatePageBar 要同时更新两条（按钮文案、当前位置、禁用状态）。
+   *
+   * @param {boolean} withNote 是否附上「候选共 N 个…」那行长说明。
+   *                           只在顶部显示一次，底部那条要短。
+   */
+  function buildPager(withNote) {
+    var pager = el('div', 'pager ' + (withNote ? 'pager-top' : 'pager-bottom'));
+
+    if (withNote) pager.appendChild(el('span', 'pager-note', ''));
+
+    var btns = el('div', 'pager-btns');
+
+    var prev = el('button', 'btn ghost pager-prev', '上一批');
+    prev.type = 'button';
+    prev.addEventListener('click', function () { turnPage(-1); });
+
+    var pos = el('span', 'pager-pos', '');
+
+    var next = el('button', 'btn ghost pager-next', '换一批');
+    next.type = 'button';
+    next.addEventListener('click', function () { turnPage(1); });
+
+    btns.appendChild(prev);
+    btns.appendChild(pos);
+    btns.appendChild(next);
+    pager.appendChild(btns);
+    return pager;
   }
 
   /* ---------------- 分页 ---------------- */
@@ -1479,13 +1541,18 @@
     var total = state.ranking.length;
     var pages = Math.max(1, Math.ceil(total / size));
     var from = state.page * size;
+    var atStart = state.page <= 0;
+    var atEnd = state.page >= pages - 1;
 
-    var pos = $('pagePos');
-    if (pos) pos.textContent = '第 ' + (state.page + 1) + ' / ' + pages + ' 批';
-
-    var prev = $('pagePrev'), next = $('pageNext');
-    if (prev) prev.disabled = state.page <= 0;
-    if (next) next.disabled = state.page >= pages - 1;
+    var posText = '第 ' + (state.page + 1) + ' / ' + pages + ' 批';
+    each('.pager-pos', function (n) { n.textContent = posText; });
+    each('.pager-prev', function (b) { b.disabled = atStart; });
+    /* 末页不让「换一批」变成死按钮 —— 用户会以为坏了。
+     * 改成「回到第一批」，点了从头再挑，正好是那一刻想干的事。 */
+    each('.pager-next', function (b) {
+      b.disabled = false;
+      b.textContent = atEnd ? '回到第一批' : '换一批';
+    });
 
     var note = document.querySelector('.pager-note');
     if (note) {
@@ -1496,16 +1563,30 @@
     }
   }
 
+  /** 对所有匹配元素执行 fn（分页条有上、下两条，不能再用 id 取） */
+  function each(sel, fn) {
+    Array.prototype.forEach.call(document.querySelectorAll(sel), fn);
+  }
+
   function turnPage(delta) {
     var size = state.lastOpts.top;
     var pages = Math.max(1, Math.ceil(state.ranking.length / size));
     var t = state.page + delta;
-    if (t < 0 || t >= pages) return;
+    /* 末页再点「换一批」= 回到第一批（与按钮文案一致），不然是空操作 */
+    if (t >= pages) t = 0;
+    if (t < 0) t = 0;
     state.page = t;
     renderPage();
-    var sec = $('results');
-    if (sec && sec.scrollIntoView) {
-      sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    /* 滚到列表开头，而不是整个 #results 顶部 ——
+     * 后者会把八字面板和工具条也推上来，新一批的名字反而在屏幕外。
+     *
+     * 用 behavior:'auto'（瞬时）而不是 'smooth'：平滑滚动靠动画帧推进，
+     * 页面在后台标签页时根本不跑，表现就是「点了没反应」——
+     * 实测在同一页面上 'auto' 立刻到位、'smooth' 纹丝不动。
+     * 何况「换一批」本来就是想看新内容，瞬时更跟手。 */
+    var anchor = $('resultList') || $('results');
+    if (anchor && anchor.scrollIntoView) {
+      anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
     }
   }
 

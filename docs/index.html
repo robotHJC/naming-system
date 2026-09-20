@@ -1034,7 +1034,7 @@ details.more > summary:hover { color: var(--jade); }
   font-variant-numeric: tabular-nums;
 }
 
-.result-bar .actions { display: flex; gap: 8px; }
+.result-bar .actions { display: flex; gap: 8px; align-items: center; }
 
 /* 错误提示 */
 .alert {
@@ -1414,6 +1414,80 @@ details.more > summary:hover { color: var(--jade); }
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------- 底部那条分页 ---------------- */
+
+/* 名字一路看完，滚到底部就地换一批，不用再翻回页面顶部。
+ * 「换一批」做成实心主按钮：这里是整个底部唯一想让人点的东西，
+ * 用 ghost 白底按钮会和「加入对比」「加入候选池」混成一片。
+ * 同时撑到 42px 高 —— 底部按钮是手指最常点的地方。 */
+.pager-bottom {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.pager-bottom .pager-btns {
+  flex: 1;
+  justify-content: space-between;
+}
+
+.pager-bottom .btn {
+  min-height: 42px;
+  padding: 10px 18px;
+}
+
+.pager-bottom .pager-next {
+  background: linear-gradient(135deg, var(--jade) 0%, var(--jade-light) 100%);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 16px -9px rgba(47, 93, 80, .9);
+}
+
+.pager-bottom .pager-next:hover:not(:disabled) {
+  color: #fff;
+  border-color: transparent;
+  transform: translateY(-1px);
+}
+
+/* ---------------- 结果工具条里的「简洁模式」开关 ---------------- */
+
+/* .check 已经是 flex + 居中了，这里只补不换行与分隔感，
+ * 否则窄屏上「简洁模式」四个字会和「复制这一批」挤成一团 */
+.dens-toggle {
+  white-space: nowrap;
+  padding-right: 6px;
+  margin-right: 2px;
+  border-right: 1px solid var(--line);
+}
+
+/* ---------------- 简洁模式的名字卡片 ---------------- */
+
+/* 折叠掉字义/小名/出处/热度条/五格之后，卡片本来就矮了一大截，
+ * 这里再把内边距与评分环收紧一点，一屏能多放两三个名字。 */
+.name-card.compact {
+  padding: 13px 16px 11px;
+}
+
+.name-card.compact .nc-head { gap: 10px; }
+.name-card.compact .nc-reasons { margin-top: 8px; }
+
+.name-card.compact .score-ring {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+}
+
+.name-card.compact .score-ring::after { inset: 5px; }
+.name-card.compact .score-ring .num { font-size: 16.5px; }
+.name-card.compact .score-ring .unit { font-size: 8.5px; margin-top: 1px; }
+
+.name-card.compact .nc-foot { margin-top: 8px; padding-top: 9px; }
+.name-card.compact .more { margin-top: 8px; }
+
+/* 简洁模式下 <details> 里装着折叠起来的补充信息，
+ * 展开时让它和下面的五格表之间有正常间距 */
+.name-card.compact .more-body .nc-extra { margin-bottom: 6px; }
 
 /* ---------------- 并排对比 ---------------- */
 
@@ -2126,11 +2200,6 @@ details.more > summary:hover { color: var(--jade); }
        <b>该数据来自第三方项目且未声明授权，个别读音与成都话有出入，因此只做提示、不淘汰。</b></p>
     <p><b>关于出生城市</b>　内置 234 个城市经纬度，选城市自动填经度。
        经度差 1° = 真太阳时差 4 分钟，会影响时柱乃至日柱，填了更准。</p>
-    <p><b>关于结果排序</b>　结果不是单纯按分数从高到低排。完全按分数排会出现
-       「前 10 名全部以同一个字开头」——那是一个字 + 十种搭配，不是一个候选集。
-       因此系统加了「同位不重字」约束：按分数从高到低扫描，限制同一个字在同一个位置
-       出现的次数，首字全不重复的一批先给出来。<b>所以名次靠前的分数不一定严格递减</b>，
-       这是为了让你看到真正不同的选择。点「换一批」可以一直往后看。</p>
     <p><b>关于同音替换</b>　嫌某个字这些年被用滥了，可以看「同音可换」——
        推荐的替换字与原名读音相同、五行一致（换完八字的补益关系不变），
        并优先给出热度更低的字。每条都标出了换成之后的总分变化。
@@ -2156,6 +2225,29 @@ details.more > summary:hover { color: var(--jade); }
     <p><b>关于字库</b>　内置 <span class="lib-count">?</span> 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
        可在「词库管理」里联网更新：拉取公开的汉字拼音表、新华字典与诗词库，
        并把字库外的字加入进来。数据缓存在浏览器本地，更新一次后离线也可用。</p>
+    <p><b>关于结果排序</b>　结果不是单纯按分数从高到低排。完全按分数排会出现
+       「前 10 名全部以同一个字开头」——那是一个字 + 十种搭配，不是一个候选集。
+       因此系统加了「同位不重字」约束：按分数从高到低扫描，限制同一个字在同一个位置
+       出现的次数，首字全不重复的一批先给出来。所以名次靠前的分数不一定严格递减，
+       这是为了让你看到真正不同的选择。</p>
+    <p><b>关于列表显示</b>　分页条<b>上下各有一条</b>，名字一路看完可以<b>就地换一批</b>，
+       不用再翻回页面顶部。翻页后视图会跳到新一批的第一个名字。
+       末页的「换一批」会变成「回到第一批」，点了从头再挑 ——
+       不做成灰色死按钮，是因为那种按钮看上去像坏了。
+       <b>简洁模式</b>默认打开：名字卡片只留名字、分数、标签与一句理由，
+       字义、小名、出处、热度条、五格都收进卡片底部的「展开详情」。
+       实测一屏能看的名字从 1 个变成 3 个，滚到底的距离缩短约六成。
+       想看完整分析时，取消勾选即可；这个选择会被记住。</p>
+    <p><b>关于字库口径</b>　内置字库的康熙笔画与五行是<b>逐字人工核定</b>的，
+       不是按规则推算的。原因：康熙笔画没有权威公开数据集，
+       而「简体笔画 + 部首修正」这条规则拿库内 415 个字反向验证只有 76% 命中
+       （氵 78%、钅 73%、忄 67%、亻 64%、月 20%），
+       照它批量生成会静默填错约四分之一的笔画 ——
+       笔画错了会同时污染三才五格与姓名卦，而且不会有任何报错。
+       所以新增用字只收「繁体写法与简体相同」、且规则推算与实算结果一致的字；
+       像「庆→慶」「莲→蓮」这类整体简化的字，宁可不收（除非按真正的繁体笔画录入）。
+       五行归属照抄库内既有口径，例如<b>王字旁归金</b>（库内 21 个字里 20 个是金），
+       而不是按「王属土」的直觉。</p>
     <p><b>关于出处分级</b>　诗词出处分成五档，含金量差很多，卡片上会标出来：
        <b>出处成词</b>指名字的两个字在某一句诗里<b>紧挨着、顺序相同</b>地出现过
        （如「嘉树」← 楚辞「后皇嘉树」，「若水」← 老子「上善若水」）；
@@ -2462,7 +2554,140 @@ details.more > summary:hover { color: var(--jade); }
     '健|jian|4|木|男|大气|健行，寓意强健|11',
     '举|ju|3|木|男|文雅|举安，寓意担当|17',
     '朝|zhao|1|金|中性|大气|朝阳，寓意向上|12',
-    '光|guang|1|火|中性|大气|光明，寓意晴朗|6'
+    '光|guang|1|火|中性|大气|光明，寓意晴朗|6',
+
+    /* =====================================================================
+     * 第三批：75 字
+     *
+     * 这批量是按「可复算」的方式加进来的，不是凭记忆填笔画。
+     * 做法见 tools/_gen-chars.js：
+     *   1. 先从新华字典（pwxcoo/chinese-xinhua）取权威的 部首 + 简体笔画
+     *   2. 用 OpenCC（BYVoid/OpenCC）判断该字是否有不同写法的繁体；
+     *      有（庆→慶、莲→蓮、骏→駿…）就**直接剔除**——
+     *      这类字 康熙笔画 ≠ 简体 + 部首修正，算不准就不收
+     *   3. 剩下的按 康熙笔画 = 简体笔画 + 部首修正 算，再逐字与我自己
+     *      按康熙部件数的实算结果核对，**两边一致才收**
+     *
+     * 为什么要这么麻烦：tools/_verify-strokes.js 拿库里 415 个手工核定的字
+     * 反向验证过这条规则，整体只有 76% 命中（氵 78%、钅 73%、木 75%、
+     * 忄 67%、亻 64%、月 20%）。也就是说凭规则批量生成会静默填错四分之一的
+     * 笔画，而笔画错了会同时污染三才五格与姓名卦，且不会有任何报错。
+     *
+     * 五行归属照抄库内既有的主流口径（tools/_wx.js 统计）：
+     *   艹/竹→木（库内 100%）、氵/雨→水（100%）、日/火/忄→火（100%/100%/67%）
+     *   王→**金**（库内 21 个字里 20 个是金，不是土）、女→土（91%）、山→土（100%）
+     *   亻/宀/广/羽/隹/鹿→土、白/斤/戈→金、彡→木 —— 这几个库内样本少或本来就
+     *   混杂，按 core/infer.js 的部首表与字义定，已在各段注明。
+     * ===================================================================== */
+
+    /* ---------------- 艹（木，康熙 = 简体 + 3） ---------------- */
+    '艾|ai|4|木|女|文雅,自然|艾草，寓意清雅康宁|8',
+    '茴|hui|2|木|中性|文雅|茴香，寓意芬芳绵长|12',
+    '莉|li|4|木|女|温柔,文雅|茉莉，寓意清香美好|13',
+    '菊|ju|2|木|女|古风,清冷|菊花，寓意高洁隐逸|14',
+    '蓁|zhen|1|木|中性|古风,文雅|草木茂盛，寓意繁茂|16',
+    '蕊|rui|3|木|女|温柔,灵动|花蕊，寓意含苞初绽|18',
+
+    /* ---------------- 氵（水，康熙 = 简体 + 1） ---------------- */
+    '沅|yuan|2|水|中性|古风,清冷|沅江，楚辞中的水名|8',
+    '津|jin|1|水|中性|文雅|渡口，寓意通达|10',
+    '洪|hong|2|水|男|大气|洪大，寓意宽广|10',
+    '浚|xun|4|水|男|文雅|疏浚，寓意深邃|11',
+    '浦|pu|3|水|中性|自然,文雅|水滨，寓意清朗|11',
+    '深|shen|1|水|男|简约|深邃，寓意深厚|12',
+    '渤|bo|2|水|男|大气|渤海，寓意浩瀚|13',
+    '湛|zhan|4|水|男|清冷,文雅|清澈，寓意澄明|13',
+    '澄|cheng|2|水|中性|清冷,文雅|澄澈，寓意清明|16',
+    '瀚|han|4|水|男|大气|瀚海，寓意广阔|20',
+
+    /* ---------------- 木（木，康熙 = 简体） ---------------- */
+    '杉|shan|1|木|中性|自然,简约|杉树，寓意挺拔|7',
+    '栩|xu|3|木|中性|文雅,灵动|栩栩，寓意生动|10',
+    '梧|wu|2|木|中性|自然,文雅|梧桐，寓意高洁|11',
+    '楚|chu|3|木|中性|古风,文雅|楚，清晰齐整|13',
+    '槐|huai|2|木|男|自然,古风|槐树，寓意荫庇|13',
+    '檀|tan|2|木|中性|古风,文雅|檀木，寓意芬芳坚实|17',
+
+    /* ---------------- 竹（木，康熙 = 简体） ---------------- */
+    '竺|zhu|2|木|中性|古风,简约|天竺，寓意高远|8',
+    '笙|sheng|1|木|中性|古风,文雅|笙，乐器，寓意和乐|11',
+    '筠|jun|1|木|女|古风,清冷|筠竹，寓意坚韧|13',
+    '筱|xiao|3|木|女|古风,清冷|细竹，寓意清雅|13',
+    '箐|qing|4|木|中性|自然,清冷|竹木丛生的山谷|14',
+    '篁|huang|2|木|中性|古风,清冷|竹林，寓意幽静|15',
+    '篆|zhuan|4|木|男|古风,文雅|篆书，寓意文雅|15',
+
+    /* ---------------- 日（火，康熙 = 简体） ---------------- */
+    '昶|chang|3|火|男|古风,大气|日长，寓意舒畅|9',
+    '春|chun|1|火|中性|自然|春天，寓意生机|9',
+    '曙|shu|3|火|男|大气|曙光，寓意希望|17',
+
+    /* ---------------- 火（火，康熙 = 简体） ---------------- */
+    '炅|jiong|3|火|中性|灵动|光明，寓意明亮|8',
+    '焱|yan|4|火|男|大气|火花，寓意炽盛|12',
+    '焜|kun|1|火|男|古风,大气|明亮，寓意光辉|12',
+    '煊|xuan|1|火|男|大气|温暖光明，寓意显赫|13',
+    '熠|yi|4|火|男|文雅,灵动|光耀，寓意闪耀|15',
+
+    /* ---------------- 王（金，康熙 = 简体 + 1：楷书作玉部） ----------------
+     * 「王」在姓名学里按 玉部 计（康熙 玉 = 5 画），不按 王 = 4 画。
+     * 库内 21 个王部字里 20 个归金，这里照此办理。 */
+    '玟|min|2|金|女|温柔,文雅|美石，寓意温润|9',
+    '琮|cong|2|金|男|古风,文雅|瑞玉，寓意端方|13',
+    '瑀|yu|3|金|中性|古风,清冷|美玉，寓意高洁|14',
+
+    /* ---------------- 女（土，康熙 = 简体） ---------------- */
+    '妤|yu|2|土|女|温柔,文雅|婕妤，寓意美好|7',
+    '妮|ni|1|土|女|温柔,灵动|妮子，寓意亲昵|8',
+    '姚|yao|2|土|女|古风,文雅|美好，寓意仪态|9',
+    '婕|jie|2|土|女|文雅|婕妤，汉代女官|11',
+    '媛|yuan|2|土|女|温柔,文雅|美女，寓意美好|12',
+
+    /* ---------------- 雨（水，康熙 = 简体） ---------------- */
+    '雷|lei|2|水|男|大气|雷，寓意声势|13',
+    '霜|shuang|1|水|女|清冷,古风|霜，寓意高洁|17',
+    '霞|xia|2|水|女|自然|云霞，寓意绚烂|17',
+
+    /* ---------------- 忄（火，康熙 = 简体 + 1） ---------------- */
+    '忻|xin|1|火|中性|文雅|欣悦，寓意欢欣|8',
+    '忱|chen|2|火|男|文雅|真诚，寓意赤诚|8',
+    '恪|ke|4|火|男|文雅|谨慎恭敬，寓意持守|10',
+    '惟|wei|2|火|中性|文雅,简约|思考，寓意缜密|12',
+    '惜|xi|1|火|女|温柔,文雅|珍惜，寓意珍重|12',
+    '憧|chong|1|火|男|灵动|憧憬，寓意向往|16',
+    '憬|jing|3|火|男|文雅|憬悟，寓意觉悟|16',
+
+    /* ---------------- 心（火） ---------------- */
+    '慈|ci|2|火|女|温柔|慈爱，寓意仁厚|13',
+
+    /* ---------------- 羽（土，与库内 2/3 一致） ---------------- */
+    '翀|chong|1|土|男|古风,大气|直上飞，寓意高飞|10',
+    '翎|ling|2|土|中性|文雅,灵动|翎毛，寓意华美|11',
+    '翼|yi|4|土|男|大气|羽翼，寓意辅佐|17',
+
+    /* ---------------- 亻（土，库内 5/11，与文件开头「亻→多土」一致） ---------------- */
+    '佑|you|4|土|男|古风,文雅|护佑，寓意庇佑|7',
+    '侃|kan|3|土|男|文雅|刚直，寓意正直|8',
+    '信|xin|4|土|男|文雅|诚信，寓意守信|9',
+    '儒|ru|2|土|男|文雅,古风|儒雅，寓意博学|16',
+
+    /* ---------------- 宀 / 广（土，库内 4/9 与「宀→多土」一致） ---------------- */
+    '宏|hong|2|土|男|大气|宏大，寓意宽广|7',
+    '序|xu|4|土|男|简约,文雅|次序，寓意条理|7',
+    '康|kang|1|土|男|简约|安康，寓意健康|11',
+
+    /* ---------------- 鹿（土，按字义） ---------------- */
+    '麒|qi|2|土|男|古风,大气|麒麟，寓意祥瑞|19',
+    '麟|lin|2|土|男|古风,大气|麒麟，寓意祥瑞|23',
+
+    /* ---------------- 其他按字义定的单字 ---------------- */
+    '雄|xiong|2|土|男|大气|雄健，寓意气魄|12',      /* 隹部 → 土（库内 1 土 1 木） */
+    '皓|hao|4|金|男|大气,文雅|洁白光明，寓意皎洁|12', /* 白部 → 金（infer.js 白归金） */
+    '成|cheng|2|金|男|简约|成就，寓意为功|6',        /* 戈部 → 金（infer.js 戈归金） */
+    '斯|si|1|金|中性|文雅,简约|斯，文言雅词|12',      /* 斤部 → 金（infer.js 斤归金） */
+    '新|xin|1|金|中性|简约|更新，寓意常新|13',
+    '良|liang|2|土|男|文雅,简约|善良，寓意贤良|7',    /* 艮部 → 土（艮属山） */
+    '彬|bin|1|木|男|文雅|文质彬彬，寓意文雅|11'       /* 彡部 → 木（从「林」） */
   ];
 
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -3308,7 +3533,51 @@ details.more > summary:hover { color: var(--jade); }
     '瑶|84', '志|84', '阳|84', '月|78', '溪|74', '兰|72', '程|70', '墨|70',
     '泰|66', '承|66', '天|64', '毅|62', '健|58', '诚|60', '光|58', '正|58',
     '朝|56', '如|52', '立|50', '越|48', '树|46', '弘|46', '齐|44', '月|78',
-    '汀|34', '菱|28', '牧|30', '野|26', '有|24', '守|26', '愚|22', '举|18'
+    '汀|34', '菱|28', '牧|30', '野|26', '有|24', '守|26', '愚|22', '举|18',
+
+    /* —— 漏网补录（一）：这 82 个字**一直在字库里**，但热度表漏了它们 ——
+     *
+     * 这不是「少几分」那么轻的问题：
+     *   1. 卡片上会显示「重名热度 35」，而 35 是 DEFAULT_HEAT
+     *      （未收录字的兜底值）。安、星、言、知、玉 被标成 35
+     *      是明白无误的错误信息，用户会当真。
+     *   2. 评分上它们落进「太冷门」档（<40 → comfort 0.15），
+     *      在「现代感」这个 18 分的大项里被反复扣分。
+     *      也就是说字在库里，系统却一直劝你别用。
+     *
+     * 用 tests/audit-library.js 发现，它会把「缺热度」全部列出来。
+     * 口径与全表一致：人工估的参考值，不是真实重名率数据。 */
+    /* 当代高频 */
+    '安|90', '言|85', '玉|84', '知|82', '优|82',
+    '金|78', '念|78', '容|78', '荣|78', '微|78', '朗|74', '楠|74',
+    '苏|72', '温|72', '修|70', '星|88', '若|88',
+    /* 常见 */
+    '茜|68', '松|68', '汐|68', '菲|66', '蓉|66', '舟|62', '芸|62',
+    '望|62', '遥|62', '冬|62', '荷|62', '淇|62', '茂|62', '萍|60',
+    '寒|60', '芝|58', '洲|58', '淳|58', '恬|58', '恺|58', '棠|56',
+    '梵|55', '禾|55', '律|55', '圣|55', '廷|52', '灏|52', '蓓|52',
+    '蕙|50', '茗|50', '岑|48', '迎|48', '蔓|48', '槿|46', '迅|45',
+    '伶|44', '幽|44', '琅|42', '逢|42', '遇|42', '泠|40', '潜|40',
+    '榆|40', '苓|38', '旻|38', '晞|36', '珩|34', '莘|34', '瑄|34',
+    '荀|34', '逍|34', '芩|30', '荃|32', '琬|32', '菀|30', '蘅|30',
+    '帝|28', '逐|28', '遨|26', '琚|26', '荇|24', '逾|24', '玦|22',
+    '沚|20', '涘|18',
+
+    /* —— 漏网补录（二）：本轮新增的 75 字（与 chars-extra.js 一一对应）—— */
+    /* 高频 */
+    '莉|74', '春|70', '成|68', '宏|66', '康|66', '霞|62', '艾|62',
+    '深|62', '澄|62', '新|62', '信|60', '洪|58', '慈|58', '良|58',
+    /* 常见 */
+    '蕊|56', '楚|56', '媛|56', '雷|56', '皓|56', '雄|56', '彬|56',
+    '菊|52', '杉|52', '妮|52', '序|52', '霜|52',
+    '瀚|48', '姚|48', '惜|48', '佑|48', '津|46', '惟|46',
+    '儒|44', '栩|44', '梧|44', '斯|44', '翼|44', '妤|44',
+    '浦|40', '槐|40', '檀|40', '玟|40', '渤|38', '婕|38', '煊|38',
+    '筱|38', '湛|36', '笙|36', '筠|36', '侃|34', '沅|34', '竺|34',
+    '昶|34', '焱|34', '翎|34', '麒|34', '麟|34',
+    '浚|32', '恪|32', '忻|32', '熠|32', '曙|32',
+    '茴|30', '蓁|30', '琮|28', '忱|28', '篆|28',
+    '篁|26', '炅|26', '焜|26', '憧|26', '憬|26', '箐|24', '翀|24', '瑀|22'
   ];
 
   NS.HEAT = (function () {
@@ -4552,17 +4821,17 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '氵',
       label: '三点水 / 水字底',
-      chars: '淼清澈涵澜波洋海江河湖涛潮汐洛潇湘渭源渊泽润泓沛沁沐灏潜水洲涘沚温浩淇淳泠淑洁溪汀'
+      chars: '淼清澈涵澜波洋海江河湖涛潮汐洛潇湘渭源渊泽润泓沛沁沐灏潜水洲涘沚温浩淇淳泠淑洁溪汀沅津洪浚浦深渤湛澄瀚'
     },
     {
       name: '木',
       label: '木字旁',
-      chars: '梓楠森林栋梁楷松柏桐枫梅桃桂梦桦杰权榛栗榕棋棠槿榆梵树'
+      chars: '梓楠森林栋梁楷松柏桐枫梅桃桂梦桦杰权榛栗榕棋棠槿榆梵树杉栩梧楚槐檀'
     },
     {
       name: '艹',
       label: '草字头',
-      chars: '若芸芮芊芷菡茉茵菁苏荣茂萱蕙蕴薇蕾苍蔚芝芳菲萌萍荇芩苓蔓蘅茗茜荀荷蓉莘荃菀蓝菱兰蓓'
+      chars: '若芸芮芊芷菡茉茵菁苏荣茂萱蕙蕴薇蕾苍蔚芝芳菲萌萍荇芩苓蔓蘅茗茜荀荷蓉莘荃菀蓝菱兰蓓艾茴莉菊蓁蕊'
     },
     {
       name: '钅',
@@ -4572,17 +4841,17 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '日',
       label: '日字旁',
-      chars: '晗昕昊昱晟曦曜晖暖明昭旭景晴智晨星旻晞'
+      chars: '晗昕昊昱晟曦曜晖暖明昭旭景晴智晨星旻晞昶春曙'
     },
     {
       name: '羽',
       label: '羽字旁',
-      chars: '翠翔羽'
+      chars: '翠翔羽翀翎翼'
     },
     {
       name: '火',
       label: '火字旁 / 四点底',
-      chars: '炎焕灿烨烁煜炜炯熙炫照然灵'
+      chars: '炎焕灿烨烁煜炜炯熙炫照然灵炅焱焜煊熠'
     },
     {
       name: '山',
@@ -4592,7 +4861,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '王',
       label: '王字旁',
-      chars: '瑞珊珠珍珂琪瑾琛珺珏瑛瑜琬珩璇璐琚玥瑄琅玦琳琦瑶玉'
+      chars: '瑞珊珠珍珂琪瑾琛珺珏瑛瑜琬珩璇璐琚玥瑄琅玦琳琦瑶玉玟琮瑀'
     },
     {
       name: '土',
@@ -4602,22 +4871,22 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '亻',
       label: '单人旁',
-      chars: '伶依伟优佳倩仙仟化俊健'
+      chars: '伶依伟优佳倩仙仟化俊健佑侃信儒'
     },
     {
       name: '雨',
       label: '雨字头',
-      chars: '雨雪霖霏露霆霄雯'
+      chars: '雨雪霖霏露霆霄雯雷霜霞'
     },
     {
       name: '宀',
       label: '宝盖头',
-      chars: '宁宇安宜容宣寒宸守'
+      chars: '宁宇安宜容宣寒宸守宏'
     },
     {
       name: '竹',
       label: '竹字头',
-      chars: '竹笛简策箫'
+      chars: '竹笛简策箫竺笙筠筱箐篁篆'
     },
     {
       name: '刂',
@@ -4627,12 +4896,12 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '忄',
       label: '竖心旁',
-      chars: '恺恬悦恒忆怡'
+      chars: '恺恬悦恒忆怡忻忱恪惟惜憧憬'
     },
     {
       name: '心',
       label: '心字底 / 心',
-      chars: '念恩惠慧心思悠志愚'
+      chars: '念恩惠慧心思悠志愚慈'
     },
     {
       name: '禾',
@@ -4642,7 +4911,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '彡',
       label: '三撇旁',
-      chars: '彤彦'
+      chars: '彤彦彬'
     },
     {
       name: '彳',
@@ -4652,7 +4921,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '女',
       label: '女字旁',
-      chars: '嫣婉娅姗妍姝婷娟娜如'
+      chars: '嫣婉娅姗妍姝婷娟娜如妤妮姚婕媛'
     },
     {
       name: '纟',
@@ -4693,6 +4962,31 @@ details.more > summary:hover { color: var(--jade); }
       name: '囗',
       label: '国字框',
       chars: '圆园'
+    },
+    {
+      name: '鹿',
+      label: '鹿字旁',
+      chars: '麒麟'
+    },
+    {
+      name: '斤',
+      label: '斤字旁',
+      chars: '斯新'
+    },
+    {
+      name: '广',
+      label: '广字头',
+      chars: '康序'
+    },
+    {
+      name: '月',
+      label: '月字旁',
+      chars: '月有朝'
+    },
+    {
+      name: '青',
+      label: '青字旁',
+      chars: '青静'
     }
   ];
 
@@ -10349,6 +10643,8 @@ details.more > summary:hover { color: var(--jade); }
     /* 状态（不在 input 里，单独存） */
     gender: 1, givenLength: 1, xiManual: 1, radPicked: 1, radCustom: 1,
     radMode: 1,
+    /* 结果列表的「简洁模式」开关（名字卡片默认折叠，一屏能多看好几个） */
+    compact: 1,
     /* 候选池 / 评估页的生辰输入，按前缀区分 */
     evBirth: 1, evLongitude: 1, evUseTST: 1, evGender: 1,
     plBirth: 1, plLongitude: 1, plUseTST: 1, plGender: 1,
@@ -12523,6 +12819,10 @@ details.more > summary:hover { color: var(--jade); }
     ctx: null,
     page: 0,
     onlyKw: false,
+    /* 简洁模式：名字卡片折叠掉字义/小名/出处/五格。
+     * 用户的原始抱怨是「想换下一批还得翻回最上面」——
+     * 页面越短这个问题越轻，所以默认打开。 */
+    compact: true,
     /* 勾选待对比的名字（跨批次保留） */
     picked: [],
     /* 选中的偏好部首（按钮选的；手输的另算） */
@@ -12672,6 +12972,7 @@ details.more > summary:hover { color: var(--jade); }
     });
     p.gender = state.gender;
     p.givenLength = state.givenLength;
+    p.compact = !!state.compact;
     p.xiManual = Object.keys(state.xiManual);
     p.radPicked = state.radPicked.slice();
     var rc = $('radCustom');
@@ -12739,6 +13040,9 @@ details.more > summary:hover { color: var(--jade); }
       var ra = $('radAll');
       if (ra) ra.checked = (p.radMode === 'all');
     }
+    /* 简洁模式是界面偏好，不代表「填了内容」，所以不计入 any ——
+     * 否则只存过这一个开关也会提示「已恢复上次填写的条件」。 */
+    if (p.compact !== undefined) state.compact = !!p.compact;
     return any;
   }
 
@@ -13411,7 +13715,8 @@ details.more > summary:hover { color: var(--jade); }
   }
 
   function renderNameCard(item, rank) {
-    var card = el('div', 'panel name-card');
+    /* compact 类给 CSS 用：简洁模式下收紧内边距与行距 */
+    var card = el('div', 'panel name-card' + (state.compact ? ' compact' : ''));
 
     /* 同音替换建议：卡片摘要与详细分析共用一次计算，避免重复评分 */
     var variants = state.ctx
@@ -13500,8 +13805,13 @@ details.more > summary:hover { color: var(--jade); }
       card.appendChild(rs);
     }
 
+    /* 补充信息区：字义 / 小名 / 方言 / 同音替换 / 出处 / 热度条。
+     * 简洁模式下整块塞进卡片底部的 <details>，一屏能多看好几个名字。
+     * 用一层容器包住，折叠时只需移动一个节点。 */
+    var extra = el('div', 'nc-extra');
+
     /* 字义 */
-    card.appendChild(el('p', 'nc-meaning', item.meaning));
+    extra.appendChild(el('p', 'nc-meaning', item.meaning));
 
     /* 小名建议 —— 列出一组不同构词法的候选。
      * 用户反馈「小名也可以多样化，也不一定是叠词」：
@@ -13529,7 +13839,7 @@ details.more > summary:hover { color: var(--jade); }
       nick.appendChild(el('span', 'nc-nick-why',
         esc(nnList[0].pinyin) +
         (nnList[0].reasons.length ? '　' + esc(nnList[0].reasons.join(' · ')) : '')));
-      card.appendChild(nick);
+      extra.appendChild(nick);
     }
 
     /* 四川话提示 */
@@ -13545,7 +13855,7 @@ details.more > summary:hover { color: var(--jade); }
       sc.innerHTML = '四川话读作 <span class="sc-py">' +
         esc(item.sichuan.pinyin) + '</span>　' + parts.join('；') +
         '<span class="nc-nick-meta">（方言提示，不代表名字不好，请自行取舍）</span>';
-      card.appendChild(sc);
+      extra.appendChild(sc);
     }
 
     /* 同音替换：读音不变、五行尽量不变，换成更冷门的字 */
@@ -13576,7 +13886,7 @@ details.more > summary:hover { color: var(--jade); }
         (anyApprox ? '；<b>*</b> 为词库外同音字，五行按部首推断，仅供参考' : '') +
         '</span>');
       vbox.innerHTML = vparts.join('');
-      card.appendChild(vbox);
+      extra.appendChild(vbox);
     }
 
     /* 诗词出处。分级显示 —— 「出处成词」和「同篇出处」的含金量差很多，
@@ -13604,11 +13914,10 @@ details.more > summary:hover { color: var(--jade); }
       po.appendChild(document.createTextNode('「' + item.poetry.line + '」'));
       po.appendChild(el('span', 'src',
         '—— 《' + item.poetry.source + '》·' + item.poetry.title));
-      card.appendChild(po);
+      extra.appendChild(po);
     }
 
-    /* 底部：热度 + 五格摘要 */
-    var foot = el('div', 'nc-foot');
+    /* 底部信息：热度条 + 五格摘要 —— 属于补充信息，跟着折叠区走 */
     if (item.heat) {
       var heat = el('div', 'heat ' + item.heat.level);
       heat.appendChild(el('span', null, '重名热度'));
@@ -13618,15 +13927,20 @@ details.more > summary:hover { color: var(--jade); }
       track.appendChild(fill);
       heat.appendChild(track);
       heat.appendChild(el('span', null, item.heat.text));
-      foot.appendChild(heat);
+      extra.appendChild(heat);
     }
     if (item.wuge) {
       var wm = el('div', 'wuge-mini');
       wm.innerHTML = '天格 <b>' + item.wuge.天格 + '</b>　人格 <b>' +
         item.wuge.人格 + '</b>　地格 <b>' + item.wuge.地格 +
         '</b>　总格 <b>' + item.wuge.总格 + '</b>';
-      foot.appendChild(wm);
+      extra.appendChild(wm);
     }
+
+    /* 操作行：加入对比 / 加入候选池。
+     * 这两个不折叠 —— 「挑几个存进候选池」是主流程，
+     * 藏进 <details> 会让每一步都多一次点击。 */
+    var foot = el('div', 'nc-foot');
 
     /* 加入对比（跨批次保留，方便「换一批」后继续挑） */
     var pick = el('label', 'nc-pick');
@@ -13670,16 +13984,24 @@ details.more > summary:hover { color: var(--jade); }
     });
     foot.appendChild(poolBtn);
 
+    /* 补充信息放在操作行之前。行高顺序：名字 → 理由 → 补充信息 → 操作 → 详情 */
+    if (!state.compact) card.appendChild(extra);
     card.appendChild(foot);
 
-    /* 详情 */
+    /* 详情。简洁模式下这里还兼作「补充信息」的收纳处 ——
+     * 字义、小名、方言、同音替换、出处、热度条全塞进来，
+     * 卡片留在屏幕上不被遮的部分就只剩名字、分数、标签和一句理由。 */
     var more = document.createElement('details');
     more.className = 'more';
     var sum = document.createElement('summary');
-    sum.textContent = '查看详细分析';
+    sum.textContent = state.compact
+      ? '展开详情（字义 · 小名 · 出处 · 热度 · 五格）'
+      : '查看详细分析';
     more.appendChild(sum);
 
     var body = el('div', 'more-body');
+    /* 简洁模式才折叠；详细模式让 extra 平铺在卡片里，与旧版一致 */
+    if (state.compact) body.appendChild(extra);
 
     if (item.wuge) {
       var t = el('table', 'wuge-table');
@@ -13811,6 +14133,24 @@ details.more > summary:hover { color: var(--jade); }
     bar.appendChild(meta);
 
     var actions = el('div', 'actions');
+
+    /* 简洁模式开关。默认打开 —— 一屏能看好几个名字，
+     * 看中哪个再展开它的详情，比一上来就铺满长卡片好翻。
+     * 选择会记进填写记录，下次打开保持。 */
+    var densRow = el('label', 'check dens-toggle');
+    densRow.title = '折叠字义、小名、出处与五格，一屏显示更多名字';
+    var densCb = document.createElement('input');
+    densCb.type = 'checkbox';
+    densCb.checked = !!state.compact;
+    densCb.addEventListener('change', function () {
+      state.compact = densCb.checked;
+      renderPage();
+      savePrefsNow();
+    });
+    densRow.appendChild(densCb);
+    densRow.appendChild(el('span', null, '简洁模式'));
+    actions.appendChild(densRow);
+
     var copyBtn = el('button', 'btn ghost', '复制这一批');
     copyBtn.type = 'button';
     copyBtn.addEventListener('click', function () {
@@ -13829,25 +14169,7 @@ details.more > summary:hover { color: var(--jade); }
     stack.appendChild(bar);
 
     /* 分页条：候选已经过一次多样性排序，往后翻依然是不雷同的名字 */
-    var pager = el('div', 'pager');
-    var pagerNote = el('span', 'pager-note', '');
-    pager.appendChild(pagerNote);
-    var pagerBtns = el('div', 'pager-btns');
-    var prevBtn = el('button', 'btn ghost', '上一批');
-    prevBtn.type = 'button';
-    prevBtn.id = 'pagePrev';
-    var posLabel = el('span', 'pager-pos', '');
-    posLabel.id = 'pagePos';
-    var nextBtn = el('button', 'btn ghost', '换一批');
-    nextBtn.type = 'button';
-    nextBtn.id = 'pageNext';
-    prevBtn.addEventListener('click', function () { turnPage(-1); });
-    nextBtn.addEventListener('click', function () { turnPage(1); });
-    pagerBtns.appendChild(prevBtn);
-    pagerBtns.appendChild(posLabel);
-    pagerBtns.appendChild(nextBtn);
-    pager.appendChild(pagerBtns);
-    stack.appendChild(pager);
+    stack.appendChild(buildPager(true));
 
     /* 关键词筛选：五行/音韵的权重高于寓意，所以命中关键词的字未必能排进前列。
      * 与其悄悄埋没关键词，不如给用户一个「只看命中关键词」的开关。 */
@@ -13878,12 +14200,48 @@ details.more > summary:hover { color: var(--jade); }
     list.id = 'resultList';
     stack.appendChild(list);
 
+    /* 底部再来一条：名字一路看完想换下一批时，不必再翻回页面顶部 */
+    stack.appendChild(buildPager(false));
+
     var cmpBox = el('div', 'compare-box');
     cmpBox.id = 'compareBox';
     stack.appendChild(cmpBox);
 
     root.appendChild(stack);
     renderPage();
+  }
+
+  /**
+   * 分页条。上、下各一条。
+   *
+   * 用 class 而不是 id：一个文档里 id 只能有一个，
+   * 而 updatePageBar 要同时更新两条（按钮文案、当前位置、禁用状态）。
+   *
+   * @param {boolean} withNote 是否附上「候选共 N 个…」那行长说明。
+   *                           只在顶部显示一次，底部那条要短。
+   */
+  function buildPager(withNote) {
+    var pager = el('div', 'pager ' + (withNote ? 'pager-top' : 'pager-bottom'));
+
+    if (withNote) pager.appendChild(el('span', 'pager-note', ''));
+
+    var btns = el('div', 'pager-btns');
+
+    var prev = el('button', 'btn ghost pager-prev', '上一批');
+    prev.type = 'button';
+    prev.addEventListener('click', function () { turnPage(-1); });
+
+    var pos = el('span', 'pager-pos', '');
+
+    var next = el('button', 'btn ghost pager-next', '换一批');
+    next.type = 'button';
+    next.addEventListener('click', function () { turnPage(1); });
+
+    btns.appendChild(prev);
+    btns.appendChild(pos);
+    btns.appendChild(next);
+    pager.appendChild(btns);
+    return pager;
   }
 
   /* ---------------- 分页 ---------------- */
@@ -13951,13 +14309,18 @@ details.more > summary:hover { color: var(--jade); }
     var total = state.ranking.length;
     var pages = Math.max(1, Math.ceil(total / size));
     var from = state.page * size;
+    var atStart = state.page <= 0;
+    var atEnd = state.page >= pages - 1;
 
-    var pos = $('pagePos');
-    if (pos) pos.textContent = '第 ' + (state.page + 1) + ' / ' + pages + ' 批';
-
-    var prev = $('pagePrev'), next = $('pageNext');
-    if (prev) prev.disabled = state.page <= 0;
-    if (next) next.disabled = state.page >= pages - 1;
+    var posText = '第 ' + (state.page + 1) + ' / ' + pages + ' 批';
+    each('.pager-pos', function (n) { n.textContent = posText; });
+    each('.pager-prev', function (b) { b.disabled = atStart; });
+    /* 末页不让「换一批」变成死按钮 —— 用户会以为坏了。
+     * 改成「回到第一批」，点了从头再挑，正好是那一刻想干的事。 */
+    each('.pager-next', function (b) {
+      b.disabled = false;
+      b.textContent = atEnd ? '回到第一批' : '换一批';
+    });
 
     var note = document.querySelector('.pager-note');
     if (note) {
@@ -13968,16 +14331,30 @@ details.more > summary:hover { color: var(--jade); }
     }
   }
 
+  /** 对所有匹配元素执行 fn（分页条有上、下两条，不能再用 id 取） */
+  function each(sel, fn) {
+    Array.prototype.forEach.call(document.querySelectorAll(sel), fn);
+  }
+
   function turnPage(delta) {
     var size = state.lastOpts.top;
     var pages = Math.max(1, Math.ceil(state.ranking.length / size));
     var t = state.page + delta;
-    if (t < 0 || t >= pages) return;
+    /* 末页再点「换一批」= 回到第一批（与按钮文案一致），不然是空操作 */
+    if (t >= pages) t = 0;
+    if (t < 0) t = 0;
     state.page = t;
     renderPage();
-    var sec = $('results');
-    if (sec && sec.scrollIntoView) {
-      sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    /* 滚到列表开头，而不是整个 #results 顶部 ——
+     * 后者会把八字面板和工具条也推上来，新一批的名字反而在屏幕外。
+     *
+     * 用 behavior:'auto'（瞬时）而不是 'smooth'：平滑滚动靠动画帧推进，
+     * 页面在后台标签页时根本不跑，表现就是「点了没反应」——
+     * 实测在同一页面上 'auto' 立刻到位、'smooth' 纹丝不动。
+     * 何况「换一批」本来就是想看新内容，瞬时更跟手。 */
+    var anchor = $('resultList') || $('results');
+    if (anchor && anchor.scrollIntoView) {
+      anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
     }
   }
 
