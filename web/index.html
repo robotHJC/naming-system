@@ -81,12 +81,25 @@
       </div>
 
       <div class="field">
-        <label for="birth">出生时间 <span class="sub">选填，用于补五行</span></label>
+        <label for="birth" id="birthLabel">出生时间 <span class="sub">选填，用于补五行</span></label>
+        <div class="cal-switch" id="calSwitch">
+          <button type="button" data-cal="g" aria-pressed="true">公历</button>
+          <button type="button" data-cal="l" aria-pressed="false">农历</button>
+        </div>
         <input type="datetime-local" id="birth">
+        <div id="lunarRow" hidden>
+          <div class="lunar-grid">
+            <select id="lunarYear" aria-label="农历年"></select>
+            <select id="lunarMonth" aria-label="农历月"></select>
+            <select id="lunarDay" aria-label="农历日"></select>
+            <select id="lunarHour" aria-label="出生时辰"></select>
+          </div>
+        </div>
         <label class="check" style="margin-top:8px">
           <input type="checkbox" id="birthNoHour">
           <span>只知道日期，不知道几点出生</span>
         </label>
+        <p class="hint" id="lunarEcho" hidden style="margin:6px 0 0"></p>
         <p class="hint" id="baziHint" style="margin:6px 0 0"></p>
       </div>
 
@@ -355,6 +368,20 @@
        算出来的喜用神是假的 —— <b>比不算更糟。</b>
        真太阳时在勾选后会自动禁用，因为它算的正是时柱，
        硬算只会把一个未知的东西变成一个看起来确定的值。</p>
+    <p><b>关于农历输入</b>　长辈报生日几乎都是农历，所以生辰可以按农历填：
+       选年、月、日、时辰，下面会立刻显示换算出的公历日期供核对。
+       农历<b>不是查表</b>，而是按「定朔定气」真算 —— 朔（新月）时刻用
+       Meeus 天文公式算，中气用与节气同一套太阳视黄经引擎算，
+       月首取朔所在的那一天，冬至必在十一月，第一个不含中气的月为闰月。
+       这套算法可以自证：1901–2100 共 73049 天逐日往返换算恒等、
+       2487 个朔、每个编年周期的中气数长期平均<b>精确等于 12</b>、19 年 7 闰长期成立。
+       与权威历书逐日比对，<b>73049 天全部一致</b>。
+       唯一需要固定的是<b>朔恰好落在午夜前后几分钟</b>的那几个月 ——
+       这种刀口值天文公式的精度（±2 分钟）分辨不了，已按历书值显式固定
+       （源码里的 <code>NM_DAY_FIX</code>，测试会校验它没被改坏）。
+       时辰取各时辰的正中整点（子时 00:00、丑时 02:00 …）；
+       <b>不提供 23:00–24:00 的「晚子时」</b>，因为那一段的日柱归属各派有分歧，
+       与其悄悄按某一派算，不如不提供。</p>
     <p><b>关于地支刑冲合害</b>　八字原来只算五行力量，没看地支之间的关系。
        但「子午冲」「卯戌合」「申子辰三合水局」这些是传统命理判断命局松紧的基本依据，
        所以现在如实列出来：<b>六冲</b>（子午、丑未、寅申、卯酉、辰戌、巳亥）、
@@ -426,6 +453,7 @@
 <!-- 核心层 -->
 <script src="js/core/wuxing.js"></script>
 <script src="js/core/calendar.js"></script>
+<script src="js/core/lunar.js"></script>
 <script src="js/core/bazi.js"></script>
 <script src="js/core/wuge.js"></script>
 <script src="js/core/pinyin.js"></script>
@@ -453,6 +481,7 @@
 <script src="js/ui/birth-form.js"></script>
 <script src="js/ui/pool-ui.js"></script>
 <script src="js/ui/eval-ui.js"></script>
+<script src="js/ui/lunar-input.js"></script>
 <script src="js/ui/app.js"></script>
 
 </body>

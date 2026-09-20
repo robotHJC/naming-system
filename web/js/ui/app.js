@@ -211,6 +211,9 @@
     if (rc) p.radCustom = rc.value;
     var ra = $('radAll');
     if (ra) p.radMode = ra.checked ? 'all' : 'any';
+    /* 公历 / 农历。农历的**选择本身不用记** —— #birth 永远是公历值，
+     * 启动时反推回来就行，少一份可能不一致的状态。 */
+    p.calMode = (NS.LunarInput ? NS.LunarInput.mode() : 'g');
     return p;
   }
 
@@ -275,6 +278,10 @@
     /* 简洁模式是界面偏好，不代表「填了内容」，所以不计入 any ——
      * 否则只存过这一个开关也会提示「已恢复上次填写的条件」。 */
     if (p.compact !== undefined) state.compact = !!p.compact;
+
+    /* 公历/农历要在 #birth 已经写完之后才能恢复。
+     * LunarInput.restore 内部会做「#birth → 农历选择」的反推。 */
+    if (NS.LunarInput) NS.LunarInput.restore(p.calMode === 'l' ? 'l' : 'g');
     return any;
   }
 
@@ -2059,6 +2066,13 @@
     if ($('birthNoHour')) {
       $('birthNoHour').addEventListener('change', syncBirthMode);
     }
+    /* 农历录入助手。它不直接算八字 —— 选完只把公历值写回 #birth，
+     * 下游照旧走上面那两个监听器，所以这里只需负责存一次填写记录。 */
+    if (NS.LunarInput) {
+      NS.LunarInput.install({
+        onChange: function () { NS.Prefs.saveSoon(collectPrefs); }
+      });
+    }
     $('longitude').addEventListener('input', updateBaziHint);
     $('useTST').addEventListener('change', updateBaziHint);
     $('form').addEventListener('submit', onSubmit);
@@ -2110,6 +2124,8 @@
       var q = new URLSearchParams(global.location.search);
       if (q.get('surname')) $('surname').value = q.get('surname');
       if (q.get('birth')) $('birth').value = q.get('birth');
+      /* 链接里的生辰是公历，农历面板要跟着反推一次 */
+      if (NS.LunarInput) NS.LunarInput.syncFromBirth();
       if (q.get('gender')) {
         Array.prototype.forEach.call(
           $('genderSeg').querySelectorAll('button'), function (b) {

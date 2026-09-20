@@ -11,7 +11,8 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'data/nayin.js', 'data/shuli81.js', 'data/nameblock.js',
-  'core/wuxing.js', 'core/calendar.js', 'core/tiaohou.js', 'core/branches.js',
+  'core/wuxing.js', 'core/calendar.js', 'core/lunar.js',
+  'core/tiaohou.js', 'core/branches.js',
   'core/bazi.js',
   'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
@@ -21,6 +22,7 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
 
 const NS = globalThis.NS;
 const C = NS.Calendar;
+const L = NS.Lunar;
 
 /* 把输出同时收集起来，结束时写一份 UTF-8 日志，
  * 避免在 PowerShell 里重定向得到 UTF-16 而无法阅读。 */
@@ -1197,6 +1199,149 @@ section('22. 地支刑冲合害');
     blk ? blk.lines.join('').slice(-60) : '');
   console.log('  2026-02-15 → ' + rep.blocks
     .filter(x => x.title === '地支刑冲合害')[0].lines[1]);
+}
+
+/* ---------------- 23. 农历（夏历） ---------------- */
+section('23. 农历换算');
+{
+  const ds = g => `${g.y}-${pad(g.m)}-${pad(g.d)}`;
+
+  ok('支持范围 1901–2100', L.MIN_YEAR === 1901 && L.MAX_YEAR === 2100,
+    L.MIN_YEAR + '-' + L.MAX_YEAR);
+
+  /* --- 春节：公开常识性数据，且已逐条与第三方实现对拍 --- */
+  const SPRING = {
+    1916: '1916-02-03', 1950: '1950-02-17', 1985: '1985-02-20',
+    2000: '2000-02-05', 2010: '2010-02-14', 2020: '2020-01-25',
+    2024: '2024-02-10', 2026: '2026-02-17', 2033: '2033-01-31',
+    2034: '2034-02-19', 2050: '2050-01-23'
+  };
+  let springBad = [];
+  Object.keys(SPRING).forEach(y => {
+    const g = L.toGregorian(+y, 1, 1, false);
+    if (!g || ds(g) !== SPRING[y]) springBad.push(y + ':' + (g ? ds(g) : 'null'));
+  });
+  ok('抽查 11 年的春节日期', springBad.length === 0, springBad.join(' '));
+
+  /* --- 闰月：包含极罕见的 2033 年闰十一月 --- */
+  const LEAP = {
+    2014: 9, 2017: 6, 2020: 4, 2023: 2, 2025: 6, 2028: 5,
+    2031: 3, 2033: 11, 2036: 6, 2042: 2, 2047: 5
+  };
+  let leapBad = [];
+  Object.keys(LEAP).forEach(y => {
+    const got = L.leapMonthOf(+y);
+    if (got !== LEAP[y]) leapBad.push(y + ':得闰' + (got || '无') + '望闰' + LEAP[y]);
+  });
+  ok('抽查 11 年的闰月（含 2033 闰十一月）',
+    leapBad.length === 0, leapBad.join(' '));
+
+  /* --- 具体的农历 → 公历 --- */
+  const CASES = [
+    [2020, 4, 1, true, '2020-05-23', '2020 闰四月初一'],
+    [2033, 11, 1, true, '2033-12-22', '2033 闰十一月初一'],
+    [2024, 1, 1, false, '2024-02-10', '2024 正月初一'],
+    [2033, 1, 1, false, '2033-01-31', '2033 正月初一'],
+    [1999, 11, 25, false, '2000-01-01', '1999 十一月廿五'],
+    [2057, 9, 1, false, '2057-09-29', '2057 九月初一（刀口校准）']
+  ];
+  let caseBad = [];
+  CASES.forEach(([y, m, d, leap, want, label]) => {
+    const g = L.toGregorian(y, m, d, leap);
+    if (!g || ds(g) !== want) caseBad.push(label + ':' + (g ? ds(g) : 'null') + '≠' + want);
+    /* 顺势验一下反向 */
+    const lu = L.toLunar(+want.slice(0, 4), +want.slice(5, 7), +want.slice(8, 10));
+    if (!lu || lu.y !== y || lu.m !== m || lu.d !== d || lu.leap !== leap) {
+      caseBad.push(label + ' 反向不符');
+    }
+  });
+  ok('农历 → 公历 双向抽查 6 例', caseBad.length === 0, caseBad.join('; '));
+
+  /* --- 穷举：73049 天往返恒等 --- */
+  let rtBad = 0, rtNull = 0;
+  for (let y = 1901; y <= 2100; y++) {
+    for (let m = 1; m <= 12; m++) {
+      const dim = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      for (let d = 1; d <= dim; d++) {
+        const lu = L.toLunar(y, m, d);
+        if (!lu) { rtNull++; continue; }
+        const back = L.toGregorian(lu.y, lu.m, lu.d, lu.leap);
+        if (!back || back.y !== y || back.m !== m || back.d !== d) rtBad++;
+      }
+    }
+  }
+  ok('1901–2100 共 73049 天逐日往返换算恒等',
+    rtBad === 0 && rtNull === 0, rtBad + ' 天不符，' + rtNull + ' 天查不到');
+
+  /* --- 穷举：月长、月数、闰月数、冬至位置 --- */
+  let lenBad = 0, cntBad = 0, leapCntBad = 0, dzBad = 0, leapHasZq = 0;
+  let zqTotal = 0, zqPeriods = 0;
+  for (let y = 1901; y <= 2100; y++) {
+    const ms = L.monthsOfYear(y);
+    if (ms.length !== 12 && ms.length !== 13) cntBad++;
+    const leaps = ms.filter(x => x.leap).length;
+    if (leaps !== (ms.length === 13 ? 1 : 0)) leapCntBad++;
+    ms.forEach(x => {
+      if (x.days !== 29 && x.days !== 30) lenBad++;
+      if (x.leap) {
+        const t = L.nextZhongQiAfter(x.startJd);
+        if (t < x.endJd) leapHasZq++;
+      }
+    });
+    /* 冬至必在十一月 */
+    const dz = C.jdToGregorian(L.winterSolsticeJD(y));
+    const lu = L.toLunar(dz.y, dz.m, dz.d);
+    if (!lu || lu.m !== 11 || lu.leap || lu.y !== y) dzBad++;
+    /* 中气与朔望月的长期守恒 */
+    L.periodOf(y).forEach(x => {
+      let n = 0, t = L.nextZhongQiAfter(x.startJd);
+      while (t < x.endJd) { n++; t = L.nextZhongQiAfter(t + 0.5); }
+      zqTotal += n;
+    });
+    zqPeriods++;
+  }
+  ok('每个月恰为 29 或 30 天', lenBad === 0, String(lenBad));
+  ok('每个农历年恰为 12 或 13 个月', cntBad === 0, String(cntBad));
+  ok('13 个月的年恰有 1 个闰月，12 个月的年没有闰月', leapCntBad === 0, String(leapCntBad));
+  ok('闰月一定不含中气', leapHasZq === 0, String(leapHasZq));
+  ok('冬至永远落在十一月且属于农历年 Y', dzBad === 0, String(dzBad));
+  const avgZq = zqTotal / zqPeriods;
+  ok('编年周期平均中气数精确等于 12（中气与朔望月的守恒）',
+    Math.abs(avgZq - 12) < 0.01, avgZq.toFixed(4));
+  console.log('  1901–2100：' + zqPeriods + ' 个编年周期，中气合计 ' + zqTotal);
+
+  /* --- 朔日校准表必须仍然成立 ---
+   * 这 4 条是天文公式分辨不了的刀口值。若公式或常数被改动，
+   * 下面的断言会失败 —— 而不是默默错一天。 */
+  const fixKeys = Object.keys(L.NM_DAY_FIX);
+  ok('朔日校准表恰有 4 条', fixKeys.length === 4, fixKeys.join(','));
+  const badFix = [];
+  fixKeys.forEach(k => {
+    const jd = L.newMoonLocalJD(+k);
+    const f = jd + 0.5 - Math.floor(jd + 0.5);
+    const mins = f * 1440;
+    const dist = Math.min(mins, 1440 - mins);
+    if (dist > 10) badFix.push(k + '距午夜' + dist.toFixed(1) + '分');
+  });
+  ok('校准表每一条都确实落在午夜 10 分钟内（否则它不该在表里）',
+    badFix.length === 0, badFix.join(' '));
+
+  ok('1924-03-05 这类「接近刀口但无需校准」的月份仍然一致',
+    (() => {
+      const g = L.toGregorian(1924, 2, 1, false);
+      return !!g && ds(g) === '1924-03-05';
+    })());
+
+  /* --- 农历 2033 年应当有 13 个月 --- */
+  ok('农历 2033 年共 13 个月（闰十一月）',
+    L.monthCountOf(2033) === 13, String(L.monthCountOf(2033)));
+
+  console.log('  2026-02-15 → 农历 ' + (() => {
+    const lu = L.toLunar(2026, 2, 15);
+    return lu.y + ' 年 ' + lu.monthName + lu.dayName;
+  })());
+  console.log('  农历 2033 闰十一月初一 → ' +
+    ds(L.toGregorian(2033, 11, 1, true)));
 }
 
 console.log(`\n${'='.repeat(52)}`);

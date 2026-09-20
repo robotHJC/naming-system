@@ -28,3 +28,9 @@ tools/_preview.txt
 tools/_dbg.txt
 tests/*-out.txt
 
+# 农历验证用的第三方参照库与调试输出。
+# tools/_ref/ 里是 npm 装的 lunar-javascript，只在开发期做对拍用，
+# 一次 npm i 就能重建，绝不要入库。
+tools/_ref/
+tools/_lunar-*.txt
+

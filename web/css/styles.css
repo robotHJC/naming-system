@@ -2185,3 +2185,63 @@ details.more > summary:hover { color: var(--jade); }
   .eval-score { grid-row: auto; flex-direction: row; gap: 8px; }
 }
 
+/* ---------- 公历 / 农历 切换 + 农历录入 ---------- */
+
+.cal-switch {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cal-switch button {
+  min-height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.cal-switch button:hover { border-color: var(--jade); color: var(--jade); }
+
+.cal-switch button[aria-pressed="true"] {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #fff;
+}
+
+.cal-switch button[aria-pressed="true"]:hover { color: #fff; }
+
+.lunar-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.lunar-grid select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+  color: var(--ink);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+/* 换算出来的公历日期 —— 用户靠它核对农历是否填对，所以给一点重量 */
+#lunarEcho {
+  color: var(--jade);
+}
+
+#lunarEcho b { color: var(--jade); }
+
+@media (max-width: 560px) {
+  .lunar-grid { grid-template-columns: 1fr 1fr; }
+  .cal-switch button { flex: 1 1 0; }
+}
+
