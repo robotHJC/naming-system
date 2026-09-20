@@ -53,7 +53,10 @@
    * }
    */
   function analyze(bz) {
+    /* 月柱未知（只知道年份）时 pillars[1] 的 zhi 是占位符 '--'，
+     * SEASON_OF 取不到就成了「未知季节」，下面会直接返回 —— 正是想要的 */
     var monthZhi = bz.pillars[1].zhi;
+    if (monthZhi === '--') monthZhi = '';
     var season = SEASON_OF[monthZhi] || '';
 
     var out = {
@@ -71,8 +74,9 @@
 
     /* 春秋不判定 —— 见文件头说明 */
     if (season !== '冬' && season !== '夏') {
-      out.note = '生月属' + (season || '未知') +
-        '，调候取向随日干而变、各家说法不一，本系统不做判定，只看扶抑法。';
+      out.note = season
+        ? '生月属' + season + '，调候取向随日干而变、各家说法不一，本系统不做判定，只看扶抑法。'
+        : '生月未知（只知道年份），调候无从判断 —— 它要看的正是月令的寒暖燥湿。';
       return out;
     }
 
@@ -85,8 +89,11 @@
     out.ratio = total > 0 ? (bz.power[need] || 0) / total : 0;
     out.weak = out.ratio < WEAK_RATIO;
 
-    /* 与扶抑法的喜用神是否冲突：调候需要的五行不在喜用神里 */
-    out.conflict = out.weak && out.xiyongshen.indexOf(need) < 0;
+    /* 与扶抑法的喜用神是否冲突：调候需要的五行不在喜用神里。
+     * 缺日柱时扶抑法根本给不出喜用神（空列表），此时无从对比 ——
+     * 不能把「没有」当成「不一致」报出来。 */
+    out.conflict = out.weak && out.xiyongshen.length > 0 &&
+      out.xiyongshen.indexOf(need) < 0;
 
     var pct = (out.ratio * 100).toFixed(0);
     if (!out.weak) {

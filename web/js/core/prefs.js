@@ -35,11 +35,14 @@
   /* 只认识这些键 —— 防止历史上写进去的脏字段被一路带下去。
    * 加新字段时记得同时加到这里，否则存了也读不回来。 */
   var ALLOWED = {
-    /* 主表单 */
-    surname: 1, strokes: 1, birth: 1, longitude: 1, useTST: 1, city: 1,
+    /* 主表单。
+     * strokes **不在这里**：它是「姓氏康熙笔画」的手工覆盖值，
+     * 留空才表示「按姓氏表自动」。缓存它会让上次那个数字每次被恢复回来，
+     * 换个姓氏之后就成了错值 —— 详见 app.js 里 PREF_IDS 的说明。 */
+    surname: 1, birth: 1, longitude: 1, useTST: 1, city: 1,
     style: 1, top: 1, keywords: 1, taboo: 1, mustInclude: 1, useSC: 1,
-    /* 「只知日期、不知时辰」开关 */
-    birthNoHour: 1,
+    /* 生辰模糊三档：只知道哪一年 / 不知道哪一天 / 不知道几点 */
+    birthNoMonth: 1, birthNoDay: 1, birthNoHour: 1,
     /* 生辰按公历还是农历填（农历的选择本身不存，由 #birth 反推） */
     calMode: 1,
     /* 状态（不在 input 里，单独存） */

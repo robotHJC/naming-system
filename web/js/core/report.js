@@ -146,20 +146,38 @@
     if (bazi) {
       var l1 = [];
       l1.push('四柱：' + bazi.baziStr);
-      /* 时辰未知是个**必须前置说明**的前提：同一个日期换个时辰，
-       * 整张盘的五行强弱就可能翻转，不能让人以为这是完整四柱。 */
-      if (bazi.noHour) {
+      /* 生辰模糊是**必须前置说明**的前提：同一个日期换个时辰，
+       * 整张盘的五行强弱就可能翻转，不能让人以为这是完整四柱。
+       * 三档由粗到细写，只说最粗的那一档，避免堆成一片。 */
+      if (bazi.noMonth) {
+        l1.push('**只知道出生年份** —— 月柱、日柱、时柱都无法确定，' +
+          '上面的五行分布只计入了年柱。年柱本身也是按「立春后」推定的：' +
+          '若生于当年 1 月 1 日到 2 月初之间，年柱与生肖应当退一年。');
+      } else if (bazi.noDay) {
+        l1.push('**只知道出生年月** —— 日柱与时柱无法确定，' +
+          '上面的五行分布只计入了年柱与月柱。月柱是按**该月 15 日**推定的：' +
+          '每个月的「节」落在 3–9 日，所以只有生于该月 1–8 日左右才可能有差异。');
+      } else if (bazi.noHour) {
         l1.push('**时辰未填** —— 时柱无法确定，上面的五行力量与十神' +
           '都没有计入时柱，喜用神是按年、月、日三柱推的。' +
           '这只代表大概方向；若能问到出生时辰，填上后结果会准很多。');
       }
-      l1.push('日主 ' + bazi.dayGan + '（' + bazi.dayWx + '），' +
-        bazi.strength + '（同党 ' + (bazi.ratio * 100).toFixed(0) + '%）');
+      /* 没有日柱就没有日主。这一句必须紧跟上面那段 ——
+       * 否则用户会以为「喜用神」那行为什么是空的。 */
+      if (bazi.dayGan === null) {
+        l1.push('日主：**未知**（缺少日柱）—— 身强身弱、十神、喜用神' +
+          '都是以日主为参照物推出来的，没有日柱就一个都算不了。' +
+          '所以本系统**不做喜用神判断**，选字只按名字本身的五行搭配评分。' +
+          '若能问到具体出生日期，结果会完整得多。');
+      } else {
+        l1.push('日主 ' + bazi.dayGan + '（' + bazi.dayWx + '），' +
+          bazi.strength + '（同党 ' + (bazi.ratio * 100).toFixed(0) + '%）');
+      }
       var cnt = NS.WUXING.map(function (w) {
         return w + ' ' + (bazi.count[w] || 0);
       }).join('　');
       l1.push('五行分布：' + cnt);
-      l1.push('喜用神：' + (bazi.xiyongshen.join('、') || '—'));
+      l1.push('喜用神：' + (bazi.xiyongshen.join('、') || '未能推断'));
       if (bazi.missing.length) {
         l1.push('八字中不显的五行：' + bazi.missing.join('、') +
           '（注意：「缺」不等于「需要补」，要看喜用神，' +
@@ -265,6 +283,12 @@
         (c.inferred ? '　［推断值，需人工核对］' : '') +
         (c.eraChar ? '　［偏上一代用字］' : '');
     });
+    /* 拿不到喜用神有两种原因，说法必须分开 ——
+     * 「没填生辰」与「填了但缺日柱推不出日主」对用户的意思完全不同，
+     * 混成一句话，填了模糊生辰的人会以为是系统没读到他填的东西。 */
+    var noXiWhy = (bazi && bazi.dayGan === null)
+      ? '生辰信息不足（缺日柱 → 没有日主）→ 推不出喜用神，'
+      : '没有填生辰 → 无法判断喜用神，';
     if (xiyongshen.length) {
       var hitN = chars.filter(function (c) { return c.wxLevel !== 'idle'; }).length;
       l2.push('');
@@ -275,8 +299,8 @@
     }
     add(xiyongshen.length ? '命理' : '用字',
       xiyongshen.length ? '用字五行' : '用字五行（未与八字比对）',
-      l2.concat(xiyongshen.length ? [] : [''
-        , '没有填生辰 → 无法判断喜用神，上面只列出了每个字本身的五行与笔画，'
+      l2.concat(xiyongshen.length ? [] : ['', noXiWhy +
+        '上面只列出了每个字本身的五行与笔画，'
         + '**没有**说它们与该补什么相配。']),
       xiyongshen.length && chars.every(function (c) { return c.wxLevel === 'idle'; })
         ? 'warn' : 'neutral');

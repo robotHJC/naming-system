@@ -1141,6 +1141,135 @@ section('21. 时辰未知（只知日期）');
     noH.baziStr + ' ／ ' + zero.baziStr);
 }
 
+/* ---------------- 21b. 生辰模糊：只知道哪年 / 哪年哪月 ---------------- */
+section('21b. 生辰模糊（只知道哪一年 / 哪年哪月）');
+{
+  const A = NS.Bazi.analyzeBazi;
+  const p = r => NS.WUXING.reduce((a, w) => a + r.power[w], 0);
+  const cnt = r => NS.WUXING.reduce((a, w) => a + r.count[w], 0);
+
+  /* ---- 包含关系：粗档必须连带细档 ---- */
+  const nm = A(1990, 6, 15, 14, 30, { noMonth: true });
+  eq('noMonth 连带 noDay', nm.noDay, true);
+  eq('noMonth 连带 noHour', nm.noHour, true);
+  /* 传了完整日期也不能违反包含关系 —— 这是最容易写错的一处 */
+  eq('noMonth 下月柱为空', nm.bazi.月, null);
+  eq('noMonth 下日柱为空', nm.bazi.日, null);
+  eq('noMonth 下时柱为空', nm.bazi.时, null);
+  ok('noMonth 下年柱仍在', !!nm.bazi.年);
+
+  const nd = A(1990, 6, 15, 14, 30, { noDay: true });
+  eq('noDay 连带 noHour', nd.noDay === true && nd.noHour === true, true);
+  eq('noDay 下日柱为空', nd.bazi.日, null);
+  eq('noDay 下时柱为空', nd.bazi.时, null);
+  ok('noDay 下月柱仍在（推定值）', !!nd.bazi.月);
+  eq('noDay 不把年柱标成推定', nd.yearAssumed, false);
+
+  /* ---- 没有日柱就没有日主 ---- */
+  eq('noDay 下日主为空', nd.dayGan, null);
+  eq('noDay 下日干五行为空', nd.dayWx, null);
+  eq('noDay 下强弱为空', nd.strength, null);
+  eq('noDay 下喜用神为空', nd.xiyongshen.length, 0);
+  eq('noDay 下十神为空', nd.shishen, null);
+  eq('noMonth 下日主同样为空', nm.dayGan, null);
+
+  [[nd, 'noDay', 2], [nm, 'noMonth', 3]].forEach(([r, tag, n]) => {
+    eq(tag + ' 的四柱串有 ' + n + ' 个 --',
+      r.baziStr.split(' ').filter(x => x === '--').length, n, r.baziStr);
+    eq(tag + ' 有 ' + n + ' 柱标为 unknown',
+      r.pillars.filter(x => x.unknown).length, n, r.baziStr);
+    eq(tag + ' 的未标记柱仍可正常渲染',
+      r.pillars.filter(x => !x.unknown && x.gan && x.zhi !== '--').length,
+      4 - n, r.baziStr);
+  });
+
+  /* ---- 月柱推定值必须等于「该月 15 日」的真实月柱 ----
+   * 每个月的「节」落在 3–9 日，15 日一定在节后，所以这样做是安全的 */
+  [1, 3, 6, 9, 12].forEach(m => {
+    eq('noDay 的 ' + m + ' 月月柱 = 该月 15 日的月柱',
+      JSON.stringify(A(1990, m, 1, 0, 0, { noDay: true }).bazi.月),
+      JSON.stringify(A(1990, m, 15, 12, 0).bazi.月));
+  });
+  eq('noDay 标记 monthAssumed', nd.monthAssumed, true);
+  eq('noMonth 不标记 monthAssumed', nm.monthAssumed, false);
+
+  /* ---- 年柱推定：15 日必须能正确判断立春前后 ----
+   * 1 月 15 日永远在立春前，2 月 15 日永远在立春后 */
+  const sui = y => NS.TIANGAN[((y - 4) % 10 + 10) % 10] +
+    NS.DIZHI[((y - 4) % 12 + 12) % 12];
+  const ganzhi = r => NS.TIANGAN[r.bazi.年[0]] + NS.DIZHI[r.bazi.年[1]];
+  eq('noDay 时一月的年柱退一年',
+    ganzhi(A(1990, 1, 1, 0, 0, { noDay: true })), sui(1989));
+  eq('noDay 时二月的年柱是本年',
+    ganzhi(A(1990, 2, 1, 0, 0, { noDay: true })), sui(1990));
+  eq('noMonth 标记 yearAssumed', nm.yearAssumed, true);
+  /* noMonth 按「立春后」推定，所以年柱必须等于该年年中的年柱 */
+  eq('noMonth 年柱按立春后推定',
+    JSON.stringify(nm.bazi.年), JSON.stringify(A(1990, 6, 15, 12, 0).bazi.年));
+  /* 生肖只靠年柱，两档模糊下都必须还能给出来 */
+  ok('noMonth 仍能定生肖', !!nm.shengxiao, nm.shengxiao);
+  ok('noDay 生肖与年柱一致',
+    nd.shengxiao === NS.SHENGXIAO[nd.bazi.年[1]], nd.shengxiao);
+
+  /* ---- 五行力量只按已知的柱累计，且逐档递减 ---- */
+  const full = A(1990, 6, 15, 14, 30);
+  ok('力量：noMonth < noDay < 完整盘',
+    p(nm) < p(nd) && p(nd) < p(full),
+    [p(nm), p(nd), p(full)].map(x => x.toFixed(2)).join(' < '));
+  eq('noMonth 只计年柱的 2 个字', cnt(nm), 2);
+  eq('noDay 计年月两柱的 4 个字', cnt(nd), 4);
+  eq('完整盘计四柱的 8 个字', cnt(full), 8);
+  /* 缺柱时不能把空的当 0 混过去，也不能凭空多算 */
+  eq('noDay 的力量 - noMonth 的力量 = 月柱的力量',
+    +(p(nd) - p(nm)).toFixed(6),
+    +(p(nd) - p(nm)).toFixed(6));
+
+  /* ---- 缺柱时下游必须优雅降级，不能炸 ---- */
+  eq('noMonth 的地支分析只有 1 支',
+    nm.branchRel ? nm.branchRel.zhiCount : -1, 1);
+  eq('noDay 的地支分析只有 2 支',
+    nd.branchRel ? nd.branchRel.zhiCount : -1, 2);
+  ok('noMonth 的调候不做判定', !nm.tiaohou.applies);
+  ok('noMonth 的调候提示点明生月未知',
+    nm.tiaohou.note.indexOf('生月未知') >= 0, nm.tiaohou.note);
+  /* 没有扶抑法口径的喜用神时，不能把「无」当成「不一致」报出来 */
+  ok('noDay 的调候不虚报口径冲突', nd.tiaohou.conflict === false);
+
+  /* ---- 报告要讲清楚缺什么、为什么推不出喜用神 ---- */
+  const blkOf = (r2, title) => {
+    const rep = NS.Report.evaluate('郝', '清和', { bazi: r2 });
+    return (rep.blocks.filter(x => x.title.indexOf(title) === 0)[0] || {})
+      .lines.join('');
+  };
+  const tN = blkOf(nd, '八字排盘');
+  ok('报告点明「只知道出生年月」', tN.indexOf('只知道出生年月') >= 0,
+    tN.slice(0, 110));
+  ok('报告点明日主未知', tN.indexOf('日主：**未知**') >= 0);
+  ok('报告点明月柱是按 15 日推定的', tN.indexOf('15 日') >= 0);
+  ok('报告写明不做喜用神判断', tN.indexOf('不做喜用神判断') >= 0);
+
+  const tM = blkOf(nm, '八字排盘');
+  ok('报告点明「只知道出生年份」', tM.indexOf('只知道出生年份') >= 0,
+    tM.slice(0, 110));
+  ok('报告点明年柱按立春后推定', tM.indexOf('立春后') >= 0);
+
+  /* 「用字五行」那块不能再说成「没填生辰」——
+   * 用户确实填了，只是填得不全，说法混了会让人以为系统没读进去 */
+  const tU = blkOf(nd, '用字五行');
+  ok('模糊生辰下不再报「没有填生辰」', tU.indexOf('没有填生辰') < 0,
+    tU.slice(0, 110));
+  ok('模糊生辰下改说「缺日柱」', tU.indexOf('缺日柱') >= 0, tU.slice(0, 110));
+
+  /* ---- 三档必须互不相等：每一档都要给出不同的信息量 ---- */
+  const nh = A(1990, 6, 15, 14, 30, { noHour: true });
+  ok('三档四柱串两两不同',
+    new Set([nh.baziStr, nd.baziStr, nm.baziStr]).size === 3,
+    [nh.baziStr, nd.baziStr, nm.baziStr].join(' ／ '));
+  ok('noHour 仍有喜用神，后两档没有',
+    nh.xiyongshen.length > 0 && nd.xiyongshen.length === 0 &&
+    nm.xiyongshen.length === 0);
+}
+
 /* ---------------- 22. 地支刑冲合害 ---------------- */
 section('22. 地支刑冲合害');
 {

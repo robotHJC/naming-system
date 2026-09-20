@@ -41,17 +41,43 @@
     opts = opts || {};
     minute = minute || 0;
 
+    /* ---------- 生辰模糊的三档 ----------
+     *
+     * 现实中经常只知道个大概：户口本只记年份、农历日子记不清、
+     * 只知道「夏天生的」。所以除了「不知道几点」，还要有
+     * 「不知道哪一天」与「不知道几月」两档。
+     *
+     * 处理原则与时辰未知完全一致：**不确定的柱直接置空，绝不瞎填**。
+     * 一柱变了整张盘的五行力量就变了，算出来的喜用神是假的，比不算更糟。
+     * 三档是单向包含的：
+     *
+     *   noMonth 只知道年份   ⇒ 月、日、时三柱全未知
+     *   noDay   只知道年月   ⇒ 日、时两柱未知，月柱给推定值
+     *   noHour  不知道几点   ⇒ 时柱未知
+     *
+     * 有两处**推定**必须讲清楚（都置了 meta 标志，界面要如实说出来）：
+     *   1. noDay：月柱取决于生在哪一天有没有过当月的「节」。
+     *      节的交气落在每月 3–9 日，取 15 日就一定在节后，
+     *      既不踩边界，也给出最可能的那一柱。年柱同理 ——
+     *      立春在 2 月 3–5 日，取 15 日足以判断立春前后。
+     *   2. noMonth：没有月份就判不了立春前后，按「立春后」推定 ——
+     *      一个公历年里只有 1/1–2/3 这三十来天在立春之前。
+     */
+    var noMonth = opts.noMonth === true;
+    var noDay = noMonth || opts.noDay === true;
+    var noHour = noDay || opts.noHour === true;
+
     var useTST = opts.trueSolarTime !== false && typeof opts.longitude === 'number'
       && isFinite(opts.longitude);
+    /* 真太阳时算的正是时柱与日柱，这两柱都不存在时它没有意义 */
+    if (noDay) useTST = false;
     var ziShiNewDay = opts.ziShiNewDay !== false;
-    /* 时辰未知：只给日期、不知道几点出生。
-     * 这时**不能随便填一个时辰** —— 时柱变了整个五行力量就变了，
-     * 算出来的喜用神是假的，比不算更糟。所以时柱直接置空、
-     * 五行力量与十神都不计它，并在界面上明确标出来。 */
-    var noHour = opts.noHour === true;
 
-    /* 北京时间（用于年柱/月柱的节气边界比较） */
-    var jdBeijing = C.gregorianToJD(year, month, day, hour, minute);
+    /* 年柱与月柱只取决于「过没过节」，与几点无关；
+     * 日未知时用户填的那个日期只是占位值，要换成本月 15 日再来判断 */
+    var jdYM = noDay
+      ? C.gregorianToJD(year, month, 15, 12, 0)
+      : C.gregorianToJD(year, month, day, hour, minute);
 
     /* 真太阳时（用于日柱/时柱） */
     var ts = useTST ? trueSolar(year, month, day, hour, minute, opts.longitude)
@@ -60,34 +86,46 @@
     var tstMinute = ts.mi;
 
     /* ---------- 年柱：立春为界 ---------- */
-    var lichunCur = C.jieOfYear(year)[1];              /* 该年立春 */
-    var sui = jdBeijing >= lichunCur.jdLocal ? year : year - 1;
+    /* 只知道年份时判不了立春前后，按立春后推定，并置 yearAssumed */
+    var sui = noMonth ? year
+      : (jdYM >= C.jieOfYear(year)[1].jdLocal ? year : year - 1);
     var yearGan = ((sui - 4) % 10 + 10) % 10;
     var yearZhi = ((sui - 4) % 12 + 12) % 12;
 
     /* ---------- 月柱：以「节」为界 ---------- */
-    var loc = C.locateJie(year, jdBeijing);
-    var monthZhi = loc.current.zhi;   /* 已进入的节 → 该月月支 */
+    var monthGan = null, monthZhi = null, loc = null;
+    if (!noMonth) {
+      loc = C.locateJie(year, jdYM);
+      monthZhi = loc.current.zhi;   /* 已进入的节 → 该月月支 */
 
-    /* 五虎遁：寅月天干 = (年干 % 5) × 2 + 2；其余月按距寅的步数顺推
-     * （原 Python 版写成 (年干 × 2 + 月支) % 10，结果错误） */
-    var stepsFromYin = ((monthZhi - 2) % 12 + 12) % 12;
-    var monthGan = (((yearGan % 5) * 2 + 2) + stepsFromYin) % 10;
+      /* 五虎遁：寅月天干 = (年干 % 5) × 2 + 2；其余月按距寅的步数顺推
+       * （原 Python 版写成 (年干 × 2 + 月支) % 10，结果错误） */
+      var stepsFromYin = ((monthZhi - 2) % 12 + 12) % 12;
+      monthGan = (((yearGan % 5) * 2 + 2) + stepsFromYin) % 10;
+    }
 
     /* ---------- 日柱 ---------- */
-    var dayY = ts.y, dayM = ts.m, dayD = ts.d;
-    if (ziShiNewDay && tstHour >= 23) {
-      /* 晚子时：日柱进一位 */
-      var next = C.jdToGregorian(
-        C.gregorianToJD(dayY, dayM, dayD, 12, 0) + 1
-      );
-      dayY = next.y; dayM = next.m; dayD = next.d;
+    /* 不知道哪一天，就没有日柱 —— 也就没有日主。
+     * 日主是身强身弱、十神、喜用神唯一的参照物，缺了它这些全算不了，
+     * 所以这里置空、由 analyzeBazi 整体降级，而不是拿占位日期硬算。 */
+    var dayGan = null, dayZhi = null;
+    if (!noDay) {
+      var dayY = ts.y, dayM = ts.m, dayD = ts.d;
+      if (ziShiNewDay && tstHour >= 23) {
+        /* 晚子时：日柱进一位 */
+        var next = C.jdToGregorian(
+          C.gregorianToJD(dayY, dayM, dayD, 12, 0) + 1
+        );
+        dayY = next.y; dayM = next.m; dayD = next.d;
+      }
+      var dn = C.dayNumber(dayY, dayM, dayD);
+      dayGan = ((dn + 9) % 10 + 10) % 10;
+      dayZhi = ((dn + 1) % 12 + 12) % 12;
     }
-    var dn = C.dayNumber(dayY, dayM, dayD);
-    var dayGan = ((dn + 9) % 10 + 10) % 10;
-    var dayZhi = ((dn + 1) % 12 + 12) % 12;
 
     /* ---------- 时柱 ---------- */
+    /* 时干是由日干推出来的，所以日柱未知时它必然也未知
+     * （noHour 已被连带置真，这里不会真的取到 null 的 dayGan） */
     var hourZhi = null, hourGan = null;
     if (!noHour) {
       hourZhi = Math.floor((((tstHour + 1) % 24) + 24) % 24 / 2);
@@ -96,19 +134,25 @@
 
     return {
       年: [yearGan, yearZhi],
-      月: [monthGan, monthZhi],
-      日: [dayGan, dayZhi],
+      月: noMonth ? null : [monthGan, monthZhi],
+      日: noDay ? null : [dayGan, dayZhi],
       时: noHour ? null : [hourGan, hourZhi],
       meta: {
         sui: sui,
         trueSolarTime: useTST,
         noHour: noHour,
+        noDay: noDay,
+        noMonth: noMonth,
+        /* 年柱按「立春后」推定（只有 noMonth 时才会真） */
+        yearAssumed: noMonth,
+        /* 月柱按「本月 15 日」推定（只有日未知、但月份已知时才会真） */
+        monthAssumed: noDay && !noMonth,
         tst: { y: ts.y, m: ts.m, d: ts.d, h: tstHour, mi: tstMinute },
         deltaMin: ts.deltaMin || 0,
-        jieqi: loc.current.name,
-        jieqiTime: loc.current.date,
-        nextJieqi: loc.next ? loc.next.name : null,
-        nextJieqiTime: loc.next ? loc.next.date : null,
+        jieqi: loc ? loc.current.name : null,
+        jieqiTime: loc ? loc.current.date : null,
+        nextJieqi: (loc && loc.next) ? loc.next.name : null,
+        nextJieqiTime: (loc && loc.next) ? loc.next.date : null,
         ziShiNewDay: ziShiNewDay
       }
     };
@@ -204,49 +248,57 @@
     var count = wuxingCount(bz);
     var power = wuxingStrength(bz);
 
-    var dayGan = bz.日[0];
-    var dayWx = NS.TIANGAN_WUXING[dayGan];
+    /* 日柱未知（不知道哪一天）时**没有日主** ——
+     * 身强身弱、十神、喜用神全都是拿日主当参照物推出来的，
+     * 没参照物就一个都算不了。这时一律置空，让上层退回
+     * 「按名字内部五行搭配评分」，而不是硬凑一个假的喜用神。 */
+    var dayGan = bz.日 ? bz.日[0] : null;
+    var dayWx = dayGan === null ? null : NS.TIANGAN_WUXING[dayGan];
 
-    /* 日主自身的力量剔除，避免把自己算进「同党」 */
-    var selfPower = 1.0;
     var powerAdj = {};
     NS.WUXING.forEach(function (w) { powerAdj[w] = power[w]; });
-    powerAdj[dayWx] = Math.max(0, powerAdj[dayWx] - selfPower);
 
     /* 同党 = 比劫(同我) + 印(生我)；异党 = 食伤 + 财 + 官杀 */
     var tongDang = 0, yiDang = 0;
     var byRel = { same: 0, print: 0, output: 0, wealth: 0, officer: 0 };
-    NS.WUXING.forEach(function (w) {
-      var rel = NS.relOf(dayWx, w);
-      byRel[rel] += powerAdj[w];
-      if (rel === 'same' || rel === 'print') tongDang += powerAdj[w];
-      else yiDang += powerAdj[w];
-    });
+    var ratio = 0;
+    var strength = null;
+    var candidates = [];
 
-    var total = tongDang + yiDang;
-    var ratio = total > 0 ? tongDang / total : 0.5;
-    var strength;
-    if (ratio >= 0.56) strength = '身强';
-    else if (ratio >= 0.44) strength = '中和';
-    else strength = '身弱';
+    if (dayGan !== null) {
+      /* 日主自身的力量剔除，避免把自己算进「同党」 */
+      powerAdj[dayWx] = Math.max(0, powerAdj[dayWx] - 1.0);
 
-    /* 喜用神：身强宜克泄耗，身弱宜生扶；同组内优先补「力量最小」的五行 */
-    var candidates;
-    if (strength === '身强') {
-      candidates = [NS.KE[dayWx], NS.KE_WO[dayWx], NS.SHENG[dayWx]];
-    } else if (strength === '身弱') {
-      candidates = [NS.SHENG_WO[dayWx], dayWx];
-    } else {
-      /* 中和：不偏不倚，取最弱的两个五行来补。
-       * 若把五个全列成「喜用神」，等于没说，界面也没法给人有效参考。 */
-      candidates = NS.WUXING.slice().sort(function (a, b) {
-        return powerAdj[a] - powerAdj[b];
-      }).slice(0, 2);
+      NS.WUXING.forEach(function (w) {
+        var rel = NS.relOf(dayWx, w);
+        byRel[rel] += powerAdj[w];
+        if (rel === 'same' || rel === 'print') tongDang += powerAdj[w];
+        else yiDang += powerAdj[w];
+      });
+
+      var total = tongDang + yiDang;
+      ratio = total > 0 ? tongDang / total : 0.5;
+      if (ratio >= 0.56) strength = '身强';
+      else if (ratio >= 0.44) strength = '中和';
+      else strength = '身弱';
+
+      /* 喜用神：身强宜克泄耗，身弱宜生扶；同组内优先补「力量最小」的五行 */
+      if (strength === '身强') {
+        candidates = [NS.KE[dayWx], NS.KE_WO[dayWx], NS.SHENG[dayWx]];
+      } else if (strength === '身弱') {
+        candidates = [NS.SHENG_WO[dayWx], dayWx];
+      } else {
+        /* 中和：不偏不倚，取最弱的两个五行来补。
+         * 若把五个全列成「喜用神」，等于没说，界面也没法给人有效参考。 */
+        candidates = NS.WUXING.slice().sort(function (a, b) {
+          return powerAdj[a] - powerAdj[b];
+        }).slice(0, 2);
+      }
+      candidates = candidates.filter(function (w, i) {
+        return candidates.indexOf(w) === i;
+      });
+      candidates.sort(function (a, b) { return powerAdj[a] - powerAdj[b]; });
     }
-    candidates = candidates.filter(function (w, i) {
-      return candidates.indexOf(w) === i;
-    });
-    candidates.sort(function (a, b) { return powerAdj[a] - powerAdj[b]; });
 
     var missing = NS.WUXING.filter(function (w) { return count[w] === 0; });
 
@@ -288,11 +340,19 @@
       tongDang: tongDang,
       yiDang: yiDang,
       ratio: ratio,
-      dayGan: NS.TIANGAN[dayGan],
+      /* 日柱未知时没有日主，这三个为 null —— 界面必须据此说明
+       * 「无法推断喜用神」，而不是显示 undefined 或留一片空白 */
+      dayGan: dayGan === null ? null : NS.TIANGAN[dayGan],
       dayWx: dayWx,
-      dayYinYang: NS.ganYinYang(dayGan),
-      /* 时辰未知标志。界面据此把时柱标成「--」并提示喜用神是按三柱推的 */
+      dayYinYang: dayGan === null ? null : NS.ganYinYang(dayGan),
+      /* 生辰模糊标志。界面据此把对应柱标成「--」，
+       * 并说明五行力量到底按哪几柱推的 */
       noHour: !!bz.meta.noHour,
+      noDay: !!bz.meta.noDay,
+      noMonth: !!bz.meta.noMonth,
+      yearAssumed: !!bz.meta.yearAssumed,
+      monthAssumed: !!bz.meta.monthAssumed,
+      /* 无日主时为 null（不是 '未知' 这种假值），界面靠这个判分支 */
       strength: strength,
       xiyongshen: candidates,
       missing: missing,
@@ -301,6 +361,8 @@
        * byRel 只分 5 大类且按五行汇总，这里是按十神逐个汇总，
        * 用于展示「这个八字里哪些十神旺、哪些全无」。 */
       shishen: (function () {
+        /* 十神全部相对于日主而言，没有日主就没有十神 */
+        if (dayGan === null) return null;
         var power = shishenStrength(bz);
         var present = SHISHEN_ORDER.filter(function (n) { return power[n] > 0; });
         return {

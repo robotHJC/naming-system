@@ -177,7 +177,16 @@
     var cbRow = $('birthNoHour');
     if (row) row.hidden = !lunar;
     if (b) b.hidden = lunar;
-    /* 农历模式下「时辰未知」由时辰下拉接管，避免两个开关打架 */
+    /* 农历模式下「时辰未知」由时辰下拉接管，避免两个开关打架。
+     * 「只知道哪一年 / 不知道哪一天」两档也一样交给农历面板 ——
+     * 它本来就要选年月日，没有理由再问一遍「你知不知道」。
+     * 模糊区和年月下拉也一并藏起来，否则会和农历面板上下重叠。 */
+    var checks = $('fuzzyChecks');
+    if (checks) checks.hidden = lunar;
+    if (lunar) {
+      var fRow = $('fuzzyRow');
+      if (fRow) fRow.hidden = true;
+    }
     if (cbRow) {
       var wrap = cbRow.closest ? cbRow.closest('label') : null;
       if (wrap) wrap.hidden = lunar;

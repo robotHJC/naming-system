@@ -2247,6 +2247,50 @@ details.more > summary:hover { color: var(--jade); }
 
 #lunarEcho b { color: var(--jade); }
 
+/* ---------- 「只知道哪一年 / 哪年哪月」的年·月下拉 ----------
+ * 与农历选择框同一套外观。用 flex 而不是固定两列网格，
+ * 因为「只知道年份」时月份那个下拉要整个隐藏，剩下的年份要占满一行。 */
+.fuzzy-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.fuzzy-grid select {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+  color: var(--ink);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+/* 三个「不确定」勾选框，装在一个浅底容器里。
+ * 目的是让它们看起来是**一组精度递减**的选项，
+ * 而不是三个互不相干的开关 —— 它们之间确实有包含关系。 */
+.fuzzy-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+}
+
+.fuzzy-checks .check { line-height: 1.55; }
+
+/* 被上一档连带勾上、且不允许用户单独取消的那两个。
+ * 压暗但仍可读 —— 直接 disabled 会让人以为坏了，
+ * 压暗加上 hint 才能说明「它为什么自己勾上了」。 */
+.fuzzy-checks .check.locked { opacity: .5; }
+
+.fuzzy-checks .check .sub { margin-left: 2px; }
+
 @media (max-width: 560px) {
   .lunar-grid { grid-template-columns: 1fr 1fr; }
   .cal-switch button { flex: 1 1 0; }
@@ -2288,8 +2332,8 @@ details.more > summary:hover { color: var(--jade); }
 
       <div class="row2">
         <div class="field">
-          <label for="strokes">姓氏笔画 <span class="sub">康熙</span></label>
-          <input type="number" id="strokes" min="1" max="40" value="7">
+          <label for="strokes">姓氏笔画 <span class="sub">康熙，留空按姓氏自动</span></label>
+          <input type="number" id="strokes" min="1" max="40" placeholder="自动">
         </div>
         <div class="field">
           <label>性别</label>
@@ -2342,10 +2386,25 @@ details.more > summary:hover { color: var(--jade); }
             <select id="lunarHour" aria-label="出生时辰"></select>
           </div>
         </div>
-        <label class="check" style="margin-top:8px">
-          <input type="checkbox" id="birthNoHour">
-          <span>只知道日期，不知道几点出生</span>
-        </label>
+        <!-- 只知道年份 / 只知道年月时，用这两个下拉代替精确日期。 -->
+        <div class="fuzzy-grid" id="fuzzyRow" hidden>
+          <select id="fuzzyYear" aria-label="出生年份"></select>
+          <select id="fuzzyMonth" aria-label="出生月份"></select>
+        </div>
+        <div class="fuzzy-checks" id="fuzzyChecks">
+          <label class="check">
+            <input type="checkbox" id="birthNoMonth">
+            <span>只知道哪一年</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="birthNoDay">
+            <span>不知道具体哪一天<span class="sub">只知道哪年哪月</span></span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="birthNoHour">
+            <span>不知道几点出生</span>
+          </label>
+        </div>
         <p class="hint" id="lunarEcho" hidden style="margin:6px 0 0"></p>
         <p class="hint" id="baziHint" style="margin:6px 0 0"></p>
       </div>
@@ -2639,15 +2698,38 @@ details.more > summary:hover { color: var(--jade); }
        它们也是常用词，但用它们取名是传统做法。
        和「名字显老」一样：<b>是降权不是禁用</b>。修复后
        「博士」「斯文」在 10 个姓氏×性别组合里全部跌出前 200 名。</p>
-    <p><b>关于时辰未知</b>　很多人只记得住出生日期、记不住几点出生。
-       以前这种情况只能弃填生辰，于是完全拿不到八字、退化成「用字」层。
-       现在勾上「只知道日期，不知道几点出生」即可：
-       <b>时柱会标成「？？」</b>，五行力量与十神<b>都不计入时柱</b>，
-       喜用神按年、月、日三柱推出来，并在报告里写清这个前提。
-       为什么<b>不能随便填一个时辰</b>：一个日期换个时辰，整张盘的五行强弱就可能翻转，
-       算出来的喜用神是假的 —— <b>比不算更糟。</b>
-       真太阳时在勾选后会自动禁用，因为它算的正是时柱，
+    <p><b>关于生辰填不全</b>　很多人只记得住个大概 —— 户口本上只写年份、
+       农历日子记不清、或者只知道「夏天生的」。所以生辰可以<b>三档模糊</b>，
+       精度由粗到细：<b>只知道哪一年</b> / <b>只知道哪年哪月</b> /
+       <b>不知道几点出生</b>。勾粗的那一档会把细的两档自动一并勾上
+       （它们本来就被包含在内），并压暗、鼠标悬停说明原因。</p>
+    <p style="margin-top:10px">处理原则只有一条：
+       <b>不确定的柱直接置空，绝不瞎填。</b>
+       一柱变了整张盘的五行力量就变了，算出来的喜用神是假的 —— 比不算更糟。
+       两处不得不做的「推定」也都写在界面上：</p>
+    <ul style="margin:8px 0 0;padding-left:22px;color:var(--ink-2);font-size:13px;line-height:1.85">
+      <li><b>不知道几点</b>　时柱标成「？？」。五行力量与十神都不计入时柱，
+         喜用神按年、月、日三柱推，报告里写清这个前提。</li>
+      <li><b>不知道哪一天</b>　日柱与时柱置空。月柱按<b>该月 15 日</b>推定 ——
+         每个月的「节」交气落在 3–9 日，取 15 日就一定在节后，
+         既不踩边界，也给出最可能的那一柱。</li>
+      <li><b>只知道哪一年</b>　月、日、时三柱全空。年柱按<b>立春后</b>推定 ——
+         一个公历年里只有 1 月 1 日到 2 月 3 日这三十来天在立春之前。</li>
+    </ul>
+    <p style="margin-top:10px"><b>没有日柱就没有日主。</b>
+       身强身弱、十神、喜用神全都是拿日主当参照物推出来的，
+       所以后两档<b>一个都算不了</b>。这时系统<b>不做喜用神判断</b>，
+       退回按「名字内部五行搭配」评分，并在报告里写明原因 ——
+       而不是硬凑一个看起来像那么回事的喜用神。
+       真太阳时在后两档下会自动禁用，因为它算的正是时柱与日柱，
        硬算只会把一个未知的东西变成一个看起来确定的值。</p>
+    <p><b>关于姓氏笔画</b>　「姓氏笔画」这一栏现在<b>默认留空</b>，
+       留空就表示<b>按姓氏表自动取康熙笔画</b>，自动值显示在下面的提示里。
+       需要手工修正时填一个数，提示会立刻变成
+       「笔画已手动改为 X（自动值 Y）」，两边不一致一眼就能看出来。
+       早先这一栏会自动填上数字、并被当作「本次填写内容」记录下来，
+       于是每次打开都显示上次那个值；换个姓氏之后它就是错的，
+       还会静默影响三才五格与姓名卦。所以现在它<b>既不自动填，也不跨次记住</b>。</p>
     <p><b>关于农历输入</b>　长辈报生日几乎都是农历，所以生辰可以按农历填：
        选年、月、日、时辰，下面会立刻显示换算出的公历日期供核对。
        农历<b>不是查表</b>，而是按「定朔定气」真算 —— 朔（新月）时刻用
@@ -6845,17 +6927,43 @@ details.more > summary:hover { color: var(--jade); }
     opts = opts || {};
     minute = minute || 0;
 
+    /* ---------- 生辰模糊的三档 ----------
+     *
+     * 现实中经常只知道个大概：户口本只记年份、农历日子记不清、
+     * 只知道「夏天生的」。所以除了「不知道几点」，还要有
+     * 「不知道哪一天」与「不知道几月」两档。
+     *
+     * 处理原则与时辰未知完全一致：**不确定的柱直接置空，绝不瞎填**。
+     * 一柱变了整张盘的五行力量就变了，算出来的喜用神是假的，比不算更糟。
+     * 三档是单向包含的：
+     *
+     *   noMonth 只知道年份   ⇒ 月、日、时三柱全未知
+     *   noDay   只知道年月   ⇒ 日、时两柱未知，月柱给推定值
+     *   noHour  不知道几点   ⇒ 时柱未知
+     *
+     * 有两处**推定**必须讲清楚（都置了 meta 标志，界面要如实说出来）：
+     *   1. noDay：月柱取决于生在哪一天有没有过当月的「节」。
+     *      节的交气落在每月 3–9 日，取 15 日就一定在节后，
+     *      既不踩边界，也给出最可能的那一柱。年柱同理 ——
+     *      立春在 2 月 3–5 日，取 15 日足以判断立春前后。
+     *   2. noMonth：没有月份就判不了立春前后，按「立春后」推定 ——
+     *      一个公历年里只有 1/1–2/3 这三十来天在立春之前。
+     */
+    var noMonth = opts.noMonth === true;
+    var noDay = noMonth || opts.noDay === true;
+    var noHour = noDay || opts.noHour === true;
+
     var useTST = opts.trueSolarTime !== false && typeof opts.longitude === 'number'
       && isFinite(opts.longitude);
+    /* 真太阳时算的正是时柱与日柱，这两柱都不存在时它没有意义 */
+    if (noDay) useTST = false;
     var ziShiNewDay = opts.ziShiNewDay !== false;
-    /* 时辰未知：只给日期、不知道几点出生。
-     * 这时**不能随便填一个时辰** —— 时柱变了整个五行力量就变了，
-     * 算出来的喜用神是假的，比不算更糟。所以时柱直接置空、
-     * 五行力量与十神都不计它，并在界面上明确标出来。 */
-    var noHour = opts.noHour === true;
 
-    /* 北京时间（用于年柱/月柱的节气边界比较） */
-    var jdBeijing = C.gregorianToJD(year, month, day, hour, minute);
+    /* 年柱与月柱只取决于「过没过节」，与几点无关；
+     * 日未知时用户填的那个日期只是占位值，要换成本月 15 日再来判断 */
+    var jdYM = noDay
+      ? C.gregorianToJD(year, month, 15, 12, 0)
+      : C.gregorianToJD(year, month, day, hour, minute);
 
     /* 真太阳时（用于日柱/时柱） */
     var ts = useTST ? trueSolar(year, month, day, hour, minute, opts.longitude)
@@ -6864,34 +6972,46 @@ details.more > summary:hover { color: var(--jade); }
     var tstMinute = ts.mi;
 
     /* ---------- 年柱：立春为界 ---------- */
-    var lichunCur = C.jieOfYear(year)[1];              /* 该年立春 */
-    var sui = jdBeijing >= lichunCur.jdLocal ? year : year - 1;
+    /* 只知道年份时判不了立春前后，按立春后推定，并置 yearAssumed */
+    var sui = noMonth ? year
+      : (jdYM >= C.jieOfYear(year)[1].jdLocal ? year : year - 1);
     var yearGan = ((sui - 4) % 10 + 10) % 10;
     var yearZhi = ((sui - 4) % 12 + 12) % 12;
 
     /* ---------- 月柱：以「节」为界 ---------- */
-    var loc = C.locateJie(year, jdBeijing);
-    var monthZhi = loc.current.zhi;   /* 已进入的节 → 该月月支 */
+    var monthGan = null, monthZhi = null, loc = null;
+    if (!noMonth) {
+      loc = C.locateJie(year, jdYM);
+      monthZhi = loc.current.zhi;   /* 已进入的节 → 该月月支 */
 
-    /* 五虎遁：寅月天干 = (年干 % 5) × 2 + 2；其余月按距寅的步数顺推
-     * （原 Python 版写成 (年干 × 2 + 月支) % 10，结果错误） */
-    var stepsFromYin = ((monthZhi - 2) % 12 + 12) % 12;
-    var monthGan = (((yearGan % 5) * 2 + 2) + stepsFromYin) % 10;
+      /* 五虎遁：寅月天干 = (年干 % 5) × 2 + 2；其余月按距寅的步数顺推
+       * （原 Python 版写成 (年干 × 2 + 月支) % 10，结果错误） */
+      var stepsFromYin = ((monthZhi - 2) % 12 + 12) % 12;
+      monthGan = (((yearGan % 5) * 2 + 2) + stepsFromYin) % 10;
+    }
 
     /* ---------- 日柱 ---------- */
-    var dayY = ts.y, dayM = ts.m, dayD = ts.d;
-    if (ziShiNewDay && tstHour >= 23) {
-      /* 晚子时：日柱进一位 */
-      var next = C.jdToGregorian(
-        C.gregorianToJD(dayY, dayM, dayD, 12, 0) + 1
-      );
-      dayY = next.y; dayM = next.m; dayD = next.d;
+    /* 不知道哪一天，就没有日柱 —— 也就没有日主。
+     * 日主是身强身弱、十神、喜用神唯一的参照物，缺了它这些全算不了，
+     * 所以这里置空、由 analyzeBazi 整体降级，而不是拿占位日期硬算。 */
+    var dayGan = null, dayZhi = null;
+    if (!noDay) {
+      var dayY = ts.y, dayM = ts.m, dayD = ts.d;
+      if (ziShiNewDay && tstHour >= 23) {
+        /* 晚子时：日柱进一位 */
+        var next = C.jdToGregorian(
+          C.gregorianToJD(dayY, dayM, dayD, 12, 0) + 1
+        );
+        dayY = next.y; dayM = next.m; dayD = next.d;
+      }
+      var dn = C.dayNumber(dayY, dayM, dayD);
+      dayGan = ((dn + 9) % 10 + 10) % 10;
+      dayZhi = ((dn + 1) % 12 + 12) % 12;
     }
-    var dn = C.dayNumber(dayY, dayM, dayD);
-    var dayGan = ((dn + 9) % 10 + 10) % 10;
-    var dayZhi = ((dn + 1) % 12 + 12) % 12;
 
     /* ---------- 时柱 ---------- */
+    /* 时干是由日干推出来的，所以日柱未知时它必然也未知
+     * （noHour 已被连带置真，这里不会真的取到 null 的 dayGan） */
     var hourZhi = null, hourGan = null;
     if (!noHour) {
       hourZhi = Math.floor((((tstHour + 1) % 24) + 24) % 24 / 2);
@@ -6900,19 +7020,25 @@ details.more > summary:hover { color: var(--jade); }
 
     return {
       年: [yearGan, yearZhi],
-      月: [monthGan, monthZhi],
-      日: [dayGan, dayZhi],
+      月: noMonth ? null : [monthGan, monthZhi],
+      日: noDay ? null : [dayGan, dayZhi],
       时: noHour ? null : [hourGan, hourZhi],
       meta: {
         sui: sui,
         trueSolarTime: useTST,
         noHour: noHour,
+        noDay: noDay,
+        noMonth: noMonth,
+        /* 年柱按「立春后」推定（只有 noMonth 时才会真） */
+        yearAssumed: noMonth,
+        /* 月柱按「本月 15 日」推定（只有日未知、但月份已知时才会真） */
+        monthAssumed: noDay && !noMonth,
         tst: { y: ts.y, m: ts.m, d: ts.d, h: tstHour, mi: tstMinute },
         deltaMin: ts.deltaMin || 0,
-        jieqi: loc.current.name,
-        jieqiTime: loc.current.date,
-        nextJieqi: loc.next ? loc.next.name : null,
-        nextJieqiTime: loc.next ? loc.next.date : null,
+        jieqi: loc ? loc.current.name : null,
+        jieqiTime: loc ? loc.current.date : null,
+        nextJieqi: (loc && loc.next) ? loc.next.name : null,
+        nextJieqiTime: (loc && loc.next) ? loc.next.date : null,
         ziShiNewDay: ziShiNewDay
       }
     };
@@ -7008,49 +7134,57 @@ details.more > summary:hover { color: var(--jade); }
     var count = wuxingCount(bz);
     var power = wuxingStrength(bz);
 
-    var dayGan = bz.日[0];
-    var dayWx = NS.TIANGAN_WUXING[dayGan];
+    /* 日柱未知（不知道哪一天）时**没有日主** ——
+     * 身强身弱、十神、喜用神全都是拿日主当参照物推出来的，
+     * 没参照物就一个都算不了。这时一律置空，让上层退回
+     * 「按名字内部五行搭配评分」，而不是硬凑一个假的喜用神。 */
+    var dayGan = bz.日 ? bz.日[0] : null;
+    var dayWx = dayGan === null ? null : NS.TIANGAN_WUXING[dayGan];
 
-    /* 日主自身的力量剔除，避免把自己算进「同党」 */
-    var selfPower = 1.0;
     var powerAdj = {};
     NS.WUXING.forEach(function (w) { powerAdj[w] = power[w]; });
-    powerAdj[dayWx] = Math.max(0, powerAdj[dayWx] - selfPower);
 
     /* 同党 = 比劫(同我) + 印(生我)；异党 = 食伤 + 财 + 官杀 */
     var tongDang = 0, yiDang = 0;
     var byRel = { same: 0, print: 0, output: 0, wealth: 0, officer: 0 };
-    NS.WUXING.forEach(function (w) {
-      var rel = NS.relOf(dayWx, w);
-      byRel[rel] += powerAdj[w];
-      if (rel === 'same' || rel === 'print') tongDang += powerAdj[w];
-      else yiDang += powerAdj[w];
-    });
+    var ratio = 0;
+    var strength = null;
+    var candidates = [];
 
-    var total = tongDang + yiDang;
-    var ratio = total > 0 ? tongDang / total : 0.5;
-    var strength;
-    if (ratio >= 0.56) strength = '身强';
-    else if (ratio >= 0.44) strength = '中和';
-    else strength = '身弱';
+    if (dayGan !== null) {
+      /* 日主自身的力量剔除，避免把自己算进「同党」 */
+      powerAdj[dayWx] = Math.max(0, powerAdj[dayWx] - 1.0);
 
-    /* 喜用神：身强宜克泄耗，身弱宜生扶；同组内优先补「力量最小」的五行 */
-    var candidates;
-    if (strength === '身强') {
-      candidates = [NS.KE[dayWx], NS.KE_WO[dayWx], NS.SHENG[dayWx]];
-    } else if (strength === '身弱') {
-      candidates = [NS.SHENG_WO[dayWx], dayWx];
-    } else {
-      /* 中和：不偏不倚，取最弱的两个五行来补。
-       * 若把五个全列成「喜用神」，等于没说，界面也没法给人有效参考。 */
-      candidates = NS.WUXING.slice().sort(function (a, b) {
-        return powerAdj[a] - powerAdj[b];
-      }).slice(0, 2);
+      NS.WUXING.forEach(function (w) {
+        var rel = NS.relOf(dayWx, w);
+        byRel[rel] += powerAdj[w];
+        if (rel === 'same' || rel === 'print') tongDang += powerAdj[w];
+        else yiDang += powerAdj[w];
+      });
+
+      var total = tongDang + yiDang;
+      ratio = total > 0 ? tongDang / total : 0.5;
+      if (ratio >= 0.56) strength = '身强';
+      else if (ratio >= 0.44) strength = '中和';
+      else strength = '身弱';
+
+      /* 喜用神：身强宜克泄耗，身弱宜生扶；同组内优先补「力量最小」的五行 */
+      if (strength === '身强') {
+        candidates = [NS.KE[dayWx], NS.KE_WO[dayWx], NS.SHENG[dayWx]];
+      } else if (strength === '身弱') {
+        candidates = [NS.SHENG_WO[dayWx], dayWx];
+      } else {
+        /* 中和：不偏不倚，取最弱的两个五行来补。
+         * 若把五个全列成「喜用神」，等于没说，界面也没法给人有效参考。 */
+        candidates = NS.WUXING.slice().sort(function (a, b) {
+          return powerAdj[a] - powerAdj[b];
+        }).slice(0, 2);
+      }
+      candidates = candidates.filter(function (w, i) {
+        return candidates.indexOf(w) === i;
+      });
+      candidates.sort(function (a, b) { return powerAdj[a] - powerAdj[b]; });
     }
-    candidates = candidates.filter(function (w, i) {
-      return candidates.indexOf(w) === i;
-    });
-    candidates.sort(function (a, b) { return powerAdj[a] - powerAdj[b]; });
 
     var missing = NS.WUXING.filter(function (w) { return count[w] === 0; });
 
@@ -7092,11 +7226,19 @@ details.more > summary:hover { color: var(--jade); }
       tongDang: tongDang,
       yiDang: yiDang,
       ratio: ratio,
-      dayGan: NS.TIANGAN[dayGan],
+      /* 日柱未知时没有日主，这三个为 null —— 界面必须据此说明
+       * 「无法推断喜用神」，而不是显示 undefined 或留一片空白 */
+      dayGan: dayGan === null ? null : NS.TIANGAN[dayGan],
       dayWx: dayWx,
-      dayYinYang: NS.ganYinYang(dayGan),
-      /* 时辰未知标志。界面据此把时柱标成「--」并提示喜用神是按三柱推的 */
+      dayYinYang: dayGan === null ? null : NS.ganYinYang(dayGan),
+      /* 生辰模糊标志。界面据此把对应柱标成「--」，
+       * 并说明五行力量到底按哪几柱推的 */
       noHour: !!bz.meta.noHour,
+      noDay: !!bz.meta.noDay,
+      noMonth: !!bz.meta.noMonth,
+      yearAssumed: !!bz.meta.yearAssumed,
+      monthAssumed: !!bz.meta.monthAssumed,
+      /* 无日主时为 null（不是 '未知' 这种假值），界面靠这个判分支 */
       strength: strength,
       xiyongshen: candidates,
       missing: missing,
@@ -7105,6 +7247,8 @@ details.more > summary:hover { color: var(--jade); }
        * byRel 只分 5 大类且按五行汇总，这里是按十神逐个汇总，
        * 用于展示「这个八字里哪些十神旺、哪些全无」。 */
       shishen: (function () {
+        /* 十神全部相对于日主而言，没有日主就没有十神 */
+        if (dayGan === null) return null;
         var power = shishenStrength(bz);
         var present = SHISHEN_ORDER.filter(function (n) { return power[n] > 0; });
         return {
@@ -11740,7 +11884,10 @@ details.more > summary:hover { color: var(--jade); }
    * }
    */
   function analyze(bz) {
+    /* 月柱未知（只知道年份）时 pillars[1] 的 zhi 是占位符 '--'，
+     * SEASON_OF 取不到就成了「未知季节」，下面会直接返回 —— 正是想要的 */
     var monthZhi = bz.pillars[1].zhi;
+    if (monthZhi === '--') monthZhi = '';
     var season = SEASON_OF[monthZhi] || '';
 
     var out = {
@@ -11758,8 +11905,9 @@ details.more > summary:hover { color: var(--jade); }
 
     /* 春秋不判定 —— 见文件头说明 */
     if (season !== '冬' && season !== '夏') {
-      out.note = '生月属' + (season || '未知') +
-        '，调候取向随日干而变、各家说法不一，本系统不做判定，只看扶抑法。';
+      out.note = season
+        ? '生月属' + season + '，调候取向随日干而变、各家说法不一，本系统不做判定，只看扶抑法。'
+        : '生月未知（只知道年份），调候无从判断 —— 它要看的正是月令的寒暖燥湿。';
       return out;
     }
 
@@ -11772,8 +11920,11 @@ details.more > summary:hover { color: var(--jade); }
     out.ratio = total > 0 ? (bz.power[need] || 0) / total : 0;
     out.weak = out.ratio < WEAK_RATIO;
 
-    /* 与扶抑法的喜用神是否冲突：调候需要的五行不在喜用神里 */
-    out.conflict = out.weak && out.xiyongshen.indexOf(need) < 0;
+    /* 与扶抑法的喜用神是否冲突：调候需要的五行不在喜用神里。
+     * 缺日柱时扶抑法根本给不出喜用神（空列表），此时无从对比 ——
+     * 不能把「没有」当成「不一致」报出来。 */
+    out.conflict = out.weak && out.xiyongshen.length > 0 &&
+      out.xiyongshen.indexOf(need) < 0;
 
     var pct = (out.ratio * 100).toFixed(0);
     if (!out.weak) {
@@ -12222,20 +12373,38 @@ details.more > summary:hover { color: var(--jade); }
     if (bazi) {
       var l1 = [];
       l1.push('四柱：' + bazi.baziStr);
-      /* 时辰未知是个**必须前置说明**的前提：同一个日期换个时辰，
-       * 整张盘的五行强弱就可能翻转，不能让人以为这是完整四柱。 */
-      if (bazi.noHour) {
+      /* 生辰模糊是**必须前置说明**的前提：同一个日期换个时辰，
+       * 整张盘的五行强弱就可能翻转，不能让人以为这是完整四柱。
+       * 三档由粗到细写，只说最粗的那一档，避免堆成一片。 */
+      if (bazi.noMonth) {
+        l1.push('**只知道出生年份** —— 月柱、日柱、时柱都无法确定，' +
+          '上面的五行分布只计入了年柱。年柱本身也是按「立春后」推定的：' +
+          '若生于当年 1 月 1 日到 2 月初之间，年柱与生肖应当退一年。');
+      } else if (bazi.noDay) {
+        l1.push('**只知道出生年月** —— 日柱与时柱无法确定，' +
+          '上面的五行分布只计入了年柱与月柱。月柱是按**该月 15 日**推定的：' +
+          '每个月的「节」落在 3–9 日，所以只有生于该月 1–8 日左右才可能有差异。');
+      } else if (bazi.noHour) {
         l1.push('**时辰未填** —— 时柱无法确定，上面的五行力量与十神' +
           '都没有计入时柱，喜用神是按年、月、日三柱推的。' +
           '这只代表大概方向；若能问到出生时辰，填上后结果会准很多。');
       }
-      l1.push('日主 ' + bazi.dayGan + '（' + bazi.dayWx + '），' +
-        bazi.strength + '（同党 ' + (bazi.ratio * 100).toFixed(0) + '%）');
+      /* 没有日柱就没有日主。这一句必须紧跟上面那段 ——
+       * 否则用户会以为「喜用神」那行为什么是空的。 */
+      if (bazi.dayGan === null) {
+        l1.push('日主：**未知**（缺少日柱）—— 身强身弱、十神、喜用神' +
+          '都是以日主为参照物推出来的，没有日柱就一个都算不了。' +
+          '所以本系统**不做喜用神判断**，选字只按名字本身的五行搭配评分。' +
+          '若能问到具体出生日期，结果会完整得多。');
+      } else {
+        l1.push('日主 ' + bazi.dayGan + '（' + bazi.dayWx + '），' +
+          bazi.strength + '（同党 ' + (bazi.ratio * 100).toFixed(0) + '%）');
+      }
       var cnt = NS.WUXING.map(function (w) {
         return w + ' ' + (bazi.count[w] || 0);
       }).join('　');
       l1.push('五行分布：' + cnt);
-      l1.push('喜用神：' + (bazi.xiyongshen.join('、') || '—'));
+      l1.push('喜用神：' + (bazi.xiyongshen.join('、') || '未能推断'));
       if (bazi.missing.length) {
         l1.push('八字中不显的五行：' + bazi.missing.join('、') +
           '（注意：「缺」不等于「需要补」，要看喜用神，' +
@@ -12341,6 +12510,12 @@ details.more > summary:hover { color: var(--jade); }
         (c.inferred ? '　［推断值，需人工核对］' : '') +
         (c.eraChar ? '　［偏上一代用字］' : '');
     });
+    /* 拿不到喜用神有两种原因，说法必须分开 ——
+     * 「没填生辰」与「填了但缺日柱推不出日主」对用户的意思完全不同，
+     * 混成一句话，填了模糊生辰的人会以为是系统没读到他填的东西。 */
+    var noXiWhy = (bazi && bazi.dayGan === null)
+      ? '生辰信息不足（缺日柱 → 没有日主）→ 推不出喜用神，'
+      : '没有填生辰 → 无法判断喜用神，';
     if (xiyongshen.length) {
       var hitN = chars.filter(function (c) { return c.wxLevel !== 'idle'; }).length;
       l2.push('');
@@ -12351,8 +12526,8 @@ details.more > summary:hover { color: var(--jade); }
     }
     add(xiyongshen.length ? '命理' : '用字',
       xiyongshen.length ? '用字五行' : '用字五行（未与八字比对）',
-      l2.concat(xiyongshen.length ? [] : [''
-        , '没有填生辰 → 无法判断喜用神，上面只列出了每个字本身的五行与笔画，'
+      l2.concat(xiyongshen.length ? [] : ['', noXiWhy +
+        '上面只列出了每个字本身的五行与笔画，'
         + '**没有**说它们与该补什么相配。']),
       xiyongshen.length && chars.every(function (c) { return c.wxLevel === 'idle'; })
         ? 'warn' : 'neutral');
@@ -12788,11 +12963,14 @@ details.more > summary:hover { color: var(--jade); }
   /* 只认识这些键 —— 防止历史上写进去的脏字段被一路带下去。
    * 加新字段时记得同时加到这里，否则存了也读不回来。 */
   var ALLOWED = {
-    /* 主表单 */
-    surname: 1, strokes: 1, birth: 1, longitude: 1, useTST: 1, city: 1,
+    /* 主表单。
+     * strokes **不在这里**：它是「姓氏康熙笔画」的手工覆盖值，
+     * 留空才表示「按姓氏表自动」。缓存它会让上次那个数字每次被恢复回来，
+     * 换个姓氏之后就成了错值 —— 详见 app.js 里 PREF_IDS 的说明。 */
+    surname: 1, birth: 1, longitude: 1, useTST: 1, city: 1,
     style: 1, top: 1, keywords: 1, taboo: 1, mustInclude: 1, useSC: 1,
-    /* 「只知日期、不知时辰」开关 */
-    birthNoHour: 1,
+    /* 生辰模糊三档：只知道哪一年 / 不知道哪一天 / 不知道几点 */
+    birthNoMonth: 1, birthNoDay: 1, birthNoHour: 1,
     /* 生辰按公历还是农历填（农历的选择本身不存，由 #birth 反推） */
     calMode: 1,
     /* 状态（不在 input 里，单独存） */
@@ -15106,7 +15284,16 @@ details.more > summary:hover { color: var(--jade); }
     var cbRow = $('birthNoHour');
     if (row) row.hidden = !lunar;
     if (b) b.hidden = lunar;
-    /* 农历模式下「时辰未知」由时辰下拉接管，避免两个开关打架 */
+    /* 农历模式下「时辰未知」由时辰下拉接管，避免两个开关打架。
+     * 「只知道哪一年 / 不知道哪一天」两档也一样交给农历面板 ——
+     * 它本来就要选年月日，没有理由再问一遍「你知不知道」。
+     * 模糊区和年月下拉也一并藏起来，否则会和农历面板上下重叠。 */
+    var checks = $('fuzzyChecks');
+    if (checks) checks.hidden = lunar;
+    if (lunar) {
+      var fRow = $('fuzzyRow');
+      if (fRow) fRow.hidden = true;
+    }
     if (cbRow) {
       var wrap = cbRow.closest ? cbRow.closest('label') : null;
       if (wrap) wrap.hidden = lunar;
@@ -15216,6 +15403,7 @@ details.more > summary:hover { color: var(--jade); }
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
   function splitChars(s) {
     return String(s || '').replace(/[\s,，、;；]/g, '').split('').filter(Boolean);
   }
@@ -15386,9 +15574,15 @@ details.more > summary:hover { color: var(--jade); }
    * 条件记住就够了，这是他真正不想每次重填的东西。
    * ------------------------------------------------ */
 
-  /* 要缓存的表单控件，key 就是元素 id */
-  var PREF_IDS = ['surname', 'strokes', 'birth', 'longitude', 'useTST', 'city',
-    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC', 'birthNoHour'];
+  /* 要缓存的表单控件，key 就是元素 id。
+   *
+   * strokes 故意**不在**这里面：它是「姓氏康熙笔画」的手工覆盖值，
+   * 留空才表示「按姓氏表自动」。缓存它会让上次自动填进去的数字
+   * 每次打开都被恢复回来 —— 换个姓氏之后那就是个错值，
+   * 还会静默污染三才五格与姓名卦。宁可让手动改的那一次不记住。 */
+  var PREF_IDS = ['surname', 'birth', 'longitude', 'useTST', 'city',
+    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC',
+    'birthNoHour', 'birthNoDay', 'birthNoMonth'];
 
   /** 收集当前表单状态（含不在 input 里的那些 state） */
   function collectPrefs() {
@@ -15646,7 +15840,7 @@ details.more > summary:hover { color: var(--jade); }
   function recommendByXi() {
     var xi = currentXi();
     if (!xi || !xi.length) {
-      var dt = parseLocal($('birth').value, birthNoHour());
+      var dt = parseLocal($('birth').value, birthFlags());
       if (dt) xi = computeBazi(dt).xiyongshen;
     }
     if (!xi || !xi.length) {
@@ -15680,7 +15874,7 @@ details.more > summary:hover { color: var(--jade); }
 
   /** 按生肖推荐部首。民俗说法，必须用户主动点，且界面上标明性质 */
   function recommendByZodiac() {
-    var dt = parseLocal($('birth').value, birthNoHour());
+    var dt = parseLocal($('birth').value, birthFlags());
     if (!dt) {
       alert('按生肖推荐需要出生日期。请先填出生时间。');
       return;
@@ -15814,6 +16008,34 @@ details.more > summary:hover { color: var(--jade); }
     };
   }
 
+  /** 手工填的姓氏笔画；留空（或填了非法值）返回 null，表示「按姓氏表自动」 */
+  function manualStrokes() {
+    var e = $('strokes');
+    if (!e) return null;
+    var v = parseInt(e.value, 10);
+    return (isFinite(v) && v > 0) ? v : null;
+  }
+
+  /**
+   * 笔画的补充说明。
+   *
+   * 笔画框现在默认是空的，自动值只在这里显示 ——
+   * 用户不用去改那个框，也能一眼看到系统到底用了多少画；
+   * 手动改过就明确写出「已改为 X」，免得两边不一致还看不出来。
+   */
+  function strokesNote(autoTotal, reliable) {
+    var m = manualStrokes();
+    if (m !== null) {
+      return m === autoTotal
+        ? '　笔画 <b>' + m + '</b>'
+        : '　<span style="color:#a9782c">笔画已手动改为 <b>' + m +
+          '</b>（自动值 ' + autoTotal + '）</span>';
+    }
+    return reliable
+      ? '　笔画取自动值 <b>' + autoTotal + '</b>'
+      : '　暂用笔画 <b>' + autoTotal + '</b>（不可靠，建议手动填）';
+  }
+
   function updateSurname() {
     var s = $('surname').value.trim();
     var info = resolveSurname(s);
@@ -15823,21 +16045,20 @@ details.more > summary:hover { color: var(--jade); }
       hint.textContent = '';
       return;
     }
+    var total = info.strokes.reduce(function (a, b) { return a + b; }, 0);
     if (info.known) {
-      var total = info.strokes.reduce(function (a, b) { return a + b; }, 0);
       hint.innerHTML = '康熙笔画 ' + info.strokes.join(' + ') +
         (info.strokes.length > 1 ? ' = <b>' + total + '</b>' : '') +
-        '　拼音 ' + info.pinyin.join(' ');
-      $('strokes').value = total;
+        '　拼音 ' + info.pinyin.join(' ') + strokesNote(total, true);
     } else if (info.fromNet) {
       hint.innerHTML = '该姓氏不在常见姓氏表中。拼音取自联网拼音表：<b>' +
         esc(info.pinyin.join(' ')) + '</b>；笔画是联网字典的<b>简体笔画</b>（' +
         info.strokes.join(' + ') + '），不是康熙笔画，' +
-        '<span style="color:#a63a2e">请核对后手动修正</span>。';
-      $('strokes').value = info.strokes.reduce(function (a, b) { return a + b; }, 0);
+        '<span style="color:#a63a2e">请核对后手动修正</span>。' +
+        strokesNote(total, false);
     } else if (info.partial) {
-      hint.textContent = '该姓氏不在常见姓氏表中，笔画取自字库，请自行核对后修正。';
-      $('strokes').value = info.strokes.reduce(function (a, b) { return a + b; }, 0);
+      hint.innerHTML = '该姓氏不在常见姓氏表中，笔画取自字库，请自行核对后修正。' +
+        strokesNote(total, false);
     } else {
       hint.innerHTML = '<span style="color:#a63a2e">未收录该姓氏：拼音未知，' +
         '谐音检测将无法覆盖姓氏，请手动填写康熙笔画。' +
@@ -15869,62 +16090,183 @@ details.more > summary:hover { color: var(--jade); }
       return;
     }
 
-    var dt = parseLocal(v, birthNoHour());
+    var dt = parseLocal(v, birthFlags());
     if (!dt) { hint.textContent = ''; return; }
     var info = computeBazi(dt);
     if (!info) { hint.textContent = ''; return; }
 
-    var hourNote = info.noHour
-      ? '　<span style="color:#a9782c">时辰未知 → 时柱未计入</span>'
+    /* 四柱少了哪几柱、哪一柱是推定的，必须写在提示里 ——
+     * 否则用户会以为这就是完整四柱，也看不懂喜用神为什么是空的 */
+    var miss = info.missing.length
+      ? '　缺 <b style="color:#a63a2e">' + esc(info.missing.join('、')) + '</b>'
       : '';
+
+    if (!info.dayGan) {
+      hint.innerHTML = '八字 <b>' + esc(info.baziStr) + '</b>　' +
+        '<span style="color:#a9782c">缺少日柱 → 没有日主，' +
+        '身强身弱与喜用神都推不出来</span>' + fuzzyNote(info) + miss;
+      return;
+    }
 
     hint.innerHTML = '八字 <b>' + esc(info.baziStr) + '</b>　日主 <b>' +
       esc(info.dayGan + info.dayWx) + '</b>　' + esc(info.strength) +
       '　喜用神 <b style="color:#2f5d50">' + esc(info.xiyongshen.join('、')) +
-      '</b>' + (info.missing.length
-        ? '　缺 <b style="color:#a63a2e">' + esc(info.missing.join('、')) + '</b>'
-        : '') + hourNote;
+      '</b>' + miss + fuzzyNote(info);
   }
 
   /**
-   * 切换「时辰未知」。
+   * 生辰模糊的说明语。三档由粗到细，**只说最粗的那一档** ——
+   * 三句堆在一起会把真正要注意的那句洗干净。
+   */
+  function fuzzyNote(info) {
+    var c = '　<span style="color:#a9782c">';
+    var e = '</span>';
+    if (info.noMonth) {
+      return c + '只知道年份 → 月、日、时三柱未知，年柱按立春后推定' + e;
+    }
+    if (info.noDay) {
+      return c + '只知道年月 → 日、时两柱未知，月柱按该月 15 日推定' + e;
+    }
+    if (info.noHour) {
+      return c + '时辰未知 → 时柱未计入' + e;
+    }
+    return '';
+  }
+
+  /**
+   * 「生辰模糊」三档的界面同步。
    *
-   * 保留 datetime-local 不换类型：在手机上它会直接调出系统日期时间选择器，
-   * 比自制的「日期 + 时辰下拉」好用；而且换类型会丢掉已填的日期、
-   * 或者得默默填一个假时间进去。不知道时辰时，直接忽略时间部分就行。
+   * 勾选关系是单向包含的：只知道年份 ⇒ 不知道哪一天 ⇒ 不知道几点。
+   * 勾了粗档，下面两档自动跟着勾上并**压暗**。
+   * 压暗而不是 disabled：disabled 的复选框不派发事件、也不显示为
+   * 「被上一档决定的」，用户只会觉得它坏了；压暗 + title 才能说明原因。
    */
   function syncBirthMode() {
-    var noHour = birthNoHour();
-    /* 时辰未知时真太阳时没有意义 —— 它算的正是时柱，
-     * 硬算只会把一个未知的东西变成一个看起来确定的值。 */
+    var noM = $('birthNoMonth'), noD = $('birthNoDay'), noH = $('birthNoHour');
+    if (!noM || !noD || !noH) return;
+
+    /* 勾粗档时把细档一起勾上；取消粗档**不**自动取消细档 ——
+     * 用户可能真的只想退回「不知道哪一天」这一档 */
+    if (noM.checked) noD.checked = true;
+    if (noD.checked) noH.checked = true;
+
+    var f = birthFlags();
+    lockCheck(noD, f.noMonth, '只知道年份 → 哪一天自然也未知');
+    lockCheck(noH, f.noDay, '不知道哪一天 → 几点也无从谈起');
+
+    var lunar = !!(NS.LunarInput && NS.LunarInput.mode() === 'l');
+    var fuzzy = (f.noMonth || f.noDay) && !lunar;
+    var row = $('fuzzyRow'), mSel = $('fuzzyMonth'), b = $('birth');
+    var wasHidden = !row || row.hidden;
+
+    if (row) row.hidden = !fuzzy;
+    /* 只知道年份时月份整个隐藏 —— 留着它反而暗示月份是已知的 */
+    if (mSel) mSel.hidden = f.noMonth;
+    if (b) b.hidden = lunar || fuzzy;
+    /* 农历模式下日期由农历面板负责，模糊档不参与 */
+    var checks = $('fuzzyChecks');
+    if (checks) checks.hidden = lunar;
+
+    if (fuzzy) {
+      /* 只在刚露出来时从 #birth 反推，否则每勾一下都会覆盖用户刚选的年月 */
+      if (wasHidden) syncFuzzyFromBirth();
+      writeFuzzyBirth();
+    }
+
+    /* 真太阳时算的正是时柱与日柱，缺任一一柱它都失去意义 */
+    var off = !!(f.noMonth || f.noDay);
     var tst = $('useTST');
     if (tst) {
-      tst.disabled = noHour;
+      tst.disabled = off;
       var tstRow = tst.closest('label');
-      if (tstRow) tstRow.style.opacity = noHour ? '.5' : '';
+      if (tstRow) tstRow.style.opacity = off ? '.5' : '';
     }
-    var b = $('birth');
     if (b) b.disabled = false;
     updateBaziHint();
   }
 
-  function parseLocal(v, forceNoHour) {
+  /** 压暗一个被上一档连带勾上的勾选框，并把原因写进 title */
+  function lockCheck(cb, locked, why) {
+    var wrap = cb.closest ? cb.closest('label') : null;
+    if (wrap) wrap.classList.toggle('locked', !!locked);
+    cb.title = locked ? why : '';
+  }
+
+  /** 建「只知道哪一年 / 哪年哪月」的年·月下拉 */
+  function initFuzzySelects() {
+    var ys = $('fuzzyYear'), ms = $('fuzzyMonth');
+    if (!ys || !ms) return;
+    var out = [];
+    /* 倒序：出生年份通常离现在近，越近的越靠上。
+     * 下限取 1900，与农历面板的范围保持一致，免得两处对不上。 */
+    var cur = new Date().getFullYear();
+    for (var y = cur; y >= 1900; y--) {
+      out.push('<option value="' + y + '">' + y + ' 年</option>');
+    }
+    ys.innerHTML = out.join('');
+    ys.value = '1990';
+
+    var mo = [];
+    for (var mm = 1; mm <= 12; mm++) {
+      mo.push('<option value="' + mm + '">' + mm + ' 月</option>');
+    }
+    ms.innerHTML = mo.join('');
+    ms.value = '6';
+  }
+
+  /**
+   * 把「只知道哪一年 / 哪年哪月」的选择写成一个公历占位日期。
+   *
+   * 月和日固定填 1 —— 它们本来就被声明为未知，bazi.js 不会去读；
+   * 写进去只为让 #birth 继续当**唯一的时间来源**，
+   * 下游的填写记录、农历反推、分享链接都不必再加一套分支。
+   */
+  function writeFuzzyBirth() {
+    var b = $('birth'), ys = $('fuzzyYear'), ms = $('fuzzyMonth');
+    if (!b || !ys || !ys.value) return;
+    var mo = $('birthNoMonth') && $('birthNoMonth').checked
+      ? 1
+      : Math.max(1, Math.min(12, parseInt(ms && ms.value, 10) || 1));
+    b.value = ys.value + '-' + pad2(mo) + '-01T00:00';
+    b.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /** 从 #birth 反推年·月下拉的初始值（只在模糊区刚露出来时用） */
+  function syncFuzzyFromBirth() {
+    var v = $('birth').value;
+    var ys = $('fuzzyYear'), ms = $('fuzzyMonth');
+    var m = v && v.match(/^(\d{4})-(\d{2})/);
+    if (!m) return;
+    if (ys && ys.querySelector('option[value="' + (+m[1]) + '"]')) {
+      ys.value = String(+m[1]);
+    }
+    var mo = Math.max(1, Math.min(12, +m[2]));
+    if (ms && ms.querySelector('option[value="' + mo + '"]')) {
+      ms.value = String(mo);
+    }
+  }
+
+  function parseLocal(v, flags) {
     if (!v) return null;
+    /* 兼容直接传布尔的旧调用（只表示时辰未知） */
+    var f = (typeof flags === 'boolean') ? { noHour: flags } : (flags || {});
+    var noMonth = !!f.noMonth;
+    var noDay = noMonth || !!f.noDay;
+    var noHour = noDay || !!f.noHour;
+
     var m = v.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
     /* 只到日期（不带 T 时间）也接受，同样按「时辰未知」处理 */
     var dm = m ? null : v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m && !dm) return null;
     var g = m || dm;
-    /* 时辰未知时**强行忽略时间部分**，而不是把时柱瞎填成 00:00 ——
-     * 时柱变了整个五行力量就变了，算出来的喜用神是假的，比不算更糟。
-     * 这里不切换输入框类型：datetime-local 在手机上会直接调出
-     * 系统选择器，比自制「日期 + 时辰下拉」好用，而且这样切来切去
-     * 会丢掉已填的日期或者默默填入一个假时间。 */
+    /* 模糊的那些部分**强行忽略**，而不是把时柱瞎填成 00:00 ——
+     * 一柱变了整个五行力量就变了，算出来的喜用神是假的，比不算更糟。
+     * 标志一并带出去，下游（baziOptions / computeBazi）不用再读一遍 DOM。 */
     return {
       y: +g[1], m: +g[2], d: +g[3],
       h: m ? +m[4] : 0,
       mi: m ? +m[5] : 0,
-      noHour: !!(forceNoHour || !m)
+      noHour: noHour, noDay: noDay, noMonth: noMonth
     };
   }
 
@@ -15934,22 +16276,45 @@ details.more > summary:hover { color: var(--jade); }
     return !!(cb && cb.checked);
   }
 
-  function baziOptions(noHour) {
+  /**
+   * 生辰模糊的三档标志。
+   *
+   * 三档是**单向包含**的：只知道年份 ⇒ 哪一天也不知道 ⇒ 几点更无从谈起。
+   * 所以读出三个勾选框之后要向上补齐 —— 否则「只勾了年份」会算出
+   * 「日柱已知、月柱未知」这种自相矛盾的组合。
+   * 补齐逻辑与 core/bazi.js 的 calcBazi 必须同源，改一处要改两处。
+   */
+  function birthFlags() {
+    var cbM = $('birthNoMonth'), cbD = $('birthNoDay'), cbH = $('birthNoHour');
+    var noMonth = !!(cbM && cbM.checked);
+    var noDay = noMonth || !!(cbD && cbD.checked);
+    return {
+      noMonth: noMonth, noDay: noDay,
+      noHour: noDay || !!(cbH && cbH.checked)
+    };
+  }
+
+  function baziOptions(flags) {
+    var f = flags || {};
     var lon = parseFloat($('longitude').value);
-    /* 时辰未知时真太阳时没有意义 —— 它算的正是时柱，
+    var noDay = !!(f.noMonth || f.noDay);
+    /* 真太阳时算的正是时柱与日柱，这两柱都不存在时它没有意义 ——
      * 硬算只会把一个未知的东西变成一个看起来确定的值。 */
-    var useTST = !noHour && $('useTST').checked && isFinite(lon);
+    var useTST = !noDay && $('useTST').checked && isFinite(lon);
     return {
       trueSolarTime: useTST,
-      noHour: !!noHour,
+      noHour: noDay || !!f.noHour,
+      noDay: noDay,
+      noMonth: !!f.noMonth,
       longitude: isFinite(lon) ? lon : undefined
     };
   }
 
   function computeBazi(dt) {
     try {
+      /* dt 里已经带着三档标志（parseLocal 写进去的），直接传即可 */
       return NS.Bazi.analyzeBazi(dt.y, dt.m, dt.d, dt.h, dt.mi,
-        baziOptions(dt.noHour));
+        baziOptions(dt));
     } catch (e) {
       console.error(e);
       return null;
@@ -15963,16 +16328,16 @@ details.more > summary:hover { color: var(--jade); }
     if (!surname) throw new Error('请先填写姓氏。');
 
     var info = resolveSurname(surname);
-    var manualStrokes = parseInt($('strokes').value, 10);
-    var strokes = (isFinite(manualStrokes) && manualStrokes > 0)
-      ? [manualStrokes]
-      : (info ? info.strokes : [8]);
+    /* 留空 = 按姓氏表自动（这正是现在的默认状态）；
+     * 手工填了才覆盖。下面对复姓再单独处理一次。 */
+    var ms = manualStrokes();
+    var strokes = (ms !== null) ? [ms] : (info ? info.strokes : [8]);
 
     /* 复姓的手工笔画：按录入的一个总数平均分配不合适，
      * 因此复姓时优先使用内置数据，未收录则提示。 */
     if (surname.length > 1 && info && info.known) strokes = info.strokes;
 
-    var dt = parseLocal($('birth').value, birthNoHour());
+    var dt = parseLocal($('birth').value, birthFlags());
     var baziInfo = dt ? computeBazi(dt) : null;
 
     var xi = currentXi();
@@ -16094,6 +16459,69 @@ details.more > summary:hover { color: var(--jade); }
 
   /* --- 八字面板 --- */
 
+  /**
+   * 某一柱为什么是空的。三档模糊的原因各不相同，
+   * 一律写「时辰未填」会在「不知道哪一天」时误导用户 ——
+   * 他会以为只需补时辰，而实际缺的是整个日期。
+   */
+  function unknownWhy(label) {
+    if (label === '月') return '月份未知';
+    if (label === '日') return '日期未知';
+    return '时辰未填';
+  }
+
+  function unknownTip(label) {
+    if (label === '月') {
+      return '只知道出生年份 → 月柱无法确定。\n五行力量只计入了年柱。';
+    }
+    if (label === '日') {
+      return '不知道具体哪一天 → 没有日柱，也就没有日主。\n' +
+        '身强身弱、十神、喜用神都是以日主为参照物推的，因此都算不了。';
+    }
+    return '不知道出生时辰 → 时柱无法确定。\n' +
+      '五行力量与十神均未计入时柱。';
+  }
+
+  /**
+   * 八字面板底部的模糊说明。三档由粗到细，只说最粗的那一档 ——
+   * 三句堆在一起会把真正要注意的那句洗干净。
+   */
+  function fuzzyPanelNote(info) {
+    var p = el('p', 'more-note');
+    if (info.noMonth) {
+      p.innerHTML = '<b>你选了「只知道哪一年」</b> —— 月柱、日柱、时柱' +
+        '<b>三柱都无法确定</b>，上面的五行分布只计入了年柱。' +
+        '年柱本身也是按「立春后」推定的：若生于当年 1 月 1 日到 2 月初之间，' +
+        '年柱与生肖应当退一年。<br>' +
+        '<b>没有日柱就没有日主</b>，身强身弱、十神、喜用神都是以日主为' +
+        '参照物推出来的，所以一个都算不了 —— 本次<b>不做喜用神判断</b>，' +
+        '选字只按名字本身的五行搭配评分。能问到出生月份就能多出一柱，' +
+        '问到具体日期则一切完整。';
+      return p;
+    }
+    if (info.noDay) {
+      p.innerHTML = '<b>你选了「不知道具体哪一天」</b> —— 日柱与时柱' +
+        '<b>无法确定</b>，上面的五行分布只计入了年柱与月柱；' +
+        '月柱是按<b>该月 15 日</b>推定的（每个月的「节」落在 3–9 日，' +
+        '所以只有生于该月 1–8 日左右才可能有差异）。<br>' +
+        '<b>没有日柱就没有日主</b>，身强身弱、十神、喜用神都推不出来 —— ' +
+        '本次<b>不做喜用神判断</b>，选字只按名字本身的五行搭配评分。' +
+        '日期是可以查到的（出生证、户口本、医院记录），补上后结果会完整得多。';
+      return p;
+    }
+    if (info.noHour) {
+      p.innerHTML = '<b>你选了「不知道几点出生」</b> —— ' +
+        '时柱（也就是出生的时辰）无法确定，因此上面的五行力量与十神' +
+        '<b>都没有计入时柱</b>，喜用神是按年、月、日三柱推出来的。' +
+        '一个日期换个时辰，整张盘的五行强弱就可能翻转，所以' +
+        '<b>这个喜用神只是个大概方向</b>。' +
+        '若能问到出生时辰（出生证、接生记录、家人回忆「上午还是下午」都有帮助），' +
+        '填上后结果会准很多。';
+      return p;
+    }
+    return null;
+  }
+
   function renderBazi(info, opts) {
     var panel = el('div', 'panel bazi-panel');
     var title = el('div', 'section-title');
@@ -16131,9 +16559,8 @@ details.more > summary:hover { color: var(--jade); }
       if (p.unknown) {
         cell.appendChild(el('div', 'ss', '未知'));
         cell.appendChild(el('div', 'gz nz', '？？'));
-        cell.appendChild(el('div', 'cg', '时辰未填'));
-        cell.title = '不知道出生时辰 → 时柱无法确定。\n' +
-          '五行力量与十神均未计入时柱，喜用神是按年、月、日三柱推的。';
+        cell.appendChild(el('div', 'cg', unknownWhy(p.label)));
+        cell.title = unknownTip(p.label);
         grid.appendChild(cell);
         return;
       }
@@ -16187,34 +16614,38 @@ details.more > summary:hover { color: var(--jade); }
     }
     fact('四柱', '<b>' + esc(info.baziStr) + '</b>');
     fact('生肖', '<b>' + esc(info.shengxiao) + '</b>');
-    fact('日主', '<b class="' + WX_CLASS[info.dayWx] + '">' +
-      esc(info.dayGan + info.dayWx) + '</b>');
-    fact('强弱', '<b>' + esc(info.strength) + '</b>');
-    fact('喜用神', '<span class="fact-xi">' + esc(info.xiyongshen.join('、')) + '</span>');
+    if (info.dayGan) {
+      fact('日主', '<b class="' + WX_CLASS[info.dayWx] + '">' +
+        esc(info.dayGan + info.dayWx) + '</b>');
+      fact('强弱', '<b>' + esc(info.strength) + '</b>');
+      fact('喜用神', '<span class="fact-xi">' +
+        esc(info.xiyongshen.join('、') || '—') + '</span>');
+    } else {
+      /* 没有日柱就没有日主 —— 这两项不能显示空白，
+       * 空白会被当成「算过了但没值」 */
+      fact('日主', '<span class="fact-miss">未知（缺日柱）</span>');
+      fact('喜用神', '<span class="fact-miss">推不出来</span>');
+    }
     if (info.missing.length) {
       fact('五行缺', '<span class="fact-miss">' + esc(info.missing.join('、')) + '</span>');
     } else {
       fact('五行', '齐全');
     }
-    fact('当前节气', '<b>' + esc(info.meta.jieqi) + '</b>');
-    /* 时辰未知是**必须**说清楚的前提：同样一个日期，
-     * 换个时辰整张盘的五行力量就变了 —— 不能让人以为这是完整四柱。 */
-    if (info.noHour) {
-      fact('时柱', '<span class="fact-miss">时辰未填</span>');
+    if (info.meta.jieqi) fact('当前节气', '<b>' + esc(info.meta.jieqi) + '</b>');
+    /* 缺了哪一柱、哪一柱是推定的，必须逐项写出来 ——
+     * 同样一个日期换个时辰，整张盘的五行力量就变了，
+     * 不能让人以为这是完整四柱。 */
+    if (info.noMonth) {
+      fact('月柱', '<span class="fact-miss">未知</span>');
+    } else if (info.monthAssumed) {
+      fact('月柱', '<span style="color:#a9782c">按 15 日推定</span>');
     }
+    if (info.noDay) fact('日柱', '<span class="fact-miss">未知</span>');
+    if (info.noHour) fact('时柱', '<span class="fact-miss">未知</span>');
     panel.appendChild(facts);
 
-    if (info.noHour) {
-      var nhNote = el('p', 'more-note');
-      nhNote.innerHTML = '<b>你选了「只知道日期，不知道几点出生」</b> —— ' +
-        '时柱（也就是出生的时辰）无法确定，因此上面的五行力量与十神' +
-        '<b>都没有计入时柱</b>，喜用神是按年、月、日三柱推出来的。' +
-        '一个日期换个时辰，整张盘的五行强弱就可能翻转，所以' +
-        '<b>这个喜用神只是个大概方向</b>。' +
-        '若能问到出生时辰（出生证、接生记录、家人回忆「上午还是下午」都有帮助），' +
-        '填上后结果会准很多。';
-      panel.appendChild(nhNote);
-    }
+    var fuzzyWarn = fuzzyPanelNote(info);
+    if (fuzzyWarn) panel.appendChild(fuzzyWarn);
 
     /* 十神。放在五行之后、结论之前 ——
      * 它是「五行力量的另一种说法」：五行说的是能量的属性，
@@ -17212,6 +17643,7 @@ details.more > summary:hover { color: var(--jade); }
 
   function boot() {
     initSelects();
+    initFuzzySelects();
     initSegmented('genderSeg', 'gender');
     initSegmented('lenSeg', 'length');
     initViewSwitch();
@@ -17259,14 +17691,32 @@ details.more > summary:hover { color: var(--jade); }
     }
     $('birth').addEventListener('change', updateBaziHint);
     $('birth').addEventListener('input', updateBaziHint);
-    if ($('birthNoHour')) {
-      $('birthNoHour').addEventListener('change', syncBirthMode);
-    }
+    /* 三档模糊的勾选框。syncBirthMode 会自己把包含关系理清，
+     * 所以三个用同一个处理函数就够，不必各写一套。 */
+    ['birthNoMonth', 'birthNoDay', 'birthNoHour'].forEach(function (id) {
+      if ($(id)) $(id).addEventListener('change', syncBirthMode);
+    });
+    /* 年·月下拉改动 → 重写 #birth（下游提示与填写记录靠它带动） */
+    ['fuzzyYear', 'fuzzyMonth'].forEach(function (id) {
+      if (!$(id)) return;
+      $(id).addEventListener('change', function () {
+        writeFuzzyBirth();
+        NS.Prefs.saveSoon(collectPrefs);
+      });
+    });
+    /* 手工改笔画 → 刷新「取自动值 / 已手动改为」那句提示 */
+    if ($('strokes')) $('strokes').addEventListener('input', updateSurname);
     /* 农历录入助手。它不直接算八字 —— 选完只把公历值写回 #birth，
      * 下游照旧走上面那两个监听器，所以这里只需负责存一次填写记录。 */
     if (NS.LunarInput) {
       NS.LunarInput.install({
-        onChange: function () { NS.Prefs.saveSoon(collectPrefs); }
+        onChange: function () {
+          /* 切换公历/农历会改变模糊区与 #birth 的可见性，
+           * 必须重跑一次 syncBirthMode，否则切回公历后
+           * 那两个下拉会停在农历模式留下的隐藏状态里 */
+          syncBirthMode();
+          NS.Prefs.saveSoon(collectPrefs);
+        }
       });
     }
     $('longitude').addEventListener('input', updateBaziHint);

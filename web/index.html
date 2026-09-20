@@ -41,8 +41,8 @@
 
       <div class="row2">
         <div class="field">
-          <label for="strokes">姓氏笔画 <span class="sub">康熙</span></label>
-          <input type="number" id="strokes" min="1" max="40" value="7">
+          <label for="strokes">姓氏笔画 <span class="sub">康熙，留空按姓氏自动</span></label>
+          <input type="number" id="strokes" min="1" max="40" placeholder="自动">
         </div>
         <div class="field">
           <label>性别</label>
@@ -95,10 +95,25 @@
             <select id="lunarHour" aria-label="出生时辰"></select>
           </div>
         </div>
-        <label class="check" style="margin-top:8px">
-          <input type="checkbox" id="birthNoHour">
-          <span>只知道日期，不知道几点出生</span>
-        </label>
+        <!-- 只知道年份 / 只知道年月时，用这两个下拉代替精确日期。 -->
+        <div class="fuzzy-grid" id="fuzzyRow" hidden>
+          <select id="fuzzyYear" aria-label="出生年份"></select>
+          <select id="fuzzyMonth" aria-label="出生月份"></select>
+        </div>
+        <div class="fuzzy-checks" id="fuzzyChecks">
+          <label class="check">
+            <input type="checkbox" id="birthNoMonth">
+            <span>只知道哪一年</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="birthNoDay">
+            <span>不知道具体哪一天<span class="sub">只知道哪年哪月</span></span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="birthNoHour">
+            <span>不知道几点出生</span>
+          </label>
+        </div>
         <p class="hint" id="lunarEcho" hidden style="margin:6px 0 0"></p>
         <p class="hint" id="baziHint" style="margin:6px 0 0"></p>
       </div>
@@ -392,15 +407,38 @@
        它们也是常用词，但用它们取名是传统做法。
        和「名字显老」一样：<b>是降权不是禁用</b>。修复后
        「博士」「斯文」在 10 个姓氏×性别组合里全部跌出前 200 名。</p>
-    <p><b>关于时辰未知</b>　很多人只记得住出生日期、记不住几点出生。
-       以前这种情况只能弃填生辰，于是完全拿不到八字、退化成「用字」层。
-       现在勾上「只知道日期，不知道几点出生」即可：
-       <b>时柱会标成「？？」</b>，五行力量与十神<b>都不计入时柱</b>，
-       喜用神按年、月、日三柱推出来，并在报告里写清这个前提。
-       为什么<b>不能随便填一个时辰</b>：一个日期换个时辰，整张盘的五行强弱就可能翻转，
-       算出来的喜用神是假的 —— <b>比不算更糟。</b>
-       真太阳时在勾选后会自动禁用，因为它算的正是时柱，
+    <p><b>关于生辰填不全</b>　很多人只记得住个大概 —— 户口本上只写年份、
+       农历日子记不清、或者只知道「夏天生的」。所以生辰可以<b>三档模糊</b>，
+       精度由粗到细：<b>只知道哪一年</b> / <b>只知道哪年哪月</b> /
+       <b>不知道几点出生</b>。勾粗的那一档会把细的两档自动一并勾上
+       （它们本来就被包含在内），并压暗、鼠标悬停说明原因。</p>
+    <p style="margin-top:10px">处理原则只有一条：
+       <b>不确定的柱直接置空，绝不瞎填。</b>
+       一柱变了整张盘的五行力量就变了，算出来的喜用神是假的 —— 比不算更糟。
+       两处不得不做的「推定」也都写在界面上：</p>
+    <ul style="margin:8px 0 0;padding-left:22px;color:var(--ink-2);font-size:13px;line-height:1.85">
+      <li><b>不知道几点</b>　时柱标成「？？」。五行力量与十神都不计入时柱，
+         喜用神按年、月、日三柱推，报告里写清这个前提。</li>
+      <li><b>不知道哪一天</b>　日柱与时柱置空。月柱按<b>该月 15 日</b>推定 ——
+         每个月的「节」交气落在 3–9 日，取 15 日就一定在节后，
+         既不踩边界，也给出最可能的那一柱。</li>
+      <li><b>只知道哪一年</b>　月、日、时三柱全空。年柱按<b>立春后</b>推定 ——
+         一个公历年里只有 1 月 1 日到 2 月 3 日这三十来天在立春之前。</li>
+    </ul>
+    <p style="margin-top:10px"><b>没有日柱就没有日主。</b>
+       身强身弱、十神、喜用神全都是拿日主当参照物推出来的，
+       所以后两档<b>一个都算不了</b>。这时系统<b>不做喜用神判断</b>，
+       退回按「名字内部五行搭配」评分，并在报告里写明原因 ——
+       而不是硬凑一个看起来像那么回事的喜用神。
+       真太阳时在后两档下会自动禁用，因为它算的正是时柱与日柱，
        硬算只会把一个未知的东西变成一个看起来确定的值。</p>
+    <p><b>关于姓氏笔画</b>　「姓氏笔画」这一栏现在<b>默认留空</b>，
+       留空就表示<b>按姓氏表自动取康熙笔画</b>，自动值显示在下面的提示里。
+       需要手工修正时填一个数，提示会立刻变成
+       「笔画已手动改为 X（自动值 Y）」，两边不一致一眼就能看出来。
+       早先这一栏会自动填上数字、并被当作「本次填写内容」记录下来，
+       于是每次打开都显示上次那个值；换个姓氏之后它就是错的，
+       还会静默影响三才五格与姓名卦。所以现在它<b>既不自动填，也不跨次记住</b>。</p>
     <p><b>关于农历输入</b>　长辈报生日几乎都是农历，所以生辰可以按农历填：
        选年、月、日、时辰，下面会立刻显示换算出的公历日期供核对。
        农历<b>不是查表</b>，而是按「定朔定气」真算 —— 朔（新月）时刻用

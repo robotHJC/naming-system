@@ -2240,6 +2240,50 @@ details.more > summary:hover { color: var(--jade); }
 
 #lunarEcho b { color: var(--jade); }
 
+/* ---------- 「只知道哪一年 / 哪年哪月」的年·月下拉 ----------
+ * 与农历选择框同一套外观。用 flex 而不是固定两列网格，
+ * 因为「只知道年份」时月份那个下拉要整个隐藏，剩下的年份要占满一行。 */
+.fuzzy-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.fuzzy-grid select {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+  color: var(--ink);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+/* 三个「不确定」勾选框，装在一个浅底容器里。
+ * 目的是让它们看起来是**一组精度递减**的选项，
+ * 而不是三个互不相干的开关 —— 它们之间确实有包含关系。 */
+.fuzzy-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+}
+
+.fuzzy-checks .check { line-height: 1.55; }
+
+/* 被上一档连带勾上、且不允许用户单独取消的那两个。
+ * 压暗但仍可读 —— 直接 disabled 会让人以为坏了，
+ * 压暗加上 hint 才能说明「它为什么自己勾上了」。 */
+.fuzzy-checks .check.locked { opacity: .5; }
+
+.fuzzy-checks .check .sub { margin-left: 2px; }
+
 @media (max-width: 560px) {
   .lunar-grid { grid-template-columns: 1fr 1fr; }
   .cal-switch button { flex: 1 1 0; }
