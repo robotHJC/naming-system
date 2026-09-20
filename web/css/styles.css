@@ -87,6 +87,24 @@ body {
   letter-spacing: .04em;
 }
 
+/* =========================================================================
+ * hidden 属性必须真的生效
+ *
+ * 浏览器默认样式里有 `[hidden] { display: none }`，但它在**用户代理层**，
+ * 而作者样式里任何 display 都会盖过它 —— 浏览器判定作者样式与 UA 样式的
+ * 优先级时只看来源，不看选择器权重。
+ *
+ * 实测踩到的后果：#viewNaming 用的是 class="layout"，
+ * 而 .layout { display: grid }，于是给它设 hidden 完全没用 ——
+ * 切到「评估」「候选池」「词库管理」时取名表单**依然显示**，
+ * 用户看到的是「四个页签切换后界面没变化、全是一样的」。
+ *
+ * 同类风险：.panel / .compare-bar / .dot 这些如果设了 display，
+ * 它们上面的 hidden 也会失效。所以用 !important 全局兜住，
+ * 而不是逐个元素去写 display: none。
+ * ========================================================================= */
+[hidden] { display: none !important; }
+
 .layout {
   display: grid;
   /* 必须写 minmax(0, 1fr)：1fr 的最小值是 auto，
@@ -1614,6 +1632,21 @@ details.more > summary:hover { color: var(--jade); }
   .compare-bar { flex-wrap: wrap; }
 
   .result-bar .actions { flex-wrap: wrap; }
+
+  /* 触控目标：页签原来只有 33px 高（字号 13.5 + 上下各 7px 内边距），
+   * 手指点在缝隙上就没反应，看起来像「页签点了没切换」。
+   * 撑到 44px。同时把左右内边距收窄、允许换行 ——
+   * 四个页签在 390px 屏上原本累计约 360px，加高后若再加宽就会溢出。 */
+  .view-switch {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .view-switch button {
+    min-height: 44px;
+    padding: 7px 12px;
+    font-size: 13px;
+  }
 }
 
 /* =========================================================================
