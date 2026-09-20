@@ -456,6 +456,57 @@ section('9. 音韵（含姓氏连读）');
   const nonThird = NS.Score.evaluate([NS.CHAR_DB['雨'], NS.CHAR_DB['清']], ctxHao);
   ok('连续上声被扣分', third.score < nonThird.score + 30,
     `上声${third.score} vs 非上声${nonThird.score}`);
+
+  /* ---- 送气声母连用（新增）----
+   * 「q + t」声母并不相同，但都是送气音（p t k q ch c），连着念有喷麦感。
+   * 与「相邻声母相同」是两回事，必须单独判。
+   * 这里**不写死具体字**，而是从字库按声母特征挑 —— 否则哪天换字，
+   * 测试会「仍然通过」但其实没测到东西。 */
+  const pickInit = (init) => NS.CHAR_LIST.filter(function (c) {
+    return NS.Pinyin.splitSyllable(c.pinyin).initial === init;
+  })[0];
+  const qc = pickInit('q'), tc = pickInit('t');
+  const rc = pickInit('r'), xc = pickInit('x');
+  ok('字库里有送气/不送气声母的可用字做对照',
+    !!(qc && tc && rc && xc), [qc, tc, rc, xc].map(c => c && c.char).join(''));
+
+  const aspYes = NS.Score.evaluate([qc, tc], ctxLi).detail.phonetic;
+  ok('检出送气声母连用（' + qc.char + tc.char + ' q-t）',
+    aspYes.aspiratedRun === true, JSON.stringify(aspYes));
+  const aspNo = NS.Score.evaluate([rc, xc], ctxLi).detail.phonetic;
+  ok('不误报送气连用（' + rc.char + xc.char + ' r-x）',
+    aspNo.aspiratedRun === false, JSON.stringify(aspNo));
+
+  /* ---- 鼻音韵尾连用（新增）----
+   * 连着两个 -n / -ng 尾，字音含在鼻子里不出头（「张明光」三个 -ng）。 */
+  const isNasal = (c) => /(ng|n)$/.test(NS.Pinyin.splitSyllable(c.pinyin).final);
+  const nas2 = NS.CHAR_LIST.filter(isNasal).slice(0, 2);
+  const non2 = NS.CHAR_LIST.filter(c => !isNasal(c)).slice(0, 2);
+  ok('鼻音尾/非鼻音尾都有可用的对照字',
+    nas2.length === 2 && non2.length === 2);
+
+  const nasYes = NS.Score.evaluate(nas2, ctxLi).detail.phonetic;
+  ok('检出鼻音韵尾连用（' + nas2.map(c => c.char).join('') + '）',
+    nasYes.nasalRun === true, JSON.stringify(nasYes));
+  const nasNo = NS.Score.evaluate(non2, ctxLi).detail.phonetic;
+  ok('不误报鼻音尾连用（' + non2.map(c => c.char).join('') + '）',
+    nasNo.nasalRun === false, JSON.stringify(nasNo));
+
+  /* ---- 字形均衡（新增，「可读性」）----
+   * 只断言「信息被算出来了」，具体阈值属于经验值，不适合钉死。 */
+  const stInfo = NS.Score.evaluate(
+    [NS.CHAR_DB['若'], NS.CHAR_DB['霖']], ctxLi);
+  ok('评分输出了两个字各自的笔画（供可读性判断）',
+    Array.isArray(stInfo.detail.strokes) && stInfo.detail.strokes.length === 2
+    && stInfo.detail.strokes.every(n => n > 0),
+    JSON.stringify(stInfo.detail.strokes));
+  /* 笔画悬殊必须出现在理由里，否则用户看不出为什么被扣 */
+  const wide = NS.Score.evaluate([NS.CHAR_DB['一'], NS.CHAR_DB['麟']], ctxLi);
+  ok('笔画悬殊时给出可读的理由',
+    wide.detail.strokes.length === 2 &&
+    (Math.abs(wide.detail.strokes[0] - wide.detail.strokes[1]) <= 12 ||
+      wide.reasons.join('').indexOf('字形轻重悬殊') >= 0),
+    wide.detail.strokes.join('/') + '  ' + wide.reasons.join('；'));
 }
 
 /* ---------------- 10. 出处不能拿文言虚词充数 ----------------

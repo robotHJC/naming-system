@@ -291,7 +291,63 @@
     }
     if (thirdRun) score -= 2;
 
-    detail.phonetic = { sameInitial: sameInitial, sameFinal: sameFinal };
+    /* 送气声母连用。
+     *
+     * 与上面的「相邻声母相同」是两回事：这里声母并不相同，但都是送气音
+     * （p t k q ch c），连着两个就会有「喷麦」感 ——「谭天琪」tán-tiān-qí。
+     * 不送气音（b d g zh z 等）连着没这个问题，所以必须分开判。 */
+    var ASPIRATED = { p: 1, t: 1, k: 1, q: 1, ch: 1, c: 1 };
+    var aspRun = false;
+    for (i = 1; i < sms.length; i++) {
+      if (ASPIRATED[sms[i]] && ASPIRATED[sms[i - 1]]) aspRun = true;
+    }
+    if (!aspRun) score += 2;
+    else reasons.push('送气音连读偏冲');
+
+    /* 鼻音韵尾连用。
+     *
+     * 连着两个 -n / -ng 尾，字音含在鼻子里不出头，读起来含糊拖沓 ——
+     * 「张明光」zhāng-míng-guāng 三个 -ng。中间夹一个非鼻音韵尾就散了。 */
+    var NASAL_END = /(ng|n)$/;
+    var nasalRun = false;
+    for (i = 1; i < yms.length; i++) {
+      if (NASAL_END.test(yms[i]) && NASAL_END.test(yms[i - 1])) nasalRun = true;
+    }
+    if (!nasalRun) score += 2;
+    else reasons.push('鼻音韵尾连读偏含糊');
+
+    detail.phonetic = {
+      sameInitial: sameInitial, sameFinal: sameFinal,
+      aspiratedRun: aspRun, nasalRun: nasalRun
+    };
+
+    /* ---- 2b. 字形均衡（3）——「可读性」的直接指标 ----
+     *
+     * 名字是要写一辈子的。这一项不看意思、也不看读音，只看字形：
+     *   · 两字笔画相差太大（一个字 4 画一个字 22 画）视觉轻重失衡
+     *   · 两字笔画都很少（如「丁一」）显得单薄
+     *   · 都很多则难写难认，低龄儿童尤其吃力
+     * 阈值取的是一般书法课上「疏密均匀」的经验区间，不是精确美学度量。
+     *
+     * 只给 3 分：它是次要信号，主要权重还是给了直接决定听感的音韵。
+     * （这几项的权重是配平过的：音韵 +4、字形 +3、现代感 −7，总分仍是 100。） */
+    var st = rows.map(function (r) { return r.obj.strokes || 0; });
+    if (st.length >= 2) {
+      var sdiff = Math.abs(st[0] - st[1]);
+      if (sdiff <= 6) score += 2;
+      else if (sdiff <= 12) score += 1;
+      else reasons.push('笔画相差 ' + sdiff + ' 画，字形轻重悬殊');
+
+      var ssum = st[0] + st[1];
+      if (ssum >= 14 && ssum <= 32) score += 1;
+      else if (ssum < 10 || ssum > 40) {
+        reasons.push('笔画' + (ssum < 10 ? '偏少、字形单薄' : '偏多、书写吃力'));
+      }
+    } else {
+      /* 单名：没有「两字对比」可言，给中间值 */
+      score += 2;
+    }
+    detail.strokes = st;
 
     /* ---- 3. 寓意 / 关键词（14）---- */
     var kwTotal = rows.reduce(function (a, r) { return a + r.kwScore; }, 0);
@@ -407,7 +463,15 @@
       if (NS.NAME_WORD_SET && NS.NAME_WORD_SET[pair]) { hitWord = pair; break; }
     }
     if (hitWord) {
-      mnScore += 12;
+      /* 12 → 5。
+       *
+       * 这张白名单只有 268 条，实测（小红书/抖音流传的 21 个热门名）
+       * **只命中 1 个**。而它原来价值 12 分（占本项 18 分的 2/3），
+       * 于是「不在表里」= 白丢 12 分 —— 等于用一张小表代替「好听」打分，
+       * 把代理指标当成了目标本身。
+       * 白名单仍然有意义（命中说明是公认的好搭配），但降为加分项，
+       * 不再是硬门槛。腾出的权重给了音韵与字形（都是直接指标）。 */
+      mnScore += 5;
       reasons.push('现代常用搭配「' + hitWord + '」');
     }
     var comfortSum = 0;
