@@ -228,7 +228,23 @@
     });
   }
 
-  function clear() {
+  /**
+   * 清空存储。
+   *
+   * @param {string[]} [keys] 只清这几个键。**强烈建议传** ——
+   *   不传就是整个 object store 清空，会把不属于调用方的数据一起删掉。
+   *   实测踩过：Lexicon.reset()（「清空联网词库」）调了无参 clear()，
+   *   结果把用户的**候选池**一并删了 —— 那是跟联网词库毫无关系的用户数据。
+   *   候选池里存的是用户一个个挑出来的名字，丢了是真的损失。
+   */
+  function clear(keys) {
+    if (keys && keys.length) {
+      return ready.then(function () {
+        return keys.reduce(function (chain, k) {
+          return chain.then(function () { return del(k); });
+        }, Promise.resolve());
+      }).then(function () { return true; });
+    }
     return ready.then(function () {
       if (backend === 'idb') {
         return new Promise(function (resolve) {

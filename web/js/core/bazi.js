@@ -229,6 +229,10 @@
       xiyongshen: candidates,
       missing: missing,
       shengxiao: NS.SHENGXIAO[bz.年[1]],
+      /* 年柱纳音（民俗命理口径）。
+       * 与年柱干支五行**不同源**，2026 丙午就是典型案例：
+       * 干支是火、纳音却是「天河水」属水。所以两者要并列展示，不能合并。 */
+      nayin: NS.nayinOfGanzhi ? NS.nayinOfGanzhi(bz.年[0], bz.年[1]) : null,
       meta: bz.meta
     };
   }

@@ -18,6 +18,8 @@
   <div class="toolbar">
     <div class="view-switch" id="viewSwitch" role="group" aria-label="视图切换">
       <button type="button" data-view="naming" aria-pressed="true">取 名</button>
+      <button type="button" data-view="pool">候选池<span class="dot" id="poolDot" hidden></span></button>
+      <button type="button" data-view="eval">评 估</button>
       <button type="button" data-view="lexicon">词 库 管 理<span class="dot" id="lexDot" hidden></span></button>
     </div>
   </div>
@@ -165,6 +167,12 @@
 
   </div>
 
+  <!-- ============ 候选池视图（孕期备选，出生后重筛） ============ -->
+  <section class="panel" id="viewPool" hidden></section>
+
+  <!-- ============ 评估视图（输入已有名字，出命理批注） ============ -->
+  <section class="panel" id="viewEval" hidden></section>
+
   <!-- ============ 词库管理视图（联网扩充） ============ -->
   <section class="panel lex-panel" id="viewLexicon" hidden></section>
 
@@ -258,6 +266,39 @@
        太冷门（热度 &lt; 40）读起来生僻难认，太烂大街（&gt; 91）则重名率高，
        中间段（55-91）最适合起名。
        换句话说：<b>诗词出典只当故事看，真正决定排序的是「念起来舒不舒服」。</b></p>
+    <p><b>关于纳音与生肖（三套口径会打架）</b>　很多人问「今年马年是火年，
+       是不是不能用带水的字」—— 这个问题的前提就站不住，因为<b>同时存在三套口径</b>：
+       ① <b>年柱干支五行</b>：2026 丙午，丙火 + 午火，看是「火年」；
+       ② <b>年柱纳音</b>：丙午的纳音是<b>「天河水」，属水</b> —— 同一年，与①相反；
+       ③ <b>八字喜用神</b>：看的是<b>日主</b>（出生那天的天干）与全局强弱，
+       年柱在四柱里<b>权重最低</b>（年主祖上、少年）。
+       另外「属马忌氵」来自<b>生肖形义派</b>（马怕水、宜草字头有棚），
+       依据是字形象意，跟五行生克不是一套东西。
+       <b>本系统的立场：三套并列展示、不合并、不按生肖自动限制用字</b>；
+       真要取舍时<b>以八字喜用神为准</b>。万一生肖宜忌与喜用神冲突，
+       评估报告里会专门列一段把冲突指出来。</p>
+    <p><b>关于姓名卦</b>　<b>这是民俗做法，不是《周易》原书的用法。</b>
+       原书以蓍草起卦问事，「用姓名笔画起卦」是后人（主要是梅花易数与姓名学）
+       的推演，而且各家取卦法并不一致。本系统采用一套并写明：
+       上卦 = 姓笔画 ÷ 8 的余数、下卦 = 名笔画 ÷ 8 的余数、动爻 = 总笔画 ÷ 6 的余数
+       （余 0 分别作 8 和 6）。吉凶按<b>体用生克</b>定 ——
+       动爻所在卦为「用」、另一卦为「体」，用生体/比和/体克用偏吉、用克体为凶。
+       这套规则明确、可以复算，但属于<b>民俗流派</b>；与八字冲突时以八字为准。
+       本系统<b>不预测命运</b>，报告只分析「用字与生辰是否相配」。</p>
+    <p><b>关于候选池</b>　取名通常发生在<b>出生之前</b>，而预产期前后差几天
+       <b>四柱就全变了</b> —— 所以现在算出来的喜用神很可能不是孩子真正的喜用神。
+       建议流程：孕期先按姓氏与风格挑几个中意的存进候选池（<b>不锁死八字</b>），
+       出生后填上真实生辰，一键<b>用真实八字重新评分排序</b>。
+       池子里存的是<b>名字本身，不是当初的分数</b> —— 把预估八字下的分数当成结论，
+       正是这个功能要避免的错误。候选池是独立的用户数据：
+       清空联网词库、或程序升级时自动清理旧格式数据，都<b>不会</b>动它。</p>
+    <p><b>关于评估</b>　输入任意一个已有的名字（自己想的、长辈给的都行）+ 生辰，
+       输出分层的命理批注。<b>按依据强度分组显示</b>，而不是搅成一个总分：
+       <b>命理</b>（八字五行，权重最高）／<b>用字</b>（字义笔画，无生辰时用它）／
+       <b>数理</b>（三才五格，数理派）／<b>民俗参考</b>（生肖、纳音、姓名卦）／
+       <b>语言</b>（音韵、谐音，不涉命理）。
+       <b>评估完全在本地完成，生辰八字不会上传到任何服务器</b> ——
+       命理判断要的数据本地都有，联网只能补字典和诗词库，对命理分析没帮助。</p>
     <p><b>关于联网数据的可信度</b>　拼音、部首、释义、诗词都有公开数据源，可直接采用；
        但<b>康熙笔画与姓名学五行没有权威公开数据集</b>，联网加入的字只能按部首规则推断，
        界面会标注「推断」并要求人工核对，<b>请勿当作权威结果</b>。</p>
@@ -275,6 +316,7 @@
 <script src="js/data/popularity.js"></script>
 <script src="js/data/namewords.js"></script>
 <script src="js/data/era-chars.js"></script>
+<script src="js/data/nayin.js"></script>
 <script src="js/data/fanti.js"></script>
 <script src="js/data/sources.js"></script>
 <script src="js/data/cities.js"></script>
@@ -299,9 +341,16 @@
 <script src="js/core/lexicon.js"></script>
 <script src="js/core/radical.js"></script>
 <script src="js/core/variant.js"></script>
+<script src="js/core/hexagram.js"></script>
+<script src="js/core/zodiac.js"></script>
+<script src="js/core/report.js"></script>
+<script src="js/core/pool.js"></script>
 <script src="js/core/nickname.js"></script>
 <!-- 界面层 -->
 <script src="js/ui/sync-ui.js"></script>
+<script src="js/ui/birth-form.js"></script>
+<script src="js/ui/pool-ui.js"></script>
+<script src="js/ui/eval-ui.js"></script>
 <script src="js/ui/app.js"></script>
 
 </body>

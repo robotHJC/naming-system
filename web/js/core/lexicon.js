@@ -36,6 +36,14 @@
     FAN_JIAN_BUILTIN[k] = NS.FAN_JIAN[k];
   });
 
+  /* 联网词库占用的存储键。
+   *
+   * 必须显式列出来传给 Store.clear(keys) —— 早先调的是无参 clear()，
+   * 那是整个 object store 清空，会把**候选池**（跟联网词库毫无关系的
+   * 用户数据）也一并删掉。用户一个个挑出来的名字丢了是真损失。 */
+  var STORE_KEYS = ['pinyinMap', 'dict', 'poems', 'customChars',
+    'meta', 'fantiMap', 'shupinMap', 'dialectWords'];
+
   var Lexicon = {
     pinyinMap: null,      /* { 字: {pinyin, tone} } */
     dict: null,           /* { 字: [简体笔画, 部首, 带调拼音, 释义] } */
@@ -443,7 +451,12 @@
       var keep = [];
       return NS.Store.get('customChars').then(function (cc) {
         keep = cc || [];
-        return NS.Store.clear();
+        /* 只删联网数据本身那几个键。**不能**用无参 clear()——
+         * 那会连候选池一起删掉，而候选池跟数据格式版本毫无关系。 */
+        var toClear = STORE_KEYS.filter(function (k) {
+          return k !== 'customChars';
+        });
+        return NS.Store.clear(toClear);
       }).then(function () {
         /* clear 会把所有键删光，把自定义字放回去 */
         return keep.length ? NS.Store.set('customChars', keep) : null;
@@ -487,7 +500,9 @@
 
     /** 清空所有联网数据，回到内置字库状态 */
     reset: function () {
-      return NS.Store.clear().then(function () {
+      /* 传键列表而不是用无参 clear()：候选池（namePool）不是联网词库，
+       * 不该因为点了一下「清空联网词库」就没了。 */
+      return NS.Store.clear(STORE_KEYS).then(function () {
         Lexicon.customChars.forEach(function (c) { delete NS.CHAR_DB[c.char]; });
         NS.CHAR_LIST = NS.CHAR_LIST.filter(function (c) {
           return !c.__inferred;

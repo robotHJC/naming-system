@@ -360,21 +360,46 @@
       '八字喜用神优先级更高。</b>' + $('radHint').innerHTML;
   }
 
-  function initViewSwitch() {    var wrap = $('viewSwitch');
+  function initViewSwitch() {
+    var wrap = $('viewSwitch');
     if (!wrap) return;
     wrap.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
       if (!btn) return;
-      var view = btn.dataset.view;
-      Array.prototype.forEach.call(wrap.querySelectorAll('button'),
-        function (b) {
-          b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
-        });
-      $('viewNaming').hidden = view !== 'naming';
-      $('viewLexicon').hidden = view !== 'lexicon';
-      if (view === 'lexicon' && NS.SyncUI) NS.SyncUI.refreshStatus();
+      switchView(btn.dataset.view);
     });
   }
+
+  /**
+   * 切换视图。四个：取名 / 候选池 / 评估 / 词库管理。
+   *
+   * 每个视图**切进来时才刷新** —— 启动时把所有视图都算一遍既慢又没意义，
+   * 而且候选池与评估都需要生辰参数，启动时用户还没填。
+   */
+  function switchView(view) {
+    var wrap = $('viewSwitch');
+    if (wrap) {
+      Array.prototype.forEach.call(wrap.querySelectorAll('button'), function (b) {
+        b.setAttribute('aria-pressed',
+          b.dataset.view === view ? 'true' : 'false');
+      });
+    }
+    /* 用表驱动而不是写死几行，加视图时不会漏掉一个 */
+    var map = {
+      naming: 'viewNaming', pool: 'viewPool',
+      eval: 'viewEval', lexicon: 'viewLexicon'
+    };
+    Object.keys(map).forEach(function (k) {
+      var el = $(map[k]);
+      if (el) el.hidden = (k !== view);
+    });
+    if (view === 'lexicon' && NS.SyncUI) NS.SyncUI.refreshStatus();
+    if (view === 'pool' && NS.PoolUI) NS.PoolUI.refresh();
+    if (view === 'eval' && NS.EvalUI) NS.EvalUI.refresh();
+    state.view = view;
+  }
+  /* 供候选池/评估视图内部跳转用（例如「去评估这个名字」） */
+  NS.switchView = switchView;
 
   /** 词库有联网扩充时，在「词库管理」按钮上点一个小圆点 */
   function refreshLexDot(st) {
@@ -395,6 +420,17 @@
   }
   /* 暴露给 sync-ui.js：同步完成后由它回调，保证状态即时刷新 */
   NS.refreshLexDot = refreshLexDot;
+
+  /** 候选池里有东西时，在「候选池」按钮上点一个小圆点 */
+  function refreshPoolDot() {
+    var dot = $('poolDot');
+    if (!dot || !NS.Pool) return;
+    NS.Pool.size().then(function (n) {
+      dot.hidden = !n;
+      dot.title = n ? ('候选池里有 ' + n + ' 个候选') : '';
+    }).catch(function () { /* 忽略：无持久化环境 */ });
+  }
+  NS.refreshPoolDot = refreshPoolDot;
 
   /* ---------------- 姓氏信息 ---------------- */
 
@@ -1006,6 +1042,30 @@
     pick.appendChild(el('span', null, '加入对比'));
     foot.appendChild(pick);
 
+    /* 加入候选池 —— 孕期先存起来，出生后填真实八字重筛。
+     * 之所以要这个按钮：取名通常发生在出生前，而预估的喜用神
+     * 很可能不是孩子真正的喜用神（差几天四柱就全变了）。 */
+    var poolBtn = el('button', 'btn tiny ghost nc-pool', '加入候选池');
+    poolBtn.type = 'button';
+    poolBtn.addEventListener('click', function () {
+      var surname = (state.lastOpts && state.lastOpts.surname) ||
+        ($('surname') ? $('surname').value.trim() : '');
+      var baziInfo = state.lastOpts && state.lastOpts._baziInfo;
+      NS.Pool.add({
+        surname: surname,
+        given: item.chars.join(''),
+        gender: state.gender || '',
+        baziStr: baziInfo ? baziInfo.baziStr : ''
+      }).then(function (r) {
+        poolBtn.textContent = r.added
+          ? '已加入候选池 ✓'
+          : (r.reason || '未加入');
+        poolBtn.disabled = r.added;
+        refreshPoolDot();
+      });
+    });
+    foot.appendChild(poolBtn);
+
     card.appendChild(foot);
 
     /* 详情 */
@@ -1542,6 +1602,18 @@
         refreshLexDot(st);
       }).catch(function () { /* 忽略：无持久化环境 */ });
     }
+
+    /* 候选池与评估：**延迟构建**。
+     * 它们的表单要读「取名」页的生辰，而用户可能还没填；
+     * 而且启动时构建它们没有意义（用户还没切过去）。
+     * 所以只在第一次切进去时 init 一次（见 switchView）。 */
+    if (NS.PoolUI && $('viewPool')) NS.PoolUI.init($('viewPool'));
+    if (NS.EvalUI && $('viewEval')) NS.EvalUI.init($('viewEval'));
+    /* init 只建骨架，先藏起来 —— 否则四个视图会同时出现在页面上 */
+    if ($('viewPool')) $('viewPool').hidden = true;
+    if ($('viewEval')) $('viewEval').hidden = true;
+    /* 候选池里有东西就点个小圆点，提示用户「你之前存过备选」 */
+    setTimeout(refreshPoolDot, 0);
 
     $('surname').addEventListener('input', function () {
       updateSurname();

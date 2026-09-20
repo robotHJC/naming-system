@@ -1615,3 +1615,251 @@ details.more > summary:hover { color: var(--jade); }
 
   .result-bar .actions { flex-wrap: wrap; }
 }
+
+/* =========================================================================
+ * 候选池 / 评估 / 生辰输入组件（三个新视图）
+ *
+ * 设计原则：报告按**依据强度**分块，靠左侧色条与标签颜色区分，
+ * 让用户一眼看出哪条是正统命理、哪条只是民俗参考。
+ * ========================================================================= */
+
+/* ---------------- 生辰输入组件 ---------------- */
+.birth-form {
+  margin: 4px 0 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-2, #fbfaf6);
+}
+
+.birth-form .field { margin-top: 8px; }
+.birth-form .field:first-child { margin-top: 0; }
+
+.birth-form label.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.birth-form input[type="number"] { max-width: 180px; }
+
+/* ---------------- 通用提示条 ---------------- */
+.notice {
+  margin: 10px 0;
+  padding: 9px 12px;
+  border-left: 3px solid var(--jade);
+  border-radius: 6px;
+  background: var(--jade-pale);
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #3c5a50;
+}
+
+.notice.warn {
+  border-left-color: var(--gold);
+  background: var(--gold-pale);
+  color: #6b5a30;
+}
+
+/* ---------------- 评估视图 ---------------- */
+.eval-form { margin-bottom: 14px; }
+
+.eval-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
+  align-items: center;
+}
+
+.eval-title { display: flex; align-items: baseline; gap: 10px; }
+
+.eval-name {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+
+.eval-py { font-size: 13px; color: var(--ink-3); }
+
+.eval-score {
+  grid-row: span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--jade-pale);
+  color: var(--jade);
+}
+.eval-score b { font-size: 26px; line-height: 1.1; }
+.eval-score span { font-size: 11px; opacity: .8; }
+.eval-score.good { background: var(--jade); color: #fff; }
+.eval-score.ok { background: var(--gold-pale); color: var(--gold); }
+.eval-score.low { background: var(--red-pale); color: var(--red); }
+
+.eval-verdict {
+  grid-column: 1;
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.eval-hl {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: #6b5a30;
+}
+
+.eval-section { margin-top: 14px; }
+
+.eval-sec-head { margin-bottom: 8px; }
+
+/* 依据强度标签：颜色区分硬指标与民俗说法 */
+.eval-basis {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  letter-spacing: .05em;
+  background: var(--jade);
+  color: #fff;
+}
+.eval-basis.basis-shu { background: #5b7a8c; }
+.eval-basis.basis-yong { background: #7a6a5b; }
+.eval-basis.basis-min { background: #a9782c; }
+.eval-basis.basis-yu { background: #6d7a6a; }
+
+.eval-block {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--jade-pale);
+  border-radius: 6px;
+  background: #fdfcf9;
+}
+.eval-block.warn {
+  border-left-color: var(--gold);
+  background: var(--gold-pale);
+}
+
+.eval-block-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+  letter-spacing: .03em;
+}
+
+.eval-line {
+  margin: 3px 0;
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--ink-2);
+}
+.eval-line b { color: var(--jade); }
+.eval-block.warn .eval-line b { color: #8a6a1f; }
+
+.eval-gap { height: 6px; margin: 0; }
+
+/* ---------------- 候选池视图 ---------------- */
+.pool-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.pool-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.pool-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #f0ede5;
+  vertical-align: middle;
+}
+
+.pool-rank { color: var(--ink-3); font-size: 12px; width: 34px; }
+
+.pool-name {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: .05em;
+}
+
+.pool-py { display: block; font-size: 11px; color: var(--ink-3); }
+
+.pool-score {
+  font-weight: 600;
+  color: var(--jade);
+  font-size: 15px;
+  width: 58px;
+}
+
+.pool-ph { font-size: 12px; color: var(--ink-3); }
+.pool-ph.warn { color: var(--red); }
+
+.pool-added { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.pool-note { font-size: 11px; color: #a9782c; margin-top: 2px; }
+
+.pool-act { white-space: nowrap; }
+.pool-act .btn { margin-right: 4px; }
+
+/* 五行补益标记：重筛时最该看的一列 */
+.wx-best, .wx-good, .wx-idle {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 3px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.wx-best { background: var(--jade); color: #fff; }
+.wx-good { background: var(--jade-pale); color: var(--jade); }
+.wx-idle { background: #f0ede5; color: var(--ink-3); }
+
+/* 名字卡片上的「加入候选池」按钮 */
+.nc-pool {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* 窄屏：候选池表格改为卡片式堆叠，避免横向滚动 */
+@media (max-width: 720px) {
+  .pool-table thead { display: none; }
+  .pool-table, .pool-table tbody, .pool-table tr, .pool-table td {
+    display: block;
+    width: 100%;
+  }
+  .pool-table tr {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .pool-table td {
+    border: none;
+    padding: 2px 0;
+  }
+  .pool-table td::before {
+    content: attr(data-th) '　';
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .eval-head { grid-template-columns: 1fr; }
+  .eval-score { grid-row: auto; flex-direction: row; gap: 8px; }
+}
+

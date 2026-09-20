@@ -22,10 +22,12 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/popularity.js', 'data/fanti.js', 'data/sources.js',
   'data/cities.js', 'data/sichuan.js', 'data/nickname.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
+  'data/nayin.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/net.js', 'core/infer.js', 'core/dialect.js',
-  'core/lexicon.js', 'core/radical.js', 'core/variant.js'
+  'core/lexicon.js', 'core/radical.js', 'core/variant.js',
+  'core/hexagram.js', 'core/zodiac.js', 'core/report.js', 'core/pool.js'
 ].forEach(f => require(path.join(BASE, f)));
 
 const NS = globalThis.NS;
@@ -1163,6 +1165,94 @@ section('7. 打包固化的预置数据（模拟新电脑首次打开）');
   eq('reset 后写回当前 schema',
     metaAfterReset && metaAfterReset.schema, NS.Store.DATA_SCHEMA);
   eq('reset 后不再残留丢弃提示', NS.Lexicon.discardNotice, null);
+
+  /* ---------------- 9. 候选池 ----------------
+   *
+   * 场景：取名通常发生在出生之前，而预产期前后差几天四柱就全变了。
+   * 所以池子里存的必须是**名字本身**，不是当初算出来的分数 ——
+   * 分数每次都要用当前生辰现算。
+   * ------------------------------------------------ */
+  section('9. 候选池');
+
+  NS.Pool._resetCache();
+  await NS.Pool.clear();
+
+  const b26 = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  const b90 = NS.Bazi.analyzeBazi(1990, 3, 15, 9, 0);
+
+  /* 孕期：还没有八字，先存名字（baziStr 留空） */
+  const a1 = await NS.Pool.add({ surname: '郝', given: '沐涵', gender: '女' });
+  ok('能加入候选池', a1.added && a1.size === 1, JSON.stringify(a1));
+
+  const a2 = await NS.Pool.add({ surname: '郝', given: '沐涵' });
+  ok('同名不重复加入', !a2.added && a2.size === 1, a2.reason);
+
+  await NS.Pool.add({ surname: '郝', given: '清和', baziStr: b90.baziStr });
+  await NS.Pool.add({ surname: '郝', given: '汀澜' });
+  eq('池子里有 3 个', (await NS.Pool.size()), 3);
+  eq('has() 能查到', await NS.Pool.has('郝清和'), true);
+
+  /* 出生后：用真实八字重筛 */
+  const rows = await NS.Pool.rescore(b26, '女');
+  eq('重筛返回全部条目', rows.length, 3);
+  ok('按分数降序', rows[0].score >= rows[1].score &&
+    rows[1].score >= rows[2].score,
+    rows.map(r => r.score).join('>='));
+  ok('每个条目都带完整报告', rows.every(r => r.report && r.report.blocks.length));
+  console.log('  重筛结果（2026 丙午）：' + rows.map(r =>
+    r.entry.full + ' ' + r.score).join('　'));
+
+  /* 关键：加入时没填八字的条目要被标出来，
+   * 否则用户会以为分数一直是这个，不知道是出生后才算的 */
+  const noBazi = rows.find(r => r.entry.full === '郝沐涵');
+  ok('加入时无八字的条目被标记', noBazi.baziWasEstimated === true);
+  const hadBazi = rows.find(r => r.entry.full === '郝清和');
+  ok('加入时八字与现在不同的条目被标记', hadBazi.baziChanged === true,
+    JSON.stringify({ at: hadBazi.entry.baziStrAtAdd, now: b26.baziStr }));
+
+  /* 换一个生辰，分数应当会变 —— 这就是要重筛的理由 */
+  const rows2 = await NS.Pool.rescore(b90, '女');
+  const s1 = rows.find(r => r.entry.full === '郝沐涵').score;
+  const s2 = rows2.find(r => r.entry.full === '郝沐涵').score;
+  ok('换个生辰分数会变（所以不能存旧分数当结论）', s1 !== s2,
+    s1 + ' vs ' + s2);
+
+  /* 导出 / 导入 */
+  const dump = await NS.Pool.exportAll();
+  eq('导出带类型标记', dump.kind, 'name-pool');
+  eq('导出条目数正确', dump.items.length, 3);
+
+  await NS.Pool.clear();
+  eq('清空后为 0', (await NS.Pool.size()), 0);
+  const imp = await NS.Pool.importAll(dump);
+  eq('导入恢复 3 个', imp.added, 3);
+  const imp2 = await NS.Pool.importAll(dump);
+  eq('重复导入不增加', imp2.added, 0);
+
+  let badImport = null;
+  try { await NS.Pool.importAll({ kind: 'wrong' }); }
+  catch (e) { badImport = e.message; }
+  ok('导入非法文件会被拒绝', !!badImport, badImport);
+
+  /* 移除 */
+  await NS.Pool.remove('郝清和');
+  eq('移除后剩 2 个', (await NS.Pool.size()), 2);
+
+  /* ---- 关键回归：清空联网词库不能连带清掉候选池 ----
+   * 早先 Lexicon.reset() 调的是无参 Store.clear()，那是整个 store 清空，
+   * 会把候选池一起删掉 —— 而候选池跟联网词库毫无关系。
+   * 那是用户一个个挑出来的名字，丢了是真损失。 */
+  await NS.Store.set('dict', { '测': [8, '讠', 'cè', '测试'] });
+  await NS.Lexicon.reset();
+  eq('清空联网词库后联网字典没了', await NS.Store.get('dict'), null);
+  eq('清空联网词库**不影响**候选池', (await NS.Pool.size()), 2);
+
+  /* 版本不兼容的自动清理也不该动候选池 */
+  await NS.Lexicon.discardIncompatible({ state: 'stale', saved: 0, current: 9 });
+  eq('自动清理不兼容数据时也不动候选池', (await NS.Pool.size()), 2);
+
+  await NS.Pool.clear();
+  NS.Pool._resetCache();
 
   console.log('\n' + '='.repeat(52));
   console.log(`通过 ${pass} 项，失败 ${fail} 项`);

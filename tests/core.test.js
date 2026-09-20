@@ -10,9 +10,11 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
+  'data/nayin.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
-  'core/infer.js', 'core/lexicon.js', 'core/radical.js', 'core/variant.js'
+  'core/infer.js', 'core/lexicon.js', 'core/radical.js', 'core/variant.js',
+  'core/hexagram.js', 'core/zodiac.js', 'core/report.js'
 ].forEach(f => require(path.join(BASE, f)));
 
 const NS = globalThis.NS;
@@ -607,6 +609,219 @@ section('12. 时代感（上代用字）');
   ok('扣分力度在合理区间（≥热度上限且 < 词表加分）',
     NS.ERA_PENALTY >= 6 && NS.ERA_PENALTY < 12,
     String(NS.ERA_PENALTY));
+}
+
+/* ---------------- 13. 纳音（六十甲子） ----------------
+ *
+ * 用户问「今年马年火年，能不能用带水的字」——
+ * 2026 丙午按干支是火，按纳音是「天河水」属水，同一年两套相反。
+ * 这张表是可核对的固定查表，所以这里逐项验。
+ * ------------------------------------------------ */
+section('13. 纳音五行');
+{
+  eq('纳音表 30 组', NS.NAYIN_TABLE.length, 30);
+
+  /* 六十甲子每一组都必须有纳音，不能有洞 */
+  let missing = [];
+  for (let g = 0; g < 10; g++) {
+    for (let z = 0; z < 12; z++) {
+      if (((g + z) % 2) !== 0) continue;
+      const n = NS.nayinOfGanzhi(g, z);
+      if (!n || !n.name || !n.wuxing) missing.push(NS.TIANGAN[g] + NS.DIZHI[z]);
+    }
+  }
+  ok('六十甲子全部有纳音', missing.length === 0, missing.join(','));
+
+  /* 已知年份核对（干支与纳音都是公开可查的） */
+  const known = [
+    [1984, '甲子', '海中金'], [1990, '庚午', '路旁土'],
+    [2000, '庚辰', '白蜡金'], [2024, '甲辰', '覆灯火'],
+    [2025, '乙巳', '覆灯火'], [2026, '丙午', '天河水'],
+    [2027, '丁未', '天河水'], [2044, '甲子', '海中金']
+  ];
+  let wrong = [];
+  known.forEach(([y, gz, ny]) => {
+    const n = NS.nayinOfYear(y);
+    if (!n || n.name !== ny) wrong.push(y + '→' + (n && n.name) + '(期望' + ny + ')');
+  });
+  ok('已知年份纳音核对无误', wrong.length === 0, wrong.join(' '));
+  console.log('  2024 甲辰→' + NS.nayinOfYear(2024).name +
+    '　2026 丙午→' + NS.nayinOfYear(2026).name);
+
+  /* 纳音五行 = 名称末字，不该手工维护第二份 */
+  ok('纳音五行取自名称末字',
+    NS.nayinOfYear(2026).wuxing === '水' && NS.nayinOfYear(2024).wuxing === '火');
+
+  /* 核心：干支五行与纳音五行**可以不一致**，这正是要展示的矛盾 */
+  const n26 = NS.nayinOfYear(2026);
+  const b26 = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  ok('2026 干支层是火（丙午）',
+    b26.pillars[0].ganWx === '火' && b26.pillars[0].zhiWx === '火');
+  ok('2026 纳音层是水（天河水）—— 与干支相反',
+    n26.wuxing === '水', n26.name);
+  ok('八字结果里带上了纳音', !!b26.nayin && b26.nayin.name === '天河水');
+  console.log('  同一年的两套口径：干支=火火，纳音=' + n26.name + '（水）');
+}
+
+/* ---------------- 14. 姓名卦 ----------------
+ *
+ * 这是**民俗做法**，不是《周易》原书用法。测试只验「起卦规则可复算、
+ * 64 卦表完整、体用生克按定义走」，不验吉凶是否灵验（那无法验）。
+ * ------------------------------------------------ */
+section('14. 姓名卦（民俗参考）');
+{
+  /* 64 卦表必须齐 —— 缺一个就会在某些笔画下报「未收录」 */
+  let lack = [];
+  for (let u = 1; u <= 8; u++) {
+    for (let l = 1; l <= 8; l++) {
+      if (!NS.HEXAGRAM_NAMES[u + '-' + l]) lack.push(u + '-' + l);
+    }
+  }
+  ok('六十四卦表完整', lack.length === 0, lack.join(','));
+  eq('六十四卦条目数', Object.keys(NS.HEXAGRAM_NAMES).length, 64);
+
+  /* 八卦爻画：三个爻、阴阳各半（除乾坤），且能反查回自己 */
+  let yaoBad = [];
+  for (let k = 1; k <= 8; k++) {
+    const b = NS.BAGUA[k];
+    if (!b || b.yao.length !== 3) { yaoBad.push(k + ':爻数'); continue; }
+    if (b.yao.some(v => v !== 0 && v !== 1)) yaoBad.push(k + ':非阴阳');
+  }
+  ok('八卦爻画合法', yaoBad.length === 0, yaoBad.join(','));
+
+  /* 起卦可复算：郝(14) + 清和(12+8=20) */
+  const h = NS.castNameHexagram(14, 20);
+  ok('起卦返回结果', !!h);
+  eq('上卦 = 姓笔画 % 8（14%8=6 → 坎）', h.upper.no, 6);
+  eq('下卦 = 名笔画 % 8（20%8=4 → 震）', h.lower.no, 4);
+  eq('动爻 = 总笔画 % 6（34%6=4）', h.basis.moving, 4);
+  eq('本卦为水雷屯', h.name, '水雷屯');
+  ok('变卦已算出', !!h.changed && !!h.changed.name);
+  console.log(`  郝(14)+清和(20) → ${h.symbol} ${h.name}　动爻${h.basis.moving}　` +
+    `变卦 ${h.changed.name}　体${h.ti.name}(${h.ti.wuxing})/用${h.yong.name}(${h.yong.wuxing})` +
+    ` → ${h.relation.level} ${h.relation.kind}`);
+
+  /* 动爻归属决定体用，这是一条硬规则 */
+  const lo = NS.castNameHexagram(14, 20);   /* 动爻 4，在上卦 → 上卦为用 */
+  ok('动爻在上卦时，上卦为用、下卦为体',
+    lo.basis.moving > 3 && lo.yong.name === lo.upper.name
+    && lo.ti.name === lo.lower.name);
+
+  /* 余数为 0 的边界：取 8 而不是 0 */
+  const h2 = NS.castNameHexagram(8, 8);     /* 8%8=0 → 坤；16%6=4 */
+  eq('余 0 时上卦取 8（坤）', h2.upper.no, 8);
+  eq('余 0 时下卦取 8（坤）', h2.lower.no, 8);
+  eq('八卦全坤 → 坤为地', h2.name, '坤为地');
+
+  /* 动爻余 0 取 6 */
+  const h3 = NS.castNameHexagram(1, 5);     /* 总 6，6%6=0 → 动爻 6 */
+  eq('动爻余 0 取第 6 爻', h3.basis.moving, 6);
+
+  /* 体用生克五条规则逐条验（用五行直接调，不绕起卦） */
+  const rel = NS.Hexagram.relation;
+  eq('用生体 → 吉', rel('木', '水').level, '吉');
+  eq('体用比和 → 吉', rel('木', '木').level, '吉');
+  eq('体克用 → 小吉', rel('木', '土').level, '小吉');
+  eq('体生用 → 平', rel('木', '火').level, '平');
+  eq('用克体 → 凶', rel('木', '金').level, '凶');
+
+  /* 免责声明必须在结果里，界面直接展示，不能靠界面自己记得写 */
+  ok('起卦结果自带免责说明', typeof h.disclaimer === 'string'
+    && h.disclaimer.indexOf('民俗') >= 0, h.disclaimer.slice(0, 40));
+}
+
+/* ---------------- 15. 生肖流派冲突 ----------------
+ *
+ * 这是回答用户「马年能不能用水」的地方。测试要确认的是：
+ * **冲突会被检出并说明**，而不是系统悄悄替用户做选择。
+ * ------------------------------------------------ */
+section('15. 生肖与八字的口径冲突');
+{
+  const b26 = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  const z = NS.analyzeZodiac(b26);
+  ok('生肖分析可用', !!z);
+  eq('2026 属马', z.shengxiao, '马');
+  eq('年柱为丙午', z.yearPillar, '丙午');
+  ok('纳音一并带出', z.nayin && z.nayin.name === '天河水');
+
+  /* 干支火 / 纳音水 → 必须报冲突 */
+  const kinds = z.conflicts.map(c => c.kind);
+  ok('检出「干支与纳音不一致」',
+    kinds.some(k => k.indexOf('纳音') >= 0), kinds.join(','));
+  const cf = z.conflicts.find(c => c.kind.indexOf('纳音') >= 0);
+  ok('冲突条目写清了两边的值',
+    cf && cf.a.indexOf('火') >= 0 && cf.b.indexOf('水') >= 0,
+    cf ? cf.a + ' / ' + cf.b : '');
+  console.log('  冲突：' + cf.a + '　／　' + cf.b);
+
+  /* 生肖形义派说属马忌氵，而 2026 这个八字的喜用神可能正需要水 ——
+   * 一旦重合就必须报冲突，并明确写「以八字为准」 */
+  const warn = NS.zodiacRadicalWarning(['沐', '涵'], '马');
+  ok('属马用氵字会给出形义派提示', !!warn && warn.hits.length === 2,
+    warn ? warn.hits.join(',') : 'null');
+  ok('提示里写明不扣分', warn.note.indexOf('不因此扣分') >= 0);
+  console.log('  形义派提示：' + warn.hits.join('、') + ' —— ' + warn.why);
+
+  /* 关键：给出「八字优先」的立场，而不是和稀泥 */
+  ok('明确写出以八字为准', z.stance.indexOf('以八字喜用神为准') >= 0);
+  ok('说明生肖不自动限制用字', z.stance.indexOf('不按生肖自动限制用字') >= 0);
+
+  /* 反向：没有冲突的年份不该乱报 */
+  const b90 = NS.Bazi.analyzeBazi(1990, 3, 15, 9, 0);
+  const z90 = NS.analyzeZodiac(b90);
+  eq('1990 庚午年纳音为路旁土（与地支午火不一致，也应报出）',
+    z90.nayin.wuxing, '土');
+}
+
+/* ---------------- 16. 名字评估报告 ---------------- */
+section('16. 名字评估（自定义名字）');
+{
+  const b = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  const rep = NS.Report.evaluate('郝', '沐涵', { bazi: b });
+  ok('能评估一个名字', !!rep);
+  eq('识别出姓氏', rep.surname, '郝');
+  eq('识别出名字', rep.given, '沐涵');
+  ok('总分在 0-100', rep.total >= 0 && rep.total <= 100, String(rep.total));
+  eq('没有字库外的字', rep.unknownChars.length, 0);
+  console.log(`  郝沐涵 → ${rep.total} 分（${rep.verdict}）`);
+
+  /* 报告必须分层，且层数齐全 —— 这是这个功能的核心设计 */
+  const basisSet = new Set(rep.blocks.map(x => x.basis));
+  ok('报告含「命理」层', basisSet.has('命理'), [...basisSet].join(','));
+  ok('报告含「民俗」层', basisSet.has('民俗'));
+  ok('报告含「语言」层', basisSet.has('语言'));
+  ok('报告含「数理」层', basisSet.has('数理'));
+  ok('每个分块都有依据标签', rep.blocks.every(x => !!x.basisLabel));
+  console.log('  分层：' + [...basisSet].join(' / '));
+
+  /* 姓名卦与生肖都要进报告 */
+  ok('报告带姓名卦', !!rep.hexagram && !!rep.hexagram.name,
+    rep.hexagram && rep.hexagram.name);
+  ok('报告带生肖分析', !!rep.zodiac && rep.zodiac.shengxiao === '马');
+
+  /* 免责声明：必须在报告里，不能只在界面上写 */
+  ok('报告自带免责声明',
+    rep.disclaimer.indexOf('不预测命运') >= 0 &&
+    rep.disclaimer.indexOf('不是科学结论') >= 0);
+
+  /* 复姓不能把姓算成名字用字（之前这里有个真 bug：
+   * 姓氏不在 CHAR_DB 里，被误判成「字库外字」，姓氏笔画算成 undefined） */
+  const ou = NS.Report.evaluate('欧阳', '清和', { bazi: b });
+  ok('复姓不产生「字库外字」', ou.unknownChars.length === 0,
+    ou.unknownChars.join(','));
+  ok('复姓也能起卦', !!ou.hexagram && !!ou.hexagram.name, ou.hexagram && ou.hexagram.name);
+  console.log(`  欧阳清和 → ${ou.hexagram.name}　${ou.total} 分`);
+
+  /* 没有生辰也要能评（只评名字本身，不涉八字） */
+  const noB = NS.Report.evaluate('郝', '清和', {});
+  ok('无生辰也能出报告', !!noB && noB.total > 0, String(noB && noB.total));
+  const noBasis = new Set(noB.blocks.map(x => x.basis));
+  ok('无生辰时报告里没有「命理」层（不硬凑）', !noBasis.has('命理'),
+    [...noBasis].join(','));
+
+  /* 全生僻字：应返回 null 而不是崩 */
+  const none = NS.Report.evaluate('郝', '龘靐', { bazi: b });
+  eq('字库外的名字返回 null 而不是崩溃', none, null);
 }
 
 console.log(`\n${'='.repeat(52)}`);

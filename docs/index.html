@@ -1622,6 +1622,253 @@ details.more > summary:hover { color: var(--jade); }
 
   .result-bar .actions { flex-wrap: wrap; }
 }
+
+/* =========================================================================
+ * 候选池 / 评估 / 生辰输入组件（三个新视图）
+ *
+ * 设计原则：报告按**依据强度**分块，靠左侧色条与标签颜色区分，
+ * 让用户一眼看出哪条是正统命理、哪条只是民俗参考。
+ * ========================================================================= */
+
+/* ---------------- 生辰输入组件 ---------------- */
+.birth-form {
+  margin: 4px 0 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-2, #fbfaf6);
+}
+
+.birth-form .field { margin-top: 8px; }
+.birth-form .field:first-child { margin-top: 0; }
+
+.birth-form label.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.birth-form input[type="number"] { max-width: 180px; }
+
+/* ---------------- 通用提示条 ---------------- */
+.notice {
+  margin: 10px 0;
+  padding: 9px 12px;
+  border-left: 3px solid var(--jade);
+  border-radius: 6px;
+  background: var(--jade-pale);
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #3c5a50;
+}
+
+.notice.warn {
+  border-left-color: var(--gold);
+  background: var(--gold-pale);
+  color: #6b5a30;
+}
+
+/* ---------------- 评估视图 ---------------- */
+.eval-form { margin-bottom: 14px; }
+
+.eval-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
+  align-items: center;
+}
+
+.eval-title { display: flex; align-items: baseline; gap: 10px; }
+
+.eval-name {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+
+.eval-py { font-size: 13px; color: var(--ink-3); }
+
+.eval-score {
+  grid-row: span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--jade-pale);
+  color: var(--jade);
+}
+.eval-score b { font-size: 26px; line-height: 1.1; }
+.eval-score span { font-size: 11px; opacity: .8; }
+.eval-score.good { background: var(--jade); color: #fff; }
+.eval-score.ok { background: var(--gold-pale); color: var(--gold); }
+.eval-score.low { background: var(--red-pale); color: var(--red); }
+
+.eval-verdict {
+  grid-column: 1;
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.eval-hl {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: #6b5a30;
+}
+
+.eval-section { margin-top: 14px; }
+
+.eval-sec-head { margin-bottom: 8px; }
+
+/* 依据强度标签：颜色区分硬指标与民俗说法 */
+.eval-basis {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  letter-spacing: .05em;
+  background: var(--jade);
+  color: #fff;
+}
+.eval-basis.basis-shu { background: #5b7a8c; }
+.eval-basis.basis-yong { background: #7a6a5b; }
+.eval-basis.basis-min { background: #a9782c; }
+.eval-basis.basis-yu { background: #6d7a6a; }
+
+.eval-block {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--jade-pale);
+  border-radius: 6px;
+  background: #fdfcf9;
+}
+.eval-block.warn {
+  border-left-color: var(--gold);
+  background: var(--gold-pale);
+}
+
+.eval-block-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+  letter-spacing: .03em;
+}
+
+.eval-line {
+  margin: 3px 0;
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--ink-2);
+}
+.eval-line b { color: var(--jade); }
+.eval-block.warn .eval-line b { color: #8a6a1f; }
+
+.eval-gap { height: 6px; margin: 0; }
+
+/* ---------------- 候选池视图 ---------------- */
+.pool-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.pool-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.pool-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #f0ede5;
+  vertical-align: middle;
+}
+
+.pool-rank { color: var(--ink-3); font-size: 12px; width: 34px; }
+
+.pool-name {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: .05em;
+}
+
+.pool-py { display: block; font-size: 11px; color: var(--ink-3); }
+
+.pool-score {
+  font-weight: 600;
+  color: var(--jade);
+  font-size: 15px;
+  width: 58px;
+}
+
+.pool-ph { font-size: 12px; color: var(--ink-3); }
+.pool-ph.warn { color: var(--red); }
+
+.pool-added { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.pool-note { font-size: 11px; color: #a9782c; margin-top: 2px; }
+
+.pool-act { white-space: nowrap; }
+.pool-act .btn { margin-right: 4px; }
+
+/* 五行补益标记：重筛时最该看的一列 */
+.wx-best, .wx-good, .wx-idle {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 3px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.wx-best { background: var(--jade); color: #fff; }
+.wx-good { background: var(--jade-pale); color: var(--jade); }
+.wx-idle { background: #f0ede5; color: var(--ink-3); }
+
+/* 名字卡片上的「加入候选池」按钮 */
+.nc-pool {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* 窄屏：候选池表格改为卡片式堆叠，避免横向滚动 */
+@media (max-width: 720px) {
+  .pool-table thead { display: none; }
+  .pool-table, .pool-table tbody, .pool-table tr, .pool-table td {
+    display: block;
+    width: 100%;
+  }
+  .pool-table tr {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .pool-table td {
+    border: none;
+    padding: 2px 0;
+  }
+  .pool-table td::before {
+    content: attr(data-th) '　';
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .eval-head { grid-template-columns: 1fr; }
+  .eval-score { grid-row: auto; flex-direction: row; gap: 8px; }
+}
 </style>
 </head>
 <body>
@@ -1636,6 +1883,8 @@ details.more > summary:hover { color: var(--jade); }
   <div class="toolbar">
     <div class="view-switch" id="viewSwitch" role="group" aria-label="视图切换">
       <button type="button" data-view="naming" aria-pressed="true">取 名</button>
+      <button type="button" data-view="pool">候选池<span class="dot" id="poolDot" hidden></span></button>
+      <button type="button" data-view="eval">评 估</button>
       <button type="button" data-view="lexicon">词 库 管 理<span class="dot" id="lexDot" hidden></span></button>
     </div>
   </div>
@@ -1783,6 +2032,12 @@ details.more > summary:hover { color: var(--jade); }
 
   </div>
 
+  <!-- ============ 候选池视图（孕期备选，出生后重筛） ============ -->
+  <section class="panel" id="viewPool" hidden></section>
+
+  <!-- ============ 评估视图（输入已有名字，出命理批注） ============ -->
+  <section class="panel" id="viewEval" hidden></section>
+
   <!-- ============ 词库管理视图（联网扩充） ============ -->
   <section class="panel lex-panel" id="viewLexicon" hidden></section>
 
@@ -1876,6 +2131,39 @@ details.more > summary:hover { color: var(--jade); }
        太冷门（热度 &lt; 40）读起来生僻难认，太烂大街（&gt; 91）则重名率高，
        中间段（55-91）最适合起名。
        换句话说：<b>诗词出典只当故事看，真正决定排序的是「念起来舒不舒服」。</b></p>
+    <p><b>关于纳音与生肖（三套口径会打架）</b>　很多人问「今年马年是火年，
+       是不是不能用带水的字」—— 这个问题的前提就站不住，因为<b>同时存在三套口径</b>：
+       ① <b>年柱干支五行</b>：2026 丙午，丙火 + 午火，看是「火年」；
+       ② <b>年柱纳音</b>：丙午的纳音是<b>「天河水」，属水</b> —— 同一年，与①相反；
+       ③ <b>八字喜用神</b>：看的是<b>日主</b>（出生那天的天干）与全局强弱，
+       年柱在四柱里<b>权重最低</b>（年主祖上、少年）。
+       另外「属马忌氵」来自<b>生肖形义派</b>（马怕水、宜草字头有棚），
+       依据是字形象意，跟五行生克不是一套东西。
+       <b>本系统的立场：三套并列展示、不合并、不按生肖自动限制用字</b>；
+       真要取舍时<b>以八字喜用神为准</b>。万一生肖宜忌与喜用神冲突，
+       评估报告里会专门列一段把冲突指出来。</p>
+    <p><b>关于姓名卦</b>　<b>这是民俗做法，不是《周易》原书的用法。</b>
+       原书以蓍草起卦问事，「用姓名笔画起卦」是后人（主要是梅花易数与姓名学）
+       的推演，而且各家取卦法并不一致。本系统采用一套并写明：
+       上卦 = 姓笔画 ÷ 8 的余数、下卦 = 名笔画 ÷ 8 的余数、动爻 = 总笔画 ÷ 6 的余数
+       （余 0 分别作 8 和 6）。吉凶按<b>体用生克</b>定 ——
+       动爻所在卦为「用」、另一卦为「体」，用生体/比和/体克用偏吉、用克体为凶。
+       这套规则明确、可以复算，但属于<b>民俗流派</b>；与八字冲突时以八字为准。
+       本系统<b>不预测命运</b>，报告只分析「用字与生辰是否相配」。</p>
+    <p><b>关于候选池</b>　取名通常发生在<b>出生之前</b>，而预产期前后差几天
+       <b>四柱就全变了</b> —— 所以现在算出来的喜用神很可能不是孩子真正的喜用神。
+       建议流程：孕期先按姓氏与风格挑几个中意的存进候选池（<b>不锁死八字</b>），
+       出生后填上真实生辰，一键<b>用真实八字重新评分排序</b>。
+       池子里存的是<b>名字本身，不是当初的分数</b> —— 把预估八字下的分数当成结论，
+       正是这个功能要避免的错误。候选池是独立的用户数据：
+       清空联网词库、或程序升级时自动清理旧格式数据，都<b>不会</b>动它。</p>
+    <p><b>关于评估</b>　输入任意一个已有的名字（自己想的、长辈给的都行）+ 生辰，
+       输出分层的命理批注。<b>按依据强度分组显示</b>，而不是搅成一个总分：
+       <b>命理</b>（八字五行，权重最高）／<b>用字</b>（字义笔画，无生辰时用它）／
+       <b>数理</b>（三才五格，数理派）／<b>民俗参考</b>（生肖、纳音、姓名卦）／
+       <b>语言</b>（音韵、谐音，不涉命理）。
+       <b>评估完全在本地完成，生辰八字不会上传到任何服务器</b> ——
+       命理判断要的数据本地都有，联网只能补字典和诗词库，对命理分析没帮助。</p>
     <p><b>关于联网数据的可信度</b>　拼音、部首、释义、诗词都有公开数据源，可直接采用；
        但<b>康熙笔画与姓名学五行没有权威公开数据集</b>，联网加入的字只能按部首规则推断，
        界面会标注「推断」并要求人工核对，<b>请勿当作权威结果</b>。</p>
@@ -3242,6 +3530,152 @@ details.more > summary:hover { color: var(--jade); }
     var n = 0;
     (chars || []).forEach(function (c) { if (NS.ERA_CHARS[c] === 1) n++; });
     return n;
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * nayin.js —— 六十甲子纳音
+ *
+ * 为什么需要它
+ * ---------------------------------------------------------------
+ * 用户问：「今年马年是火年，那么是否就不能使用带水的字，更不能带火的字？」
+ *
+ * 这个例子恰好说明**一句话规则不可靠**：
+ *   2026 是丙午年 —— 按干支看，丙火 + 午火，确实是「火年」；
+ *   但丙午的**纳音**是「天河水」，属**水**。
+ *   同一年，两套体系给出相反的五行。
+ *
+ * 所以系统不能只把干支五行当成「今年属什么」告诉用户 ——
+ * 得把两套标注清楚并列出来，让用户看到它们本来就会打架。
+ *
+ * 关于这张表
+ * ---------------------------------------------------------------
+ * 六十甲子纳音是**固定查表**，不是推算出来的：六十个干支两两一组，
+ * 共 30 组、每组一个纳音名。所以这份数据可核对、不含解释空间 ——
+ * 这也是本项目里少数几个「不存在流派争议」的数据之一。
+ *
+ * 用处：姓名学里常拿年柱纳音当「本命五行」讲（如「天河水命」），
+ * 它和年柱干支五行、和八字喜用神是三套不同的口径，必须分开标注。
+ *
+ * 注意：纳音在**正统八字里基本不用**，它主要出现在民俗命理与
+ * 合婚、择日等场景。所以系统把它作为**参考信息**展示，
+ * **不参与喜用神判断**，也不参与取名打分。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  /* 30 组，按六十甲子顺序。每两项共用一个纳音（下标 = ⌊干支序 ÷ 2⌋）。
+   * 每一组的纳音五行就是名称的最后一个字（金/火/木/土/水）。 */
+  NS.NAYIN_TABLE = [
+    '海中金',   /*  0 甲子 乙丑 */
+    '炉中火',   /*  1 丙寅 丁卯 */
+    '大林木',   /*  2 戊辰 己巳 */
+    '路旁土',   /*  3 庚午 辛未 */
+    '剑锋金',   /*  4 壬申 癸酉 */
+    '山头火',   /*  5 甲戌 乙亥 */
+    '涧下水',   /*  6 丙子 丁丑 */
+    '城头土',   /*  7 戊寅 己卯 */
+    '白蜡金',   /*  8 庚辰 辛巳 */
+    '杨柳木',   /*  9 壬午 癸未 */
+    '泉中水',   /* 10 甲申 乙酉 */
+    '屋上土',   /* 11 丙戌 丁亥 */
+    '霹雳火',   /* 12 戊子 己丑 */
+    '松柏木',   /* 13 庚寅 辛卯 */
+    '长流水',   /* 14 壬辰 癸巳 */
+    '沙中金',   /* 15 甲午 乙未 */
+    '山下火',   /* 16 丙申 丁酉 */
+    '平地木',   /* 17 戊戌 己亥 */
+    '壁上土',   /* 18 庚子 辛丑 */
+    '金箔金',   /* 19 壬寅 癸卯 */
+    '覆灯火',   /* 20 甲辰 乙巳  ← 2024 */
+    '天河水',   /* 21 丙午 丁未  ← 2026（干支是火，纳音却是水） */
+    '大驿土',   /* 22 戊申 己酉 */
+    '钗钏金',   /* 23 庚戌 辛亥 */
+    '桑柘木',   /* 24 壬子 癸丑 */
+    '大溪水',   /* 25 甲寅 乙卯 */
+    '沙中土',   /* 26 丙辰 丁巳 */
+    '天上火',   /* 27 戊午 己未 */
+    '石榴木',   /* 28 庚申 辛酉 */
+    '大海水'    /* 29 壬戌 癸亥 */
+  ];
+
+  /* 纳音的意象注解。用于「命理批注」里多一句可读的解释，
+   * 纯描述性，不含吉凶判断。 */
+  NS.NAYIN_NOTE = {
+    '海中金': '金藏海底，需待时而发',
+    '炉中火': '炉中之火，需添薪方旺',
+    '大林木': '林中大木，成材需时日',
+    '路旁土': '路旁之土，近人行而少专养',
+    '剑锋金': '剑刃之金，成于砥砺',
+    '山头火': '山巅之火，显而立不稳',
+    '涧下水': '山涧细流，清而长',
+    '城头土': '城墙之土，厚重能守',
+    '白蜡金': '白蜡之金，质柔而有光',
+    '杨柳木': '杨柳之木，柔韧易生',
+    '泉中水': '石泉之水，源小不竭',
+    '屋上土': '屋瓦之土，遮覆有劳',
+    '霹雳火': '雷霆之火，骤烈难久',
+    '松柏木': '松柏之木，寒暑不凋',
+    '长流水': '长流之水，行远不绝',
+    '沙中金': '沙中之金，需淘洗方见',
+    '山下火': '山下之火，气弱而暖',
+    '平地木': '平地之木，易长易用',
+    '壁上土': '墙壁之土，待屋成而后立',
+    '金箔金': '金箔之金，形薄而饰人',
+    '覆灯火': '覆灯之火，照近不照远',
+    '天河水': '天河之水，泽下而无私',
+    '大驿土': '驿道之土，通达四方',
+    '钗钏金': '钗钏之金，聚而成饰',
+    '桑柘木': '桑柘之木，养蚕利人',
+    '大溪水': '大溪之水，奔流有向',
+    '沙中土': '沙中之土，聚散不定',
+    '天上火': '天上之火，光耀而远',
+    '石榴木': '石榴之木，实多而繁',
+    '大海水': '大海之水，量广难测'
+  };
+
+  /**
+   * 由干支序号（0-59）取纳音
+   * @param {number} ganzhiIndex 0 = 甲子
+   * @returns {{name:string, wuxing:string, note:string}|null}
+   */
+  NS.nayinAt = function (ganzhiIndex) {
+    if (typeof ganzhiIndex !== 'number' || ganzhiIndex < 0) return null;
+    var i = Math.floor((ganzhiIndex % 60) / 2);
+    var name = NS.NAYIN_TABLE[i];
+    if (!name) return null;
+    return {
+      name: name,
+      /* 纳音五行就是名称末字，不必再手工维护一份 */
+      wuxing: name.charAt(name.length - 1),
+      note: NS.NAYIN_NOTE[name] || ''
+    };
+  };
+
+  /**
+   * 由天干序号（0-9）与地支序号（0-11）取纳音
+   *
+   * 干支组合是唯一的：给定干与支，六十甲子里只有一个匹配项，
+   * 用中国剩余定理反解即可，不需要查 60 项。
+   */
+  NS.nayinOfGanzhi = function (ganIndex, zhiIndex) {
+    if (typeof ganIndex !== 'number' || typeof zhiIndex !== 'number') return null;
+    /* 因为 10 与 12 的最大公约数是 2，干支同奇偶才有解 */
+    if (((ganIndex + zhiIndex) % 2) !== 0) return null;
+    /* 解 x ≡ gan (mod 10)、x ≡ zhi (mod 12)，x ∈ [0,60) */
+    for (var x = 0; x < 60; x++) {
+      if (x % 10 === ganIndex && x % 12 === zhiIndex) return NS.nayinAt(x);
+    }
+    return null;
+  };
+
+  /** 由公历年（近似，未做立春校正）取年柱纳音 */
+  NS.nayinOfYear = function (year) {
+    return NS.nayinAt(((year - 4) % 60 + 60) % 60);
   };
 
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -4818,6 +5252,10 @@ details.more > summary:hover { color: var(--jade); }
       xiyongshen: candidates,
       missing: missing,
       shengxiao: NS.SHENGXIAO[bz.年[1]],
+      /* 年柱纳音（民俗命理口径）。
+       * 与年柱干支五行**不同源**，2026 丙午就是典型案例：
+       * 干支是火、纳音却是「天河水」属水。所以两者要并列展示，不能合并。 */
+      nayin: NS.nayinOfGanzhi ? NS.nayinOfGanzhi(bz.年[0], bz.年[1]) : null,
       meta: bz.meta
     };
   }
@@ -6809,7 +7247,23 @@ details.more > summary:hover { color: var(--jade); }
     });
   }
 
-  function clear() {
+  /**
+   * 清空存储。
+   *
+   * @param {string[]} [keys] 只清这几个键。**强烈建议传** ——
+   *   不传就是整个 object store 清空，会把不属于调用方的数据一起删掉。
+   *   实测踩过：Lexicon.reset()（「清空联网词库」）调了无参 clear()，
+   *   结果把用户的**候选池**一并删了 —— 那是跟联网词库毫无关系的用户数据。
+   *   候选池里存的是用户一个个挑出来的名字，丢了是真的损失。
+   */
+  function clear(keys) {
+    if (keys && keys.length) {
+      return ready.then(function () {
+        return keys.reduce(function (chain, k) {
+          return chain.then(function () { return del(k); });
+        }, Promise.resolve());
+      }).then(function () { return true; });
+    }
     return ready.then(function () {
       if (backend === 'idb') {
         return new Promise(function (resolve) {
@@ -7550,6 +8004,14 @@ details.more > summary:hover { color: var(--jade); }
     FAN_JIAN_BUILTIN[k] = NS.FAN_JIAN[k];
   });
 
+  /* 联网词库占用的存储键。
+   *
+   * 必须显式列出来传给 Store.clear(keys) —— 早先调的是无参 clear()，
+   * 那是整个 object store 清空，会把**候选池**（跟联网词库毫无关系的
+   * 用户数据）也一并删掉。用户一个个挑出来的名字丢了是真损失。 */
+  var STORE_KEYS = ['pinyinMap', 'dict', 'poems', 'customChars',
+    'meta', 'fantiMap', 'shupinMap', 'dialectWords'];
+
   var Lexicon = {
     pinyinMap: null,      /* { 字: {pinyin, tone} } */
     dict: null,           /* { 字: [简体笔画, 部首, 带调拼音, 释义] } */
@@ -7957,7 +8419,12 @@ details.more > summary:hover { color: var(--jade); }
       var keep = [];
       return NS.Store.get('customChars').then(function (cc) {
         keep = cc || [];
-        return NS.Store.clear();
+        /* 只删联网数据本身那几个键。**不能**用无参 clear()——
+         * 那会连候选池一起删掉，而候选池跟数据格式版本毫无关系。 */
+        var toClear = STORE_KEYS.filter(function (k) {
+          return k !== 'customChars';
+        });
+        return NS.Store.clear(toClear);
       }).then(function () {
         /* clear 会把所有键删光，把自定义字放回去 */
         return keep.length ? NS.Store.set('customChars', keep) : null;
@@ -8001,7 +8468,9 @@ details.more > summary:hover { color: var(--jade); }
 
     /** 清空所有联网数据，回到内置字库状态 */
     reset: function () {
-      return NS.Store.clear().then(function () {
+      /* 传键列表而不是用无参 clear()：候选池（namePool）不是联网词库，
+       * 不该因为点了一下「清空联网词库」就没了。 */
+      return NS.Store.clear(STORE_KEYS).then(function () {
         Lexicon.customChars.forEach(function (c) { delete NS.CHAR_DB[c.char]; });
         NS.CHAR_LIST = NS.CHAR_LIST.filter(function (c) {
           return !c.__inferred;
@@ -8761,6 +9230,1029 @@ details.more > summary:hover { color: var(--jade); }
     outerCandidates: outerCandidates,
     forName: forName,
     reset: reset
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * hexagram.js —— 姓名卦（六十四卦）
+ *
+ * ============================ 请先读这段 ============================
+ * 这个模块做的事情是**姓名学的民间做法**，不是《周易》原书的用法。
+ *
+ *   《周易》原书用蓍草（或后来的铜钱）起卦，取「问事」之意；
+ *   「用姓名笔画起卦」是后人（主要是梅花易数与姓名学）的推演，
+ *   最早的明确记载远晚于《周易》本身。
+ *
+ * 而且**各家取卦法并不一致**：有人用姓氏笔画作上卦，有人用姓+名首字；
+ * 动爻有取总笔画除六的，也有取名字笔画除六的。本模块采用下述一套
+ * 并在界面上写明，是**选择**而不是**定论**。
+ *
+ * 关于吉凶：本模块给出**体用生克**的吉凶判语。这是梅花易数里
+ * 最常用的定法（动爻所在卦为「用」，另一卦为「体」），规则明确、
+ * 可以复算，但它属于**民俗流派**，与八字命理不是一套体系。
+ * 系统会在界面上标注这一点，并且在它与八字喜用神冲突时
+ * **明确说明八字优先** —— 不会让两套东西悄悄打架。
+ *
+ * 起卦规则（本系统采用，界面上会写明）
+ * ---------------------------------------------------------------
+ *   先天八卦数：乾1 兑2 离3 震4 巽5 坎6 艮7 坤8
+ *   上卦 = 姓氏康熙笔画之和 ÷ 8 的余数（余 0 作 8）
+ *   下卦 = 名字康熙笔画之和 ÷ 8 的余数（余 0 作 8）
+ *   动爻 = 姓名总笔画 ÷ 6 的余数（余 0 作 6，自下往上数）
+ *   变卦 = 把动爻那一爻阴阳互换后重组
+ * ============================ 请先读这段 ============================
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  /* ---------------- 八卦 ---------------- */
+
+  /* 爻自下往上（初爻 → 上爻），1 = 阳、0 = 阴。
+   * 五行：乾兑金、离火、震巽木、坎水、艮坤土。 */
+  NS.BAGUA = {
+    1: { name: '乾', symbol: '☰', yao: [1, 1, 1], wuxing: '金',
+      image: '天', nature: '刚健' },
+    2: { name: '兑', symbol: '☱', yao: [1, 1, 0], wuxing: '金',
+      image: '泽', nature: '喜悦' },
+    3: { name: '离', symbol: '☲', yao: [1, 0, 1], wuxing: '火',
+      image: '火', nature: '附丽' },
+    4: { name: '震', symbol: '☳', yao: [1, 0, 0], wuxing: '木',
+      image: '雷', nature: '震动' },
+    5: { name: '巽', symbol: '☴', yao: [0, 1, 1], wuxing: '木',
+      image: '风', nature: '顺入' },
+    6: { name: '坎', symbol: '☵', yao: [0, 1, 0], wuxing: '水',
+      image: '水', nature: '陷险' },
+    7: { name: '艮', symbol: '☶', yao: [0, 0, 1], wuxing: '土',
+      image: '山', nature: '静止' },
+    8: { name: '坤', symbol: '☷', yao: [0, 0, 0], wuxing: '土',
+      image: '地', nature: '柔顺' }
+  };
+
+  /* 由爻反查卦数（low 位是初爻） */
+  function baguaFromYao(y) {
+    for (var k = 1; k <= 8; k++) {
+      var a = NS.BAGUA[k].yao;
+      if (a[0] === y[0] && a[1] === y[1] && a[2] === y[2]) return k;
+    }
+    return null;
+  }
+
+  /* ---------------- 六十四卦 ---------------- */
+
+  /* 键 = 「上卦数-下卦数」，值 = [卦名, 义理简述]
+   * 卦名与义理由《周易》卦序与彖象大意整理，是**描述性**的，
+   * 不含吉凶判断 —— 吉凶另由「体用生克」给出，见 scoreRelation()。 */
+  NS.HEXAGRAM_NAMES = {
+    /* 上卦 乾 */
+    '1-1': ['乾为天', '纯阳刚健，自强不息；宜守正持恒，忌亢极'],
+    '1-2': ['天泽履', '如履虎尾，履道坦坦；宜谨慎而行'],
+    '1-3': ['天火同人', '与人同心，同人于野；宜合众、忌偏私'],
+    '1-4': ['天雷无妄', '不妄为，守其正；宜循理、忌妄动'],
+    '1-5': ['天风姤', '不期而遇，相遇而合；宜慎辨、忌轻信'],
+    '1-6': ['天水讼', '争讼之象，讼不可长；宜和解、忌缠斗'],
+    '1-7': ['天山遁', '退避隐遁，全身而去；宜守时、忌强进'],
+    '1-8': ['天地否', '天地不交，闭塞不通；宜守待、忌轻举'],
+    /* 上卦 兑 */
+    '2-1': ['泽天夬', '刚决柔，决而能和；宜果断、忌暴决'],
+    '2-2': ['兑为泽', '和悦相说，孚于众；宜和悦、忌谄媚'],
+    '2-3': ['泽火革', '变革去故，顺天应人；宜顺时、忌躁改'],
+    '2-4': ['泽雷随', '随顺时势，择善而从；宜随时、忌盲从'],
+    '2-5': ['泽风大过', '过甚失中，栋桡之象；宜持重、忌过甚'],
+    '2-6': ['泽水困', '困穷之象，困而不失其所亨；宜守正待时'],
+    '2-7': ['泽山咸', '感应相通，虚己受人；宜虚心、忌固执'],
+    '2-8': ['泽地萃', '聚集会合，聚以正；宜聚合、忌杂乱'],
+    /* 上卦 离 */
+    '3-1': ['火天大有', '大有所得，其德刚健而文明；宜广纳'],
+    '3-2': ['火泽睽', '乖离背异，异中求同；宜求同、忌强合'],
+    '3-3': ['离为火', '附丽光明，柔丽乎中正；宜依附正道'],
+    '3-4': ['火雷噬嗑', '啮合去梗，明罚敕法；宜去梗、忌姑息'],
+    '3-5': ['火风鼎', '鼎新取新，稳重致养；宜稳进、忌骤变'],
+    '3-6': ['火水未济', '事未成，慎终如始；宜续力、忌松懈'],
+    '3-7': ['火山旅', '旅居在外，慎守其正；宜守分、忌躁进'],
+    '3-8': ['火地晋', '晋长日进，柔进上行；宜渐进、忌冒进'],
+    /* 上卦 震 */
+    '4-1': ['雷天大壮', '刚以动，壮大而正；宜守正、忌恃强'],
+    '4-2': ['雷泽归妹', '归嫁失序，慎始慎终；宜正位、忌苟合'],
+    '4-3': ['雷火丰', '丰大光明，日中则昃；宜守成、忌自满'],
+    '4-4': ['震为雷', '震动惊惧，恐惧修省；宜自省、忌惊乱'],
+    '4-5': ['雷风恒', '恒久不易，守常持久；宜持久、忌多变'],
+    '4-6': ['雷水解', '解散险难，险难将缓；宜解结、忌再结'],
+    '4-7': ['雷山小过', '小有过越，宜下不宜上；宜守分'],
+    '4-8': ['雷地豫', '和乐顺动，乐极防逸；宜备豫、忌耽乐'],
+    /* 上卦 巽 */
+    '5-1': ['风天小畜', '小有畜聚，蓄养待时；宜积累、忌急成'],
+    '5-2': ['风泽中孚', '中心诚信，信及豚鱼；宜诚信、忌虚饰'],
+    '5-3': ['风火家人', '家道正，内正外和；宜齐家、忌失序'],
+    '5-4': ['风雷益', '损上益下，利有攸往；宜施益、忌独占'],
+    '5-5': ['巽为风', '顺时而入，柔顺申命；宜顺入、忌优柔'],
+    '5-6': ['风水涣', '涣散离析，聚而能散；宜聚合、忌再散'],
+    '5-7': ['风山渐', '渐进有序，循序渐进；宜循序、忌躐等'],
+    '5-8': ['风地观', '观察瞻仰，观人以德；宜观省、忌浮观'],
+    /* 上卦 坎 */
+    '6-1': ['水天需', '待时而动，需而不进；宜等待、忌躁求'],
+    '6-2': ['水泽节', '节制度量，节而不苦；宜有节、忌过苦'],
+    '6-3': ['水火既济', '事已成，守成防变；宜守成、忌逸怠'],
+    '6-4': ['水雷屯', '初生艰难，屯而待通；宜经纶、忌妄动'],
+    '6-5': ['水风井', '井养不穷，静而能养；宜养人、忌废弃'],
+    '6-6': ['坎为水', '重险相习，习险能出；宜守诚、忌侥幸'],
+    '6-7': ['水山蹇', '跛难之象，见险能止；宜止待、忌犯难'],
+    '6-8': ['水地比', '亲比辅助，相亲相辅；宜亲辅、忌孤行'],
+    /* 上卦 艮 */
+    '7-1': ['山天大畜', '大有蕴蓄，厚积待发；宜蕴蓄、忌轻发'],
+    '7-2': ['山泽损', '损下益上，损而有孚；宜损己、忌过损'],
+    '7-3': ['山火贲', '文饰增益，饰不掩质；宜内实、忌徒饰'],
+    '7-4': ['山雷颐', '颐养自求，养正则吉；宜自养、忌妄求'],
+    '7-5': ['山风蛊', '积弊生蛊，治蛊除弊；宜整治、忌姑息'],
+    '7-6': ['山水蒙', '蒙昧求启，启蒙养正；宜求教、忌自专'],
+    '7-7': ['艮为山', '止而不动，止其所当止；宜知止、忌躁进'],
+    '7-8': ['山地剥', '剥落侵蚀，顺而止之；宜守待、忌躁动'],
+    /* 上卦 坤 */
+    '8-1': ['地天泰', '天地交泰，通泰安宁；宜交通、忌阻隔'],
+    '8-2': ['地泽临', '居高临下，临事以德；宜临事、忌傲慢'],
+    '8-3': ['地火明夷', '明入地中，晦其明以守正；宜晦守'],
+    '8-4': ['地雷复', '一阳来复，反复其道；宜复正、忌再失'],
+    '8-5': ['地风升', '上升渐进，积小成高；宜渐升、忌躁求'],
+    '8-6': ['地水师', '兴师动众，以正用众；宜以正、忌专擅'],
+    '8-7': ['地山谦', '谦德受益，卑而不可逾；宜谦下、忌自满'],
+    '8-8': ['坤为地', '厚德载物，柔顺贞固；宜承载、忌柔靡']
+  };
+
+  /* ---------------- 五行生克 ---------------- */
+
+  var SHENG = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+  var KE = { '木': '土', '土': '水', '水': '火', '火': '金', '金': '木' };
+
+  /**
+   * 体用生克定吉凶。
+   *
+   * 「体」= 不动的那一卦（代表自己），「用」= 动爻所在那一卦（代表所遇之事）。
+   * 这是梅花易数的定法，规则明确、可复算，但属于**民俗流派**。
+   */
+  function scoreRelation(tiWx, yongWx) {
+    if (!tiWx || !yongWx) return null;
+    if (tiWx === yongWx) {
+      return { level: '吉', kind: '体用比和', why: '体用同属' + tiWx +
+        '，同气相求，无相克之忧' };
+    }
+    if (SHENG[yongWx] === tiWx) {
+      return { level: '吉', kind: '用生体', why: '用（' + yongWx + '）生体（' +
+        tiWx + '），外力来助' };
+    }
+    if (KE[tiWx] === yongWx) {
+      return { level: '小吉', kind: '体克用', why: '体（' + tiWx + '）克用（' +
+        yongWx + '），能制其事，但需费力' };
+    }
+    if (SHENG[tiWx] === yongWx) {
+      return { level: '平', kind: '体生用', why: '体（' + tiWx + '）生用（' +
+        yongWx + '），气往外泄，耗费而少得' };
+    }
+    return { level: '凶', kind: '用克体', why: '用（' + yongWx + '）克体（' +
+      tiWx + '），所遇之事反来相制' };
+  }
+
+  /* ---------------- 起卦 ---------------- */
+
+  /**
+   * 由姓名笔画起卦
+   * @param {number} surnameStrokes 姓氏康熙笔画之和
+   * @param {number} givenStrokes   名字康熙笔画之和
+   * @returns {Object|null}
+   */
+  NS.castNameHexagram = function (surnameStrokes, givenStrokes) {
+    var s = Number(surnameStrokes), g = Number(givenStrokes);
+    if (!isFinite(s) || !isFinite(g) || s <= 0 || g <= 0) return null;
+
+    /* 余 0 作 8 —— 与先天八卦数 1..8 对应 */
+    var upperNo = s % 8 || 8;
+    var lowerNo = g % 8 || 8;
+    var total = s + g;
+    var moving = total % 6 || 6;      /* 1..6，自下往上 */
+
+    var upper = NS.BAGUA[upperNo];
+    var lower = NS.BAGUA[lowerNo];
+    if (!upper || !lower) return null;
+
+    /* 本卦六爻：下卦三爻（初二三）+ 上卦三爻（四五六） */
+    var yao = lower.yao.concat(upper.yao);
+
+    /* 变卦：把动爻那一爻阴阳互换 */
+    var changed = yao.slice();
+    changed[moving - 1] = changed[moving - 1] ? 0 : 1;
+    var cLowerNo = baguaFromYao(changed.slice(0, 3));
+    var cUpperNo = baguaFromYao(changed.slice(3, 6));
+
+    var nameKey = upperNo + '-' + lowerNo;
+    var full = NS.HEXAGRAM_NAMES[nameKey] || ['（未收录）', ''];
+    var cFull = cUpperNo && cLowerNo
+      ? (NS.HEXAGRAM_NAMES[cUpperNo + '-' + cLowerNo] || ['（未收录）', ''])
+      : null;
+
+    /* 体用：动爻所在卦为「用」，另一卦为「体」。
+     * 动爻 1-3 在下卦 → 下卦为用、上卦为体；4-6 则相反。 */
+    var movingInLower = moving <= 3;
+    var tiNo = movingInLower ? upperNo : lowerNo;
+    var yongNo = movingInLower ? lowerNo : upperNo;
+    var ti = NS.BAGUA[tiNo], yong = NS.BAGUA[yongNo];
+    var relation = scoreRelation(ti.wuxing, yong.wuxing);
+
+    return {
+      /* 起卦依据，原样回传便于界面展示与用户复核 */
+      basis: {
+        surnameStrokes: s,
+        givenStrokes: g,
+        total: total,
+        upperNo: upperNo,
+        lowerNo: lowerNo,
+        moving: moving,
+        movingInLower: movingInLower,
+        rule: '上卦=姓笔画%8（余0作8）　下卦=名笔画%8（余0作8）　' +
+          '动爻=总笔画%6（余0作6）'
+      },
+      upper: { no: upperNo, name: upper.name, symbol: upper.symbol,
+        wuxing: upper.wuxing, image: upper.image, nature: upper.nature },
+      lower: { no: lowerNo, name: lower.name, symbol: lower.symbol,
+        wuxing: lower.wuxing, image: lower.image, nature: lower.nature },
+      name: full[0],
+      meaning: full[1],
+      yao: yao,
+      changedYao: changed,
+      changed: cFull ? {
+        upper: NS.BAGUA[cUpperNo], lower: NS.BAGUA[cLowerNo],
+        name: cFull[0], meaning: cFull[1]
+      } : null,
+      ti: { name: ti.name, symbol: ti.symbol, wuxing: ti.wuxing, image: ti.image },
+      yong: { name: yong.name, symbol: yong.symbol, wuxing: yong.wuxing,
+        image: yong.image },
+      relation: relation,
+
+      /* 便于界面统一渲染六爻的图形（自下往上画，展示时倒序） */
+      symbol: upper.symbol + lower.symbol,
+
+      /* 必须一并展示的免责说明，不要把上面任何一项说成定论 */
+      disclaimer: '姓名卦是梅花易数与姓名学的**民俗做法**，' +
+        '不是《周易》原书用法（原书以蓍草起卦问事）。' +
+        '各家取卦法也不一致，本系统采用的是：' + '上卦取姓笔画、下卦取名笔画、' +
+        '动爻取总笔画。吉凶按**体用生克**定（体为不动之卦、用为动爻之卦），' +
+        '属民俗流派，仅供参考；与八字喜用神冲突时**以八字为准**。'
+    };
+  };
+
+  NS.Hexagram = {
+    cast: NS.castNameHexagram,
+    bagua: NS.BAGUA,
+    names: NS.HEXAGRAM_NAMES,
+    relation: scoreRelation,
+    SHENG: SHENG,
+    KE: KE
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * zodiac.js —— 生肖流派与八字的冲突分析
+ *
+ * 用户问：「今年马年是火年，那么是否就不能使用带水的字，更不能带火的字？」
+ *
+ * 这个问题把两套不同的体系叠在了一起，本模块的作用就是把它们**分开摆清楚**，
+ * 并在结论冲突时明确说明谁优先 —— 而不是和稀泥给一个折中答案。
+ *
+ * 三套口径，三条不同的依据
+ * ---------------------------------------------------------------
+ *   1. 年柱干支五行 —— 年天干 + 年地支各自的五行。
+ *      2026 丙午：丙火、午火 → 干支层看是「火年」。
+ *
+ *   2. 年柱纳音五行 —— 六十甲子纳音表，一甲子一轮换。
+ *      2026 丙午（干支序 42）→ 纳音「天河水」→ **属水**。
+ *      同一年，与上一套相反。
+ *
+ *   3. 八字喜用神 —— 以**日主**（出生日天干）为核心，看全局强弱，
+ *      再定该补该泄。这是正统八字的路子。
+ *      **年柱在四柱里权重最低**（年主祖上/少年），拿年份推喜忌方向就错了。
+ *
+ * 生肖形义派（民间）另有一套：属马忌「氵」、宜「艹/木/宀/禾」，
+ * 依据是「马怕水」「马需草料与厩棚」的**字形象意**，
+ * 与五行生克不是一回事。
+ *
+ * 本模块的立场
+ * ---------------------------------------------------------------
+ *   · 三套口径**并列展示**，各自标注依据与权重，不合并成一个分数
+ *   · 生肖宜忌**不自动限制用字**，只提示
+ *   · 与八字喜用神冲突时明确写「以八字为准」，并说明为什么
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  /* 十二生肖与地支序号（子=0）的对应 */
+  NS.SHENGXIAO_ZHI = {
+    '鼠': 0, '牛': 1, '虎': 2, '兔': 3, '龙': 4, '蛇': 5,
+    '马': 6, '羊': 7, '猴': 8, '鸡': 9, '狗': 10, '猪': 11
+  };
+
+  /* 生肖形义派的「忌用部首」。
+   *
+   * 说明：这一套各来源差异很大，我只收**流传最广、说法最一致**的几条，
+   * 而且只用于**提示**，绝不参与打分或过滤。
+   * 之所以要列出来，是因为用户会从别处听到这些说法 ——
+   * 与其让他自己猜，不如摆出来并标注清楚它属于哪一派。 */
+  NS.ZODIAC_FOLK_AVOID = {
+    '马': { radicals: ['氵', '水', '田', '石'], why: '马怕水、马耕田劳苦、马蹄践石' },
+    '牛': { radicals: ['羊', '午'], why: '丑未相冲、丑午相害' },
+    '虎': { radicals: ['田', '申'], why: '虎耕田劳苦、寅申相冲' },
+    '兔': { radicals: ['酉', '鸡'], why: '卯酉相冲' },
+    '龙': { radicals: ['犬', '犭', '戌'], why: '辰戌相冲' },
+    '蛇': { radicals: ['亥', '豕'], why: '巳亥相冲' },
+    '羊': { radicals: ['牛', '丑'], why: '丑未相冲' },
+    '猴': { radicals: ['虎', '寅'], why: '寅申相冲' },
+    '鸡': { radicals: ['兔', '卯'], why: '卯酉相冲' },
+    '狗': { radicals: ['龙', '辰'], why: '辰戌相冲' },
+    '猪': { radicals: ['蛇', '巳'], why: '巳亥相冲' },
+    '鼠': { radicals: ['马', '午'], why: '子午相冲' }
+  };
+
+  /**
+   * 分析生肖 / 年柱的三套口径，并检测它们之间的矛盾。
+   *
+   * @param {Object} r NS.Bazi.analyzeBazi() 的返回值
+   * @returns {Object|null}
+   */
+  NS.analyzeZodiac = function (r) {
+    if (!r || !r.bazi) return null;
+    var yii = NS.SHENGXIAO_ZHI[r.shengxiao];
+    if (yii === undefined) return null;
+
+    var yearGanWx = r.pillars[0].ganWx;   /* 年干五行 */
+    var yearZhiWx = r.pillars[0].zhiWx;   /* 年支五行 */
+    var nayin = NS.nayinOfGanzhi(
+      NS.TIANGAN.indexOf(r.pillars[0].gan),
+      NS.DIZHI.indexOf(r.pillars[0].zhi));
+
+    var notes = [];
+    var conflicts = [];
+
+    /* ---- 矛盾一：干支五行 vs 纳音五行 ---- */
+    var ganZhiAll = [yearGanWx, yearZhiWx];
+    if (nayin) {
+      if (ganZhiAll.indexOf(nayin.wuxing) < 0) {
+        conflicts.push({
+          kind: '干支与纳音不一致',
+          a: '年柱干支（' + r.pillars[0].gan + r.pillars[0].zhi + '）为' +
+            ganZhiAll.join('、'),
+          b: '同年纳音「' + nayin.name + '」属' + nayin.wuxing,
+          verdict: '两套口径本来就不同源，不存在谁对谁错；本系统不合并它们'
+        });
+      }
+    }
+
+    /* ---- 矛盾二：生肖形义派 vs 八字喜用神 ---- */
+    var avoid = NS.ZODIAC_FOLK_AVOID[r.shengxiao];
+    var xi = r.xiyongshen || [];
+    if (avoid && avoid.radicals.length) {
+      var xiRadicals = [];
+      if (NS.Radical && NS.Radical.wuxingMap) {
+        var map = NS.Radical.wuxingMap();
+        xi.forEach(function (w) { if (map[w]) xiRadicals = xiRadicals.concat(map[w]); });
+      }
+      /* 若八字喜用神的推荐部首正好落在生肖忌用里，就是硬冲突 */
+      var clash = avoid.radicals.filter(function (r) {
+        return xiRadicals.indexOf(r) >= 0;
+      });
+      if (clash.length) {
+        conflicts.push({
+          kind: '生肖宜忌与八字喜用神冲突',
+          a: '生肖形义派说属' + r.shengxiao + '忌用「' + clash.join('、') +
+            '」（' + avoid.why + '）',
+          b: '八字喜用神是「' + xi.join('、') + '」，正需要这类部首的字',
+          verdict: '**以八字为准**。生肖形义派看的是字形象意（' + avoid.why +
+            '），八字看的是日主强弱与五行生克，两套体系不同源。' +
+            '正统八字里年支权重最低（年主祖上、少年），' +
+            '拿生肖定用字方向本身就不是八字的路子。'
+        });
+      }
+    }
+
+    return {
+      shengxiao: r.shengxiao,
+      zhi: NS.DIZHI[yii],
+      yearPillar: r.pillars[0].gan + r.pillars[0].zhi,
+      yearGanWx: yearGanWx,
+      yearZhiWx: yearZhiWx,
+      nayin: nayin,
+      /* 生肖形义派的民俗说法（仅提示） */
+      folkAvoid: avoid || null,
+      folkFavor: (NS.ZODIAC_RADICALS && NS.ZODIAC_RADICALS[r.shengxiao]) || null,
+      conflicts: conflicts,
+      notes: notes,
+      /* 结论性的定位说明，界面直接展示 */
+      stance: '三套口径（年柱干支 / 纳音 / 八字喜用神）**并列展示，不合并**。' +
+        '取名**不按生肖自动限制用字** —— 因为生肖形义派与八字五行派会打架。' +
+        '真要取舍时**以八字喜用神为准**：八字看的是出生那一刻的日主强弱，' +
+        '年支只是四柱之一且权重最低。'
+    };
+  };
+
+  /**
+   * 检查某个名字的用字是否触犯生肖形义派的忌用（**仅提示，不扣分**）
+   * @param {string[]} chars 名字用字
+   * @param {string} shengxiao
+   */
+  NS.zodiacRadicalWarning = function (chars, shengxiao) {
+    var avoid = NS.ZODIAC_FOLK_AVOID[shengxiao];
+    if (!avoid || !NS.Radical) return null;
+    var hits = [];
+    (chars || []).forEach(function (c) {
+      avoid.radicals.forEach(function (rad) {
+        if (NS.Radical.matchAny(c, [rad]) && hits.indexOf(c + '（' + rad + '）') < 0) {
+          hits.push(c + '（' + rad + '）');
+        }
+      });
+    });
+    if (!hits.length) return null;
+    return {
+      shengxiao: shengxiao,
+      hits: hits,
+      why: avoid.why,
+      note: '这是**生肖形义派**的民俗说法（' + avoid.why + '），' +
+        '不是八字五行判断，系统**不因此扣分**。' +
+        '如果你同时按八字喜用神选字，两者冲突时以八字为准。'
+    };
+  };
+
+  NS.Zodiac = {
+    analyze: NS.analyzeZodiac,
+    radicalWarning: NS.zodiacRadicalWarning,
+    SHENGXIAO_ZHI: NS.SHENGXIAO_ZHI,
+    FOLK_AVOID: NS.ZODIAC_FOLK_AVOID
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * report.js —— 名字评估报告（自定义名字 / 已有名字的命理批注）
+ *
+ * 用户需求：「增加一个输入自定义名字的功能，你根据输入的名字时辰年份八字等
+ * 进行评估，并输出详细的命理批注等信息。」
+ *
+ * 设计要点
+ * ---------------------------------------------------------------
+ * 1. **不联网。** 用户提到「评估可以进行联网评估」，但这里如实说明：
+ *    命理评估需要的数据（八字、五行、康熙笔画、音韵、诗词）全在本地，
+ *    联网只能补充字典与诗词库，对命理判断没有帮助。
+ *    所以评估**完全离线**，结果稳定可复现，也不会把生辰八字发到网上 ——
+ *    这一点反而更该强调。
+ *
+ * 2. **分层输出，各层标注依据强度。** 报告中每个维度都带 `basis` 字段：
+ *      '命理'  —— 八字五行喜用（正统八字，权重最高）
+ *      '数理'  —— 康熙笔画三才五格（数理派，与八字不同源）
+ *      '民俗'  —— 生肖、纳音、姓名卦（民俗流派，仅参考）
+ *      '语言'  —— 音韵、谐音（不涉命理，纯语言学）
+ *    这样用户能看清哪一条是硬的、哪一条是软的。
+ *
+ * 3. **不做命运预测。** 报告只评价「这个用字组合与这个生辰是否相配」，
+ *    不预测祸福。措辞上避免「大吉」「必富贵」这类断言。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  /* 依据强度标签，界面据此分组显示与配色 */
+  var BASIS_LABEL = {
+    '命理': '命理（八字五行）',
+    '用字': '用字（字义·五行·笔画）',
+    '数理': '数理（笔画三才五格）',
+    '民俗': '民俗参考',
+    '语言': '语言（音韵谐音）'
+  };
+
+  function W(wuxing, best, good, level) {
+    return { wuxing: wuxing, best: best, good: good, level: level };
+  }
+
+  /**
+   * 评估一个名字
+   *
+   * @param {string} surname 姓氏（支持复姓）
+   * @param {string} given   名字（不含姓）
+   * @param {Object} opts
+   *   @param {Object} opts.bazi  NS.Bazi.analyzeBazi() 的返回值；不传则按名字内部五行评
+   *   @param {string} opts.gender 性别（可选）
+   *   @param {string[]} opts.taboo 避用字
+   * @returns {Object|null}
+   */
+  NS.evaluateName = function (surname, given, opts) {
+    opts = opts || {};
+    if (!surname || !given) return null;
+
+    var surnameChars = surname.split('');
+    var givenChars = given.split('');
+    var unknown = [];
+    var givenRows = [];
+
+    /* 只查**名字**用字。
+     * 姓氏不在 CHAR_DB 里（它走 SURNAME_DB），早先把姓名混在一起查，
+     * 结果「郝」被判成「字库外字」，姓氏笔画也算成了 undefined。 */
+    givenChars.forEach(function (c) {
+      var d = NS.CHAR_DB[c];
+      if (d) givenRows.push({ ch: c, obj: d });
+      else unknown.push(c);
+    });
+    if (!givenRows.length) return null;
+
+    /* 名字里有字库外的字：照样出报告，但要标出来哪些字是推断的，
+     * 因为康熙笔画与五行是拿部首推的，不准。 */
+    var inferred = givenRows.filter(function (r) { return r.obj.__inferred; })
+      .map(function (r) { return r.ch; });
+
+    var xiyongshen = (opts.bazi && opts.bazi.xiyongshen) || [];
+    var ctx = NS.Score.buildContext({
+      surname: surname,
+      xiyongshen: xiyongshen,
+      taboo: opts.taboo || []
+    });
+
+    /* ---- 1. 八字排盘（若有生辰）---- */
+    var bazi = opts.bazi || null;
+
+    /* ---- 2. 逐字用字分析 ---- */
+    var chars = givenRows.map(function (r) {
+      var wx = r.obj.wuxing;
+      var level = '平';
+      if (xiyongshen.length) {
+        if (wx === xiyongshen[0]) level = 'best';
+        else if (xiyongshen.indexOf(wx) >= 0) level = 'good';
+        else level = 'idle';
+      }
+      return {
+        char: r.ch,
+        pinyin: NS.Pinyin.toneMark(r.obj.pinyin, r.obj.tone),
+        wuxing: wx,
+        strokes: r.obj.strokes,
+        meaning: r.obj.meaning || '',
+        styles: r.obj.styles || [],
+        heat: NS.HEAT[r.ch] !== undefined ? NS.HEAT[r.ch] : NS.DEFAULT_HEAT,
+        eraChar: !!(NS.ERA_CHARS && NS.ERA_CHARS[r.ch] === 1),
+        inferred: !!r.obj.__inferred,
+        wxLevel: level
+      };
+    });
+
+    /* ---- 3. 姓名卦 ---- */
+    /* 姓氏笔画取自 ctx（它已按 SURNAME_DB 解析过，含复姓与兜底），
+     * 不要自己从 CHAR_DB 求和 —— 姓氏根本不在字库里。 */
+    var surnameStrokes = (ctx.surnameStrokes || []).reduce(function (a, b) {
+      return a + b;
+    }, 0);
+    var givenStrokes = chars.reduce(function (a, c) { return a + c.strokes; }, 0);
+    var hexagram = NS.castNameHexagram
+      ? NS.castNameHexagram(surnameStrokes, givenStrokes) : null;
+
+    /* ---- 4. 生肖冲突 ---- */
+    var zodiac = bazi ? NS.analyzeZodiac(bazi) : null;
+    var zodiacWarn = zodiac
+      ? NS.zodiacRadicalWarning(givenChars, zodiac.shengxiao) : null;
+
+    /* ---- 5. 走通用评分（音韵/谐音/三才五格/出处/现代感）---- */
+    var score = NS.Score.evaluate(givenRows.map(function (r) { return r.obj; }), ctx);
+
+    /* ---- 6. 生成批注 ---- */
+    var blocks = [];
+    function add(basis, title, lines, tone) {
+      if (!lines || !lines.length) return;
+      blocks.push({
+        basis: basis,
+        basisLabel: BASIS_LABEL[basis] || basis,
+        title: title,
+        lines: lines.filter(Boolean),
+        tone: tone || 'neutral'
+      });
+    }
+
+    /* 6a. 八字总览 */
+    if (bazi) {
+      var l1 = [];
+      l1.push('四柱：' + bazi.baziStr);
+      l1.push('日主 ' + bazi.dayGan + '（' + bazi.dayWx + '），' +
+        bazi.strength + '（同党 ' + (bazi.ratio * 100).toFixed(0) + '%）');
+      var cnt = NS.WUXING.map(function (w) {
+        return w + ' ' + (bazi.count[w] || 0);
+      }).join('　');
+      l1.push('五行分布：' + cnt);
+      l1.push('喜用神：' + (bazi.xiyongshen.join('、') || '—'));
+      if (bazi.missing.length) {
+        l1.push('八字中不显的五行：' + bazi.missing.join('、') +
+          '（注意：「缺」不等于「需要补」，要看喜用神，' +
+          '身旺时缺的往往正是该泄的）');
+      }
+      add('命理', '八字排盘', l1);
+    }
+
+    /* 6b. 用字与喜用神
+     *
+     * 有生辰才把它归在「命理」下 —— 没有生辰就没有喜用神，
+     * 一个字属什么五行是字本身的属性，不是命理判断。
+     * 早先不论有没有生辰都标成「命理」，是虚张声势，已改。 */
+    var l2 = chars.map(function (c) {
+      var mark = c.wxLevel === 'best' ? '（正合首用神）'
+        : c.wxLevel === 'good' ? '（属喜用）'
+          : xiyongshen.length ? '（非喜用）' : '';
+      return c.char + '　' + c.pinyin + '　五行' + c.wuxing + '　' +
+        c.strokes + '画' + mark +
+        (c.meaning ? '　' + c.meaning : '') +
+        (c.inferred ? '　［推断值，需人工核对］' : '') +
+        (c.eraChar ? '　［偏上一代用字］' : '');
+    });
+    if (xiyongshen.length) {
+      var hitN = chars.filter(function (c) { return c.wxLevel !== 'idle'; }).length;
+      l2.push('');
+      l2.push(hitN === chars.length
+        ? '两个字五行都属喜用，补益方向一致。'
+        : hitN > 0 ? '有一个字属喜用，补益方向部分吻合。'
+          : '两个字都不在喜用神里 —— 从这个生辰看，五行上帮不上忙。');
+    }
+    add(xiyongshen.length ? '命理' : '用字',
+      xiyongshen.length ? '用字五行' : '用字五行（未与八字比对）',
+      l2.concat(xiyongshen.length ? [] : [''
+        , '没有填生辰 → 无法判断喜用神，上面只列出了每个字本身的五行与笔画，'
+        + '**没有**说它们与该补什么相配。']),
+      xiyongshen.length && chars.every(function (c) { return c.wxLevel === 'idle'; })
+        ? 'warn' : 'neutral');
+
+    /* 6c. 纳音与生肖（民俗） */
+    if (zodiac) {
+      var l3 = [];
+      l3.push('生肖：' + zodiac.shengxiao + '（' + zodiac.zhi + '），' +
+        '年柱 ' + zodiac.yearPillar);
+      l3.push('年柱干支五行：' + zodiac.yearGanWx + '、' + zodiac.yearZhiWx);
+      if (zodiac.nayin) {
+        l3.push('年柱纳音：' + zodiac.nayin.name + '（属' + zodiac.nayin.wuxing +
+          '）' + (zodiac.nayin.note ? '　' + zodiac.nayin.note : ''));
+      }
+      add('民俗', '纳音与生肖', l3);
+
+      /* 冲突要单独突出，这是整个报告里最该被看到的一段 */
+      if (zodiac.conflicts.length) {
+        var lc = [];
+        zodiac.conflicts.forEach(function (cf) {
+          lc.push('【' + cf.kind + '】');
+          lc.push('　· ' + cf.a);
+          lc.push('　· ' + cf.b);
+          lc.push('　→ ' + cf.verdict);
+        });
+        add('民俗', '口径冲突（请重点看这段）', lc, 'warn');
+      }
+      if (zodiacWarn) {
+        add('民俗', '生肖形义派提示', [
+          '按生肖形义派，属' + zodiac.shengxiao + '的忌用「' +
+          zodiacWarn.hits.join('、') + '」（' + zodiacFolkWhy(zodiac) + '）。',
+          '**这一派与八字五行不是一套体系**，本系统不因此扣分。' +
+          '若与喜用神冲突，以八字为准。'
+        ], 'warn');
+      }
+    }
+
+    /* 6d. 姓名卦（民俗） */
+    if (hexagram) {
+      add('民俗', '姓名卦', [
+        '起卦：' + hexagram.basis.rule,
+        '上卦 ' + hexagram.upper.symbol + ' ' + hexagram.upper.name + '（' +
+          hexagram.upper.wuxing + '·' + hexagram.upper.image + '）　' +
+          '下卦 ' + hexagram.lower.symbol + ' ' + hexagram.lower.name + '（' +
+          hexagram.lower.wuxing + '·' + hexagram.lower.image + '）',
+        '本卦：' + hexagram.symbol + ' ' + hexagram.name + '　' + hexagram.meaning,
+        '动爻：第 ' + hexagram.basis.moving + ' 爻' +
+          (hexagram.changed ? '　变卦：' + hexagram.changed.name : ''),
+        '体用：体 ' + hexagram.ti.name + '（' + hexagram.ti.wuxing + '）　用 ' +
+          hexagram.yong.name + '（' + hexagram.yong.wuxing + '）',
+        '体用生克：' + hexagram.relation.level + '　' + hexagram.relation.kind +
+          ' —— ' + hexagram.relation.why,
+        '说明：' + hexagram.disclaimer
+      ], hexagram.relation.level === '凶' ? 'warn' : 'neutral');
+    }
+
+    /* 6e. 音韵与谐音（语言） */
+    var l5 = [];
+    var ph = score.detail.phonetic || {};
+    if (ph.sameInitial && ph.sameInitial.length) {
+      l5.push('声母相撞：' + ph.sameInitial.join('、') +
+        '　连读会发懒音，是比较明显的拗口问题。');
+    }
+    if (ph.sameFinal && ph.sameFinal.length) {
+      l5.push('叠韵：' + ph.sameFinal.join('、') + '　两个字的音会糊在一起。');
+    }
+    var homo = score.detail.homophone;
+    if (homo) {
+      l5.push(homo.pass
+        ? '谐音检查：通过（' + homo.pinyin + '）'
+        : '谐音检查：**有风险**（' + homo.pinyin + '）' +
+          (homo.hits && homo.hits.length
+            ? '，近似「' + homo.hits.map(function (h) { return h.word; }).join('、') + '」'
+            : ''));
+    }
+    if (!l5.length) l5.push('声母、韵母、声调均无相撞。');
+    l5.push('（音韵与命理无关，但名字每天都要被念，实际影响不比五行小）');
+    add('语言', '音韵与谐音', l5,
+      homo && !homo.pass ? 'warn' : 'neutral');
+
+    /* 6f. 笔画数理（数理派） */
+    if (score.detail.wuge) {
+      var w = score.detail.wuge;
+      add('数理', '三才五格', [
+        '天格 ' + w['天格'] + '　人格 ' + w['人格'] + '　地格 ' + w['地格'] +
+          '　总格 ' + w['总格'] + '　外格 ' + w['外格'],
+        '三才 ' + w['三才'] + '（' + w['三才关系'] + '）→ ' + w['三才吉凶'],
+        '说明：三才五格是**数理派**，按康熙笔画取数，与八字五行不同源。' +
+        '本系统只给它 6 分（满分 100），权重远低于五行与音韵。'
+      ]);
+    }
+
+    /* 6g. 出处与现代感 */
+    var l7 = [];
+    var kindLabel = {
+      classic: '出处成词', weak: '疑似成词（非诗词类出处）',
+      everyday: '常见词语，不算典故', line: '同句出处', poem: '同篇出处'
+    };
+    if (score.detail.poetry && score.detail.poetry.source) {
+      l7.push((kindLabel[score.detail.pairKind] || '出处') + '：' +
+        (score.detail.poetry.pair ? '「' + score.detail.poetry.pair + '」' : '') +
+        '　《' + score.detail.poetry.source + '》' +
+        (score.detail.poetry.line ? '「' + score.detail.poetry.line + '」' : ''));
+    }
+    if (score.detail.modern) {
+      if (score.detail.modern.word) {
+        l7.push('现代常用搭配：' + score.detail.modern.word);
+      }
+      if (score.detail.modern.era && score.detail.modern.era.length) {
+        l7.push('偏上一代的用字：' + score.detail.modern.era.join('、') +
+          '　（这是时代感判断，不是命理问题）');
+      }
+    }
+    var era = chars.filter(function (c) { return c.eraChar; }).map(function (c) {
+      return c.char;
+    });
+    if (era.length && !(score.detail.modern && score.detail.modern.era)) {
+      l7.push('偏上一代的用字：' + era.join('、'));
+    }
+    if (l7.length) add('语言', '出处与时代感', l7);
+
+    /* ---- 7. 汇总 ---- */
+    var total = score.score;
+    var verdict;
+    if (total >= 75) verdict = '综合来看是个好名字。';
+    else if (total >= 65) verdict = '整体不错，个别维度还能再调。';
+    else if (total >= 55) verdict = '中规中矩，有明显的可改进之处。';
+    else verdict = '从这个生辰看，这个名字的匹配度偏低。';
+
+    var highlights = [];
+    if (xiyongshen.length) {
+      var idle = chars.filter(function (c) { return c.wxLevel === 'idle'; });
+      if (idle.length === chars.length) {
+        highlights.push('两个字都不补喜用神 —— 通常这是最值得改的一点');
+      }
+      if (idle.length === 2 && total >= 65) {
+        highlights.push('不过其余维度（音韵、寓意、数理）补偿得不错');
+      }
+    }
+    if (homo && !homo.pass) highlights.push('谐音风险需要优先处理');
+    if (era.length) highlights.push('用字偏上一代风格');
+    if (inferred.length) highlights.push('含推断字，笔画与五行不保证准确');
+    if (zodiac && zodiac.conflicts.length) {
+      highlights.push('存在口径冲突（见上），取舍时以八字为准');
+    }
+
+    return {
+      surname: surname,
+      given: given,
+      fullName: surname + given,
+      pinyin: (score.detail.homophone && score.detail.homophone.pinyin) || '',
+      chars: chars,
+      unknownChars: unknown,
+      inferredChars: inferred,
+      bazi: bazi,
+      zodiac: zodiac,
+      hexagram: hexagram,
+      score: score,
+      total: total,
+      reasons: score.reasons,
+      blocks: blocks,
+      highlights: highlights,
+      verdict: verdict,
+      /* 报告末尾的总体声明，必须每次都带上 */
+      disclaimer: '本报告只做「用字与生辰是否相配」的分析，**不预测命运**。' +
+        '其中八字五行属正统命理，三才五格属数理派，生肖/纳音/姓名卦属民俗流派，' +
+        '三者在报告中已分别标注；彼此冲突时以八字五行为主，' +
+        '但它们都**不是科学结论**，请当作参考而非依据。' +
+        '（评估完全在本地完成，生辰八字不会上传到任何服务器。）'
+    };
+  };
+
+  function zodiacFolkWhy(zodiac) {
+    return (zodiac.folkAvoid && zodiac.folkAvoid.why) || '';
+  }
+
+  NS.Report = {
+    evaluate: NS.evaluateName,
+    BASIS_LABEL: BASIS_LABEL
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * pool.js —— 候选池（孕期备选，出生后按真实八字重筛）
+ *
+ * 用户需求：「由于这个人名大多都是为了新生儿准备的，那么很多都是进行预估；
+ * 需要增加一个功能，可以先放着备用，然后等真正出生了，
+ * 就按照当时的生辰八字男女进行筛选使用。」
+ *
+ * 这个功能的实际意义在于：**取名这件事通常发生在出生之前。**
+ * 预产期前后差几天，四柱就全变了，所以「现在算出来的喜用神」很可能
+ * 不是孩子真正的喜用神。硬按预估八字排出来的名字，出生后可能完全不对路。
+ *
+ * 所以工作流应该是：
+ *   孕期：按姓氏 + 风格偏好挑一批中意的，**存进候选池**（不锁死八字）
+ *   出生：填真实生辰（精确到分钟）+ 性别 → 一键用真实八字重新评分排序
+ *
+ * 池子里存的是**名字本身**（和加入时的快照），不是分数 ——
+ * 分数必须用真实八字重算。这一点是刻意设计的：
+ * 把预估八字下的分数存起来当结论，正是这个功能要避免的错误。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  var KEY = 'namePool';
+  var MAX_ITEMS = 200;   /* 保护存储，一个人不会真需要 200 个备选 */
+
+  var cache = null;
+
+  function ensure() {
+    if (cache) return Promise.resolve(cache);
+    return NS.Store.get(KEY).then(function (v) {
+      cache = Array.isArray(v) ? v : [];
+      return cache;
+    });
+  }
+
+  function persist() {
+    return NS.Store.set(KEY, cache).then(function () { return cache; });
+  }
+
+  /**
+   * 加入候选池
+   * @param {Object} item { surname, given, gender, baziStr, note }
+   * @returns {Promise<{added:boolean, reason?:string, size:number}>}
+   */
+  function add(item) {
+    if (!item || !item.given) {
+      return Promise.resolve({ added: false, reason: '名字为空', size: 0 });
+    }
+    return ensure().then(function () {
+      var full = (item.surname || '') + item.given;
+      var dup = cache.some(function (x) { return x.full === full; });
+      if (dup) {
+        return { added: false, reason: '已经在候选池里了', size: cache.length };
+      }
+      if (cache.length >= MAX_ITEMS) {
+        return { added: false, reason: '候选池已满（' + MAX_ITEMS + ' 个）',
+          size: cache.length };
+      }
+      cache.push({
+        full: full,
+        surname: item.surname || '',
+        given: item.given,
+        gender: item.gender || '',
+        /* 加入时用的八字（可能是预估的），仅作记录，
+         * **不用它算分** —— 重筛时一律用传入的真实八字 */
+        baziStrAtAdd: item.baziStr || '',
+        addedAt: new Date().toISOString(),
+        note: item.note || ''
+      });
+      return persist().then(function () {
+        return { added: true, size: cache.length };
+      });
+    });
+  }
+
+  function remove(full) {
+    return ensure().then(function () {
+      var before = cache.length;
+      cache = cache.filter(function (x) { return x.full !== full; });
+      if (cache.length === before) return { removed: false, size: cache.length };
+      return persist().then(function () {
+        return { removed: true, size: cache.length };
+      });
+    });
+  }
+
+  function clear() {
+    cache = [];
+    return persist().then(function () { return true; });
+  }
+
+  function list() {
+    return ensure().then(function () { return cache.slice(); });
+  }
+
+  function has(full) {
+    return ensure().then(function () {
+      return cache.some(function (x) { return x.full === full; });
+    });
+  }
+
+  function size() {
+    return ensure().then(function () { return cache.length; });
+  }
+
+  /**
+   * 用**真实**八字重新评分并排序。
+   *
+   * 这是候选池的核心动作：出生后填上真实生辰，一键看哪个备选最合适。
+   * 每个条目会带上与「加入时的预估」相比的变化说明，
+   * 但变化本身不做数值对比（预估分数没有存，也不该存）。
+   *
+   * @param {Object} bazi NS.Bazi.analyzeBazi() 的结果
+   * @param {string} gender 性别（可选，用于重新过滤性别风格）
+   * @returns {Promise<Array>} 按新分数降序
+   */
+  function rescore(bazi, gender) {
+    return ensure().then(function () {
+      var out = cache.map(function (x) {
+        var rep = NS.Report.evaluate(x.surname, x.given, {
+          bazi: bazi, gender: gender || x.gender
+        });
+        return {
+          entry: x,
+          report: rep,
+          score: rep ? rep.total : -1,
+          /* 加入时的八字和现在不同 → 说明是出生后重筛过，
+           * 界面要把这一点标出来，避免用户误以为分数一直是这个 */
+          baziChanged: !!(x.baziStrAtAdd && bazi &&
+            x.baziStrAtAdd !== bazi.baziStr),
+          baziWasEstimated: !x.baziStrAtAdd
+        };
+      });
+      out.sort(function (a, b) { return b.score - a.score; });
+      return out;
+    });
+  }
+
+  /** 导出（打包固化 / 换手机时带走） */
+  function exportAll() {
+    return ensure().then(function () {
+      return {
+        kind: 'name-pool', version: 1,
+        exportedAt: new Date().toISOString(),
+        items: cache.slice()
+      };
+    });
+  }
+
+  /** 导入（与已有条目合并，按 full 去重） */
+  function importAll(data) {
+    if (!data || data.kind !== 'name-pool' || !Array.isArray(data.items)) {
+      return Promise.reject(new Error('不是候选池数据文件'));
+    }
+    return ensure().then(function () {
+      var have = Object.create(null);
+      cache.forEach(function (x) { have[x.full] = 1; });
+      var added = 0;
+      data.items.forEach(function (x) {
+        if (!x || !x.full || have[x.full]) return;
+        if (cache.length >= MAX_ITEMS) return;
+        have[x.full] = 1;
+        cache.push(x);
+        added++;
+      });
+      return persist().then(function () {
+        return { added: added, size: cache.length };
+      });
+    });
+  }
+
+  /** 仅供测试与重置用 */
+  function _resetCache() { cache = null; }
+
+  NS.Pool = {
+    add: add,
+    remove: remove,
+    clear: clear,
+    list: list,
+    has: has,
+    size: size,
+    rescore: rescore,
+    exportAll: exportAll,
+    importAll: importAll,
+    MAX_ITEMS: MAX_ITEMS,
+    _resetCache: _resetCache
   };
 
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -9939,6 +11431,762 @@ details.more > summary:hover { color: var(--jade); }
 </script>
 <script>
 /* =========================================================================
+ * birth-form.js —— 可复用的「生辰 + 性别」输入组
+ *
+ * 评估视图和候选池视图都需要重新输入生辰（可能是不同的孩子，
+ * 也可能是出生后拿真实生辰重算），但又不想把「取名」页那一整套表单
+ * 复制两份。所以抽出一个小控件：
+ *
+ *   NS.BirthForm.render('ev', { gender: true })  → 生成 DOM
+ *   NS.BirthForm.read('ev')                      → 读值并排八字
+ *
+ * 前缀是为了同页多份实例的 id 不打架。
+ *
+ * 设计取舍：这里**不重复城市选择器**，只留经度数字输入。
+ * 城市表有 234 条，塞进小控件里太重；需要选城市时回「取名」页填一次，
+ * 经度会自动带过来。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  function el(tag, cls, text) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined && text !== null) d.textContent = text;
+    return d;
+  }
+
+  function $(id) { return document.getElementById(id); }
+
+  function parseLocal(v) {
+    if (!v) return null;
+    var m = v.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!m) return null;
+    return { y: +m[1], m: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
+  }
+
+  /**
+   * 渲染输入组
+   * @param {string} p 前缀
+   * @param {Object} [opt] { gender:bool, hint:string }
+   * @returns {Element}
+   */
+  function render(p, opt) {
+    opt = opt || {};
+    var box = el('div', 'birth-form');
+
+    /* ---- 生辰 ---- */
+    var fBirth = el('div', 'field');
+    var lb = el('label', null, '出生时间 ');
+    lb.setAttribute('for', p + 'Birth');
+    lb.appendChild(el('span', 'sub', '选填；填了才按真实八字评分'));
+    fBirth.appendChild(lb);
+
+    var inp = document.createElement('input');
+    inp.type = 'datetime-local';
+    inp.id = p + 'Birth';
+    /* 默认沿用「取名」页已填的值 —— 用户刚填过，不该让他再填一次 */
+    var mainBirth = $('birth');
+    if (mainBirth && mainBirth.value) inp.value = mainBirth.value;
+    fBirth.appendChild(inp);
+
+    var hint = el('p', 'hint');
+    hint.id = p + 'BaziHint';
+    hint.style.margin = '6px 0 0';
+    fBirth.appendChild(hint);
+    box.appendChild(fBirth);
+
+    /* ---- 真太阳时（经度）---- */
+    var fTst = el('div', 'field');
+    var tstWrap = el('label', 'check');
+    var tst = document.createElement('input');
+    tst.type = 'checkbox';
+    tst.id = p + 'UseTST';
+    var mainTst = $('useTST');
+    if (mainTst) tst.checked = mainTst.checked;
+    tstWrap.appendChild(tst);
+    tstWrap.appendChild(document.createTextNode(' 用真太阳时'));
+    fTst.appendChild(tstWrap);
+
+    var lon = document.createElement('input');
+    lon.type = 'number';
+    lon.id = p + 'Longitude';
+    lon.step = 'any';
+    lon.placeholder = '经度，如 104.07';
+    var mainLon = $('longitude');
+    if (mainLon && mainLon.value) lon.value = mainLon.value;
+    lon.style.marginTop = '6px';
+    fTst.appendChild(lon);
+    fTst.appendChild(el('p', 'hint',
+      '经度差 1° = 真太阳时差 4 分钟，会影响时柱乃至日柱。'));
+    box.appendChild(fTst);
+
+    /* ---- 性别 ---- */
+    if (opt.gender) {
+      var fG = el('div', 'field');
+      fG.appendChild(el('label', null, '性别'));
+      var seg = el('div', 'segmented');
+      seg.id = p + 'Gender';
+      ['男', '女', '不限'].forEach(function (v, i) {
+        var b = el('button', null, v);
+        b.type = 'button';
+        b.dataset.v = v;
+        b.setAttribute('aria-pressed', i === 2 ? 'true' : 'false');
+        seg.appendChild(b);
+      });
+      seg.addEventListener('click', function (e) {
+        var b = e.target.closest('button');
+        if (!b) return;
+        Array.prototype.forEach.call(seg.querySelectorAll('button'),
+          function (x) {
+            x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+          });
+        read(p, { silent: true });
+      });
+      fG.appendChild(seg);
+      box.appendChild(fG);
+    }
+
+    /* ---- 实时八字提示 ---- */
+    function update() {
+      var r = read(p, { silent: true });
+      var h = $(p + 'BaziHint');
+      if (!h) return;
+      if (!r.dt) {
+        h.textContent = '未填生辰 → 只按名字本身的五行搭配评，不算八字。';
+        return;
+      }
+      if (!r.bazi) { h.textContent = '生辰解析失败，请检查格式。'; return; }
+      h.innerHTML = '八字 <b>' + r.bazi.baziStr + '</b>　日主 ' + r.bazi.dayGan +
+        r.bazi.dayWx + '　' + r.bazi.strength +
+        '　喜用神 <b>' + (r.bazi.xiyongshen.join('、') || '—') + '</b>' +
+        (r.bazi.missing.length
+          ? '　不显 ' + r.bazi.missing.join('、') : '') +
+        '　生肖 <b>' + r.bazi.shengxiao + '</b>' +
+        (r.bazi.nayin ? '　纳音 <b>' + r.bazi.nayin.name + '</b>' : '');
+    }
+    inp.addEventListener('change', update);
+    inp.addEventListener('input', update);
+    lon.addEventListener('input', update);
+    tst.addEventListener('change', update);
+    /* 首帧就要把提示填上（可能沿用了主表单的值） */
+    setTimeout(update, 0);
+
+    return box;
+  }
+
+  /**
+   * 读值并排八字
+   * @param {string} p 前缀
+   * @param {Object} [o] { silent:true } 静默模式下不写日志
+   * @returns {{dt:Object|null, bazi:Object|null, gender:string, longitude:number|null}}
+   */
+  function read(p, o) {
+    o = o || {};
+    var dt = parseLocal($(p + 'Birth') ? $(p + 'Birth').value : '');
+    var useTST = $(p + 'UseTST') ? $(p + 'UseTST').checked : false;
+    var lon = parseFloat($(p + 'Longitude') ? $(p + 'Longitude').value : '');
+    var gender = '不限';
+    var seg = $(p + 'Gender');
+    if (seg) {
+      var on = seg.querySelector('button[aria-pressed="true"]');
+      if (on) gender = on.dataset.v;
+    }
+
+    var bazi = null;
+    if (dt) {
+      try {
+        bazi = NS.Bazi.analyzeBazi(dt.y, dt.m, dt.d, dt.h, dt.mi, {
+          trueSolarTime: useTST && isFinite(lon),
+          longitude: isFinite(lon) ? lon : undefined
+        });
+      } catch (e) {
+        bazi = null;
+      }
+    }
+    return {
+      dt: dt, bazi: bazi, gender: gender,
+      longitude: isFinite(lon) ? lon : null
+    };
+  }
+
+  NS.BirthForm = { render: render, read: read, parseLocal: parseLocal };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * pool-ui.js —— 候选池视图
+ *
+ * 场景：取名这件事通常发生在出生之前，而预产期前后差几天四柱就全变了。
+ * 所以「现在算出的喜用神」很可能不是孩子真正的喜用神 ——
+ * 硬按预估八字排出来的名字，出生后可能完全不对路。
+ *
+ * 正确的流程：
+ *   孕期 → 按姓氏和风格挑一批中意的，存进池子（不锁死八字）
+ *   出生 → 填真实生辰，一键重筛，看哪个最合适
+ *
+ * 界面上刻意把「加入时用的八字」和「当前用于重筛的八字」分开显示 ——
+ * 就是为了让用户看清：**分数是用现在这个八字算的，不是当初那个**。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  function el(tag, cls, text) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined && text !== null) d.textContent = text;
+    return d;
+  }
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function $(id) { return document.getElementById(id); }
+
+  var root = null;
+  var lastRows = null;
+
+  function render() {
+    root.innerHTML = '';
+
+    root.appendChild(el('div', 'section-title', '候选池'));
+    var intro = el('p', 'hint');
+    intro.innerHTML = '取名通常发生在出生之前，而预产期前后差几天<b>四柱就全变了</b>，' +
+      '所以现在算出的喜用神未必是孩子真正的喜用神。' +
+      '把中意的名字先存进池子（<b>不锁死八字</b>），等出生后填上真实生辰，' +
+      '一键用真实八字重新评分排序 —— 池子里存的是<b>名字本身</b>，不是当初的分数。';
+    root.appendChild(intro);
+
+    /* ---- 重筛区 ---- */
+    var box = el('div', 'panel');
+    box.appendChild(el('div', 'eval-block-title',
+      '① 出生后：填入真实生辰，重新评分'));
+    box.appendChild(NS.BirthForm.render('pl', { gender: true }));
+
+    var acts = el('div', 'form-actions');
+    var bRe = el('button', 'btn', '用这个生辰重新评分');
+    bRe.type = 'button';
+    bRe.addEventListener('click', doRescore);
+    acts.appendChild(bRe);
+
+    var bList = el('button', 'btn ghost', '只看池子（不重筛）');
+    bList.type = 'button';
+    bList.addEventListener('click', function () { refresh(false); });
+    acts.appendChild(bList);
+    box.appendChild(acts);
+    root.appendChild(box);
+
+    /* ---- 池子 ---- */
+    var poolBox = el('div', 'panel');
+    poolBox.id = 'poolList';
+    root.appendChild(poolBox);
+
+    /* ---- 导入导出 ---- */
+    var io = el('div', 'form-actions');
+    var bExp = el('button', 'btn ghost', '导出候选池');
+    bExp.type = 'button';
+    bExp.addEventListener('click', function () {
+      NS.Pool.exportAll().then(function (data) {
+        var blob = new Blob([JSON.stringify(data, null, 2)],
+          { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '候选池-' + new Date().toISOString().slice(0, 10) + '.json';
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+      });
+    });
+    io.appendChild(bExp);
+
+    var bImp = el('button', 'btn ghost', '导入候选池');
+    bImp.type = 'button';
+    bImp.addEventListener('click', function () {
+      var f = document.createElement('input');
+      f.type = 'file';
+      f.accept = '.json,application/json';
+      f.addEventListener('change', function () {
+        var file = f.files && f.files[0];
+        if (!file) return;
+        var fr = new FileReader();
+        fr.onload = function () {
+          try {
+            var data = JSON.parse(fr.result);
+            NS.Pool.importAll(data).then(function (r) {
+              alert('导入完成：新增 ' + r.added + ' 个，现有 ' + r.size + ' 个。');
+              refresh(false);
+            }, function (e) { alert('导入失败：' + e.message); });
+          } catch (e) { alert('文件不是有效的 JSON。'); }
+        };
+        fr.readAsText(file, 'utf-8');
+      });
+      f.click();
+    });
+    io.appendChild(bImp);
+
+    var bClear = el('button', 'btn ghost', '清空候选池');
+    bClear.type = 'button';
+    bClear.style.color = '#a63a2e';
+    bClear.addEventListener('click', function () {
+      NS.Pool.size().then(function (n) {
+        if (!n) { alert('候选池已经是空的。'); return; }
+        if (!confirm('确定清空候选池里的 ' + n + ' 个候选吗？不可恢复。')) return;
+        NS.Pool.clear().then(function () { refresh(false); });
+      });
+    });
+    io.appendChild(bClear);
+    root.appendChild(io);
+  }
+
+  function doRescore() {
+    var bf = NS.BirthForm.read('pl');
+    if (!bf.bazi) {
+      alert('请先填出生时间 —— 重筛必须用真实八字，' +
+        '没填的话算出来的还是名字本身的五行搭配，不是重筛。');
+      return;
+    }
+    NS.Pool.rescore(bf.bazi, bf.gender).then(function (rows) {
+      lastRows = rows;
+      renderList(rows, bf);
+    });
+  }
+
+  function renderList(rows, bf) {
+    var box = $('poolList');
+    box.innerHTML = '';
+
+    if (!rows.length) {
+      box.appendChild(el('p', 'hint',
+        '池子是空的。到「取名」页挑几个中意的，点卡片上的「加入候选池」。'));
+      return;
+    }
+
+    box.appendChild(el('div', 'eval-block-title',
+      rows[0] && rows[0].report
+        ? '② 按' + (bf && bf.bazi ? '真实' : '当前') + '八字重排（共 ' +
+          rows.length + ' 个）'
+        : '池子（共 ' + rows.length + ' 个）'));
+
+    if (bf && bf.bazi) {
+      var n = el('p', 'notice');
+      n.innerHTML = '本次评分用的八字：<b>' + esc(bf.bazi.baziStr) + '</b>　' +
+        '日主 ' + esc(bf.bazi.dayGan + bf.bazi.dayWx) + '　' +
+        esc(bf.bazi.strength) + '　喜用神 <b>' +
+        esc(bf.bazi.xiyongshen.join('、')) + '</b>　' +
+        '（池子里存的是名字本身，分数每次都用当前八字现算）';
+      box.appendChild(n);
+    }
+
+    var table = el('table', 'pool-table');
+    var thead = el('thead');
+    var hr = el('tr');
+    ['名次', '名字', '综合分', '五行补益', '音韵 / 谐音', '加入时', '操作']
+      .forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    var tb = el('tbody');
+    rows.forEach(function (row, i) {
+      var e2 = row.entry;
+      var rep = row.report;
+      var tr = el('tr');
+
+      tr.appendChild(el('td', 'pool-rank', String(i + 1))).setAttribute('data-th', '名次');
+
+      var tdName = el('td');
+      tdName.setAttribute('data-th', '名字');
+      tdName.appendChild(el('b', 'pool-name', e2.full));
+      if (rep && rep.pinyin) {
+        tdName.appendChild(el('span', 'pool-py', rep.pinyin));
+      }
+      if (i === 0 && rep) tdName.appendChild(el('span', 'tag good', '最佳'));
+      tr.appendChild(tdName);
+
+      tr.appendChild(el('td', 'pool-score',
+        rep ? String(rep.total) : '—')).setAttribute('data-th', '综合分');
+
+      /* 五行补益：这是重筛时最该看的一列 */
+      var tdWx = el('td');
+      tdWx.setAttribute('data-th', '五行补益');
+      if (rep && rep.chars) {
+        tdWx.innerHTML = rep.chars.map(function (c) {
+          var cls = c.wxLevel === 'best' ? 'wx-best'
+            : c.wxLevel === 'good' ? 'wx-good' : 'wx-idle';
+          return '<span class="' + cls + '">' + esc(c.char) +
+            esc(c.wuxing) + '</span>';
+        }).join(' ');
+      } else {
+        tdWx.textContent = '—';
+      }
+      tr.appendChild(tdWx);
+
+      var tdPh = el('td', 'pool-ph');
+      tdPh.setAttribute('data-th', '音韵');
+      if (rep && rep.score && rep.score.detail) {
+        var ph = rep.score.detail.phonetic || {};
+        var ho = rep.score.detail.homophone || {};
+        var bits = [];
+        if (ph.sameInitial && ph.sameInitial.length) {
+          bits.push('声母撞 ' + ph.sameInitial.join(''));
+        }
+        if (!ho.pass) bits.push('谐音风险');
+        tdPh.textContent = bits.length ? bits.join('；') : '无';
+        if (bits.length) tdPh.className = 'pool-ph warn';
+      }
+      tr.appendChild(tdPh);
+
+      var tdAdd = el('td', 'pool-added');
+      tdAdd.setAttribute('data-th', '加入时');
+      tdAdd.textContent = (e2.addedAt || '').slice(0, 10);
+      if (row.baziWasEstimated) {
+        tdAdd.appendChild(el('div', 'pool-note', '加入时未填八字'));
+      } else if (row.baziChanged) {
+        tdAdd.appendChild(el('div', 'pool-note',
+          '加入时：' + e2.baziStrAtAdd));
+      }
+      tr.appendChild(tdAdd);
+
+      var tdAct = el('td', 'pool-act');
+      tdAct.setAttribute('data-th', '操作');
+      var bRep = el('button', 'btn tiny', '看报告');
+      bRep.type = 'button';
+      bRep.addEventListener('click', function () {
+        NS.EvalUI.preset(e2.surname, e2.given);
+        NS.switchView('eval');
+      });
+      tdAct.appendChild(bRep);
+
+      var bDel = el('button', 'btn tiny ghost', '移除');
+      bDel.type = 'button';
+      bDel.addEventListener('click', function () {
+        NS.Pool.remove(e2.full).then(function () { refresh(false); });
+      });
+      tdAct.appendChild(bDel);
+      tr.appendChild(tdAct);
+
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    box.appendChild(table);
+
+    var hint = el('p', 'hint');
+    hint.innerHTML = '「五行补益」一列是按当前喜用神判的：' +
+      '<span class="wx-best">正合首用神</span>、' +
+      '<span class="wx-good">属喜用</span>、' +
+      '<span class="wx-idle">非喜用</span>。' +
+      '重筛后如果发现排在前面的名字补益反而变差了，' +
+      '说明这个生辰和当初预估的五行方向不同 —— 这正是要重筛的原因。';
+    box.appendChild(hint);
+  }
+
+  /** 不重筛，只按已有数据展示（用池子里存的八字没意义，所以就列名字） */
+  function refresh(withRescore) {
+    if (!root) return;
+    root.hidden = false;
+    if (!root.firstChild) render();
+
+    NS.Pool.list().then(function (items) {
+      var bf = NS.BirthForm.read('pl');
+      if (bf.bazi) {
+        NS.Pool.rescore(bf.bazi, bf.gender).then(function (rows) {
+          lastRows = rows;
+          renderList(rows, bf);
+        });
+      } else {
+        /* 没有生辰：只列出来，不评分（存下来的分数不该被当结论用） */
+        renderList(items.map(function (x) {
+          return { entry: x, report: null, score: -1,
+            baziWasEstimated: !x.baziStrAtAdd, baziChanged: false };
+        }), null);
+      }
+    });
+  }
+
+  NS.PoolUI = {
+    init: function (rootEl) { root = rootEl; render(); },
+    refresh: refresh,
+    rows: function () { return lastRows; }
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * eval-ui.js —— 评估视图
+ *
+ * 输入一个已有名字（自己想的、长辈给的、网上抄的都可以），
+ * 配上生辰，输出一份分层的命理批注报告。
+ *
+ * 界面设计上最重要的一点：**报告按「依据强度」分组显示**，
+ * 而不是混成一个总分完事。
+ *   命理（八字五行）  —— 正统八字，权重最高
+ *   数理（三才五格）  —— 数理派，与八字不同源
+ *   民俗参考          —— 生肖、纳音、姓名卦
+ *   语言              —— 音韵、谐音（不涉命理）
+ * 用户能一眼看出哪条是硬的、哪条是软的 —— 这是这个视图存在的意义。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  function el(tag, cls, text) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined && text !== null) d.textContent = text;
+    return d;
+  }
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function $(id) { return document.getElementById(id); }
+
+  /** 极简 markdown：只处理 **加粗**，报告文本里用它标重点 */
+  function md(s) {
+    return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  }
+
+  var root = null;
+  var lastReport = null;
+
+  /* 「依据强度」的标签文字与 CSS 类名。
+   * 类名用 ASCII 而不是中文 —— CSS 选择器里塞中文能跑，但不好维护，
+   * 也容易在别的编辑器里出编码问题。 */
+  var BASIS_CLS = {
+    '命理': 'basis-ming', '用字': 'basis-yong', '数理': 'basis-shu',
+    '民俗': 'basis-min', '语言': 'basis-yu'
+  };
+
+  function render() {
+    root.innerHTML = '';
+
+    root.appendChild(el('div', 'section-title', '名字评估'));
+
+    var intro = el('p', 'hint');
+    intro.innerHTML = '输入一个已经想好的名字，配上生辰，系统会给出**分层**的命理批注。' +
+      '评估<b>完全在本地完成，生辰八字不会上传到任何服务器</b> —— ' +
+      '命理判断需要的数据（八字、五行、康熙笔画、音韵、诗词）本地都有，' +
+      '联网只能补字典和诗词库，对命理分析没有帮助，所以这里不做联网。';
+    intro.innerHTML = md(intro.innerHTML);
+    root.appendChild(intro);
+
+    /* ---- 表单 ---- */
+    var form = el('div', 'panel eval-form');
+
+    var fName = el('div', 'row2');
+    var fS = el('div', 'field');
+    var lS = el('label', null, '姓氏');
+    lS.setAttribute('for', 'evSurname');
+    fS.appendChild(lS);
+    var inS = document.createElement('input');
+    inS.type = 'text'; inS.id = 'evSurname'; inS.maxLength = 2;
+    inS.placeholder = '如 郝';
+    var mainS = $('surname');
+    if (mainS && mainS.value) inS.value = mainS.value;
+    fS.appendChild(inS);
+    fName.appendChild(fS);
+
+    var fG = el('div', 'field');
+    var lG = el('label', null, '名字 ');
+    lG.setAttribute('for', 'evGiven');
+    lG.appendChild(el('span', 'sub', '不含姓'));
+    fG.appendChild(lG);
+    var inG = document.createElement('input');
+    inG.type = 'text'; inG.id = 'evGiven'; inG.maxLength = 4;
+    inG.placeholder = '如 沐涵';
+    fG.appendChild(inG);
+    fName.appendChild(fG);
+    form.appendChild(fName);
+
+    /* 生辰 + 性别（复用组件） */
+    form.appendChild(NS.BirthForm.render('ev', { gender: true }));
+
+    var btns = el('div', 'form-actions');
+    var bGo = el('button', 'btn', '开 始 评 估');
+    bGo.type = 'button';
+    bGo.id = 'evGo';
+    bGo.addEventListener('click', doEvaluate);
+    btns.appendChild(bGo);
+
+    var bClear = el('button', 'btn ghost', '清空');
+    bClear.type = 'button';
+    bClear.addEventListener('click', function () {
+      inG.value = '';
+      root.querySelector('#evResult').innerHTML = '';
+      lastReport = null;
+    });
+    btns.appendChild(bClear);
+    form.appendChild(btns);
+
+    root.appendChild(form);
+
+    var out = el('div', null);
+    out.id = 'evResult';
+    root.appendChild(out);
+
+    /* 回车即评估 */
+    [inS, inG].forEach(function (i) {
+      i.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); doEvaluate(); }
+      });
+    });
+    /* 生辰变了就把旧报告标为过期，避免用户看着旧结论改了生辰却不知道 */
+    ['evBirth', 'evLongitude', 'evUseTST'].forEach(function (id) {
+      var e2 = $(id);
+      if (e2) e2.addEventListener('change', markStale);
+    });
+  }
+
+  function markStale() {
+    var out = $('evResult');
+    if (!out || !out.firstChild) return;
+    var w = $('evStale');
+    if (w) return;
+    out.insertBefore(el('p', 'notice warn',
+      '生辰已改动，下面这份报告是按改之前的生辰算的 —— 请重新点「开始评估」。'),
+    out.firstChild).id = 'evStale';
+  }
+
+  function doEvaluate() {
+    var surname = ($('evSurname').value || '').trim();
+    var given = ($('evGiven').value || '').trim();
+    var out = $('evResult');
+    out.innerHTML = '';
+
+    if (!surname || !given) {
+      out.appendChild(el('p', 'notice warn', '姓氏和名字都要填。'));
+      return;
+    }
+    /* 名字里含姓氏的情况：用户可能把全名填进了「名」 */
+    if (given.indexOf(surname) === 0 && given.length > surname.length) {
+      given = given.slice(surname.length);
+      $('evGiven').value = given;
+    }
+
+    var bf = NS.BirthForm.read('ev');
+    var rep;
+    try {
+      rep = NS.Report.evaluate(surname, given, {
+        bazi: bf.bazi, gender: bf.gender
+      });
+    } catch (e) {
+      out.appendChild(el('p', 'notice warn', '评估出错：' + (e && e.message)));
+      return;
+    }
+    if (!rep) {
+      out.appendChild(el('p', 'notice warn',
+        '这个名字里没有字库里认识的字 —— 可能是生僻字。' +
+        '可以到「词库管理」联网补字后再评估。'));
+      return;
+    }
+    if (!bf.bazi) {
+      out.insertBefore(el('p', 'notice',
+        '没有填生辰 —— 下面只评了名字本身的五行搭配、音韵、笔画与出处，' +
+        '**没有**涉及八字喜用神。要完整评估请填出生时间。'), out.firstChild);
+    }
+
+    lastReport = rep;
+    renderReport(rep, out);
+  }
+
+  function renderReport(rep, out) {
+    /* ---- 总分卡 ---- */
+    var head = el('div', 'panel eval-head');
+    var scoreCls = rep.total >= 75 ? 'good' : rep.total >= 65 ? 'ok' : 'low';
+    head.innerHTML =
+      '<div class="eval-title"><span class="eval-name">' + esc(rep.fullName) +
+      '</span><span class="eval-py">' + esc(rep.pinyin) + '</span></div>' +
+      '<div class="eval-score ' + scoreCls + '"><b>' + rep.total +
+      '</b><span>综合分</span></div>' +
+      '<p class="eval-verdict">' + esc(rep.verdict) + '</p>' +
+      (rep.highlights.length
+        ? '<ul class="eval-hl">' + rep.highlights.map(function (h) {
+          return '<li>' + esc(h) + '</li>';
+        }).join('') + '</ul>'
+        : '') +
+      (rep.unknownChars.length
+        ? '<p class="notice warn">字库里没有：' + esc(rep.unknownChars.join('、')) +
+          '　这些字没能参与评估。</p>' : '');
+    out.appendChild(head);
+
+    /* ---- 各分块，按依据强度分组 ---- */
+    var order = ['命理', '用字', '数理', '民俗', '语言'];
+    var byBasis = {};
+    rep.blocks.forEach(function (b) {
+      (byBasis[b.basis] = byBasis[b.basis] || []).push(b);
+    });
+
+    order.forEach(function (basis) {
+      var list = byBasis[basis];
+      if (!list || !list.length) return;
+
+      var sec = el('div', 'panel eval-section');
+      var h = el('div', 'eval-sec-head');
+      h.appendChild(el('span', 'eval-basis ' + (BASIS_CLS[basis] || ''),
+        NS.Report.BASIS_LABEL[basis] || basis));
+      sec.appendChild(h);
+
+      list.forEach(function (b) {
+        var card = el('div', 'eval-block' + (b.tone === 'warn' ? ' warn' : ''));
+        card.appendChild(el('div', 'eval-block-title', b.title));
+        b.lines.forEach(function (l) {
+          var p = el('p', l ? 'eval-line' : 'eval-gap');
+          p.innerHTML = md(l);
+          card.appendChild(p);
+        });
+        sec.appendChild(card);
+      });
+      out.appendChild(sec);
+    });
+
+    /* ---- 免责声明，永远显示在最末 ---- */
+    var dis = el('p', 'notice');
+    dis.innerHTML = md(rep.disclaimer);
+    out.appendChild(dis);
+
+    /* ---- 加入候选池 ---- */
+    var act = el('div', 'form-actions');
+    var b = el('button', 'btn ghost', '加入候选池');
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      NS.Pool.add({
+        surname: rep.surname, given: rep.given,
+        gender: (NS.BirthForm.read('ev').gender || ''),
+        baziStr: rep.bazi ? rep.bazi.baziStr : ''
+      }).then(function (r) {
+        b.textContent = r.added ? '已加入 ✓' : (r.reason || '未加入');
+        b.disabled = true;
+      });
+    });
+    act.appendChild(b);
+    out.appendChild(act);
+  }
+
+  NS.EvalUI = {
+    init: function (rootEl) { root = rootEl; render(); },
+    refresh: function () { if (!root || !root.firstChild) render(); root.hidden = false; },
+    /** 供候选池跳转过来时预填名字（不自动评估，让用户自己确认生辰） */
+    preset: function (surname, given) {
+      if (!root || !root.firstChild) render();
+      if ($('evSurname')) $('evSurname').value = surname || '';
+      if ($('evGiven')) $('evGiven').value = given || '';
+      var out = $('evResult');
+      if (out) out.innerHTML = '';
+      /* 预填后把焦点放到评估按钮附近，用户点一下或按回车就出报告 */
+      var g = $('evGiven');
+      if (g) g.focus();
+    }
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
  * app.js —— 界面交互层
  * 纯原生 JS，无构建步骤，直接双击 index.html 即可运行。
  * ========================================================================= */
@@ -10300,21 +12548,46 @@ details.more > summary:hover { color: var(--jade); }
       '八字喜用神优先级更高。</b>' + $('radHint').innerHTML;
   }
 
-  function initViewSwitch() {    var wrap = $('viewSwitch');
+  function initViewSwitch() {
+    var wrap = $('viewSwitch');
     if (!wrap) return;
     wrap.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
       if (!btn) return;
-      var view = btn.dataset.view;
-      Array.prototype.forEach.call(wrap.querySelectorAll('button'),
-        function (b) {
-          b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
-        });
-      $('viewNaming').hidden = view !== 'naming';
-      $('viewLexicon').hidden = view !== 'lexicon';
-      if (view === 'lexicon' && NS.SyncUI) NS.SyncUI.refreshStatus();
+      switchView(btn.dataset.view);
     });
   }
+
+  /**
+   * 切换视图。四个：取名 / 候选池 / 评估 / 词库管理。
+   *
+   * 每个视图**切进来时才刷新** —— 启动时把所有视图都算一遍既慢又没意义，
+   * 而且候选池与评估都需要生辰参数，启动时用户还没填。
+   */
+  function switchView(view) {
+    var wrap = $('viewSwitch');
+    if (wrap) {
+      Array.prototype.forEach.call(wrap.querySelectorAll('button'), function (b) {
+        b.setAttribute('aria-pressed',
+          b.dataset.view === view ? 'true' : 'false');
+      });
+    }
+    /* 用表驱动而不是写死几行，加视图时不会漏掉一个 */
+    var map = {
+      naming: 'viewNaming', pool: 'viewPool',
+      eval: 'viewEval', lexicon: 'viewLexicon'
+    };
+    Object.keys(map).forEach(function (k) {
+      var el = $(map[k]);
+      if (el) el.hidden = (k !== view);
+    });
+    if (view === 'lexicon' && NS.SyncUI) NS.SyncUI.refreshStatus();
+    if (view === 'pool' && NS.PoolUI) NS.PoolUI.refresh();
+    if (view === 'eval' && NS.EvalUI) NS.EvalUI.refresh();
+    state.view = view;
+  }
+  /* 供候选池/评估视图内部跳转用（例如「去评估这个名字」） */
+  NS.switchView = switchView;
 
   /** 词库有联网扩充时，在「词库管理」按钮上点一个小圆点 */
   function refreshLexDot(st) {
@@ -10335,6 +12608,17 @@ details.more > summary:hover { color: var(--jade); }
   }
   /* 暴露给 sync-ui.js：同步完成后由它回调，保证状态即时刷新 */
   NS.refreshLexDot = refreshLexDot;
+
+  /** 候选池里有东西时，在「候选池」按钮上点一个小圆点 */
+  function refreshPoolDot() {
+    var dot = $('poolDot');
+    if (!dot || !NS.Pool) return;
+    NS.Pool.size().then(function (n) {
+      dot.hidden = !n;
+      dot.title = n ? ('候选池里有 ' + n + ' 个候选') : '';
+    }).catch(function () { /* 忽略：无持久化环境 */ });
+  }
+  NS.refreshPoolDot = refreshPoolDot;
 
   /* ---------------- 姓氏信息 ---------------- */
 
@@ -10946,6 +13230,30 @@ details.more > summary:hover { color: var(--jade); }
     pick.appendChild(el('span', null, '加入对比'));
     foot.appendChild(pick);
 
+    /* 加入候选池 —— 孕期先存起来，出生后填真实八字重筛。
+     * 之所以要这个按钮：取名通常发生在出生前，而预估的喜用神
+     * 很可能不是孩子真正的喜用神（差几天四柱就全变了）。 */
+    var poolBtn = el('button', 'btn tiny ghost nc-pool', '加入候选池');
+    poolBtn.type = 'button';
+    poolBtn.addEventListener('click', function () {
+      var surname = (state.lastOpts && state.lastOpts.surname) ||
+        ($('surname') ? $('surname').value.trim() : '');
+      var baziInfo = state.lastOpts && state.lastOpts._baziInfo;
+      NS.Pool.add({
+        surname: surname,
+        given: item.chars.join(''),
+        gender: state.gender || '',
+        baziStr: baziInfo ? baziInfo.baziStr : ''
+      }).then(function (r) {
+        poolBtn.textContent = r.added
+          ? '已加入候选池 ✓'
+          : (r.reason || '未加入');
+        poolBtn.disabled = r.added;
+        refreshPoolDot();
+      });
+    });
+    foot.appendChild(poolBtn);
+
     card.appendChild(foot);
 
     /* 详情 */
@@ -11482,6 +13790,18 @@ details.more > summary:hover { color: var(--jade); }
         refreshLexDot(st);
       }).catch(function () { /* 忽略：无持久化环境 */ });
     }
+
+    /* 候选池与评估：**延迟构建**。
+     * 它们的表单要读「取名」页的生辰，而用户可能还没填；
+     * 而且启动时构建它们没有意义（用户还没切过去）。
+     * 所以只在第一次切进去时 init 一次（见 switchView）。 */
+    if (NS.PoolUI && $('viewPool')) NS.PoolUI.init($('viewPool'));
+    if (NS.EvalUI && $('viewEval')) NS.EvalUI.init($('viewEval'));
+    /* init 只建骨架，先藏起来 —— 否则四个视图会同时出现在页面上 */
+    if ($('viewPool')) $('viewPool').hidden = true;
+    if ($('viewEval')) $('viewEval').hidden = true;
+    /* 候选池里有东西就点个小圆点，提示用户「你之前存过备选」 */
+    setTimeout(refreshPoolDot, 0);
 
     $('surname').addEventListener('input', function () {
       updateSurname();
