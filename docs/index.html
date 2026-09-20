@@ -603,8 +603,135 @@ input::placeholder { color: #b6b0a4; }
   letter-spacing: .04em;
 }
 
-/* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */
-.nc-poetry-kind {
+/* =========================================================================
+ * 部首偏好选择
+ * ========================================================================= */
+
+.rad-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.rad-chip {
+  position: relative;
+  padding: 5px 16px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfaf6;
+  color: var(--ink-2);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+  transition: all .12s;
+}
+
+/* 右上角的角标：字库里有几个这样的字。选择空间大小先摆出来，
+ * 免得用户选了「走之底」才发现只有两个字可用 */
+.rad-chip i {
+  position: absolute;
+  top: -6px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #e6e1d6;
+  color: var(--ink-3);
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 9.5px;
+  line-height: 15px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.rad-chip:hover { border-color: var(--jade-light); color: var(--jade); }
+
+.rad-chip.on {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #fff;
+}
+
+.rad-chip.on i { background: rgba(255, 255, 255, .3); color: #fff; }
+
+.rad-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn.tiny {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+/* =========================================================================
+ * 按部首找字（词库管理）
+ * ========================================================================= */
+
+.lex-rad-box {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.lex-rad-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 6px;
+  margin: 10px 0;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.lex-rad-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfaf6;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.lex-rad-item:hover { border-color: var(--jade-light); }
+
+.lex-rad-item b {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--ink);
+  margin-right: 4px;
+}
+
+.lex-rad-item .lr-meta { color: var(--ink-3); font-size: 11px; }
+
+.lex-rad-item .lr-mean {
+  display: block;
+  color: var(--ink-2);
+  font-size: 11px;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 笔画不在 4–16 区间或没有读音/释义的，视觉上压暗：
+ * 不是不能用，只是不当起名用字 */
+.lex-rad-item.dim { opacity: .52; }
+
+.lex-rad-item input { accent-color: var(--jade); }
+
+/* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */.nc-poetry-kind {
   display: inline-block;
   margin-right: 6px;
   padding: 1px 7px;
@@ -1512,6 +1639,28 @@ details.more > summary:hover { color: var(--jade); }
         <summary>高级选项</summary>
 
         <div class="field">
+          <label>偏好部首 <span class="sub">名字里要有这些偏旁的字</span></label>
+          <div class="rad-chips" id="radSeg"></div>
+          <input type="text" id="radCustom" placeholder="也可自己输入部首，逗号分隔，如 艹,氵,宀"
+                 autocomplete="off">
+          <div class="rad-actions">
+            <button type="button" class="btn ghost tiny" id="radByXi">按喜用神推荐</button>
+            <button type="button" class="btn ghost tiny" id="radByZodiac">按生肖推荐</button>
+            <button type="button" class="btn ghost tiny" id="radClear">清空</button>
+          </div>
+          <label class="check" style="margin-top:8px">
+            <input type="checkbox" id="radAll">
+            <span>名中每个字都要带所选偏旁（默认只要有一个）</span>
+          </label>
+          <p class="hint" id="radHint" style="margin:6px 0 0"></p>
+        </div>
+
+        <div class="field">
+          <label for="radAvoid">避用部首 <span class="sub">名字里不要出现这些偏旁</span></label>
+          <input type="text" id="radAvoid" placeholder="如：刂,戈" autocomplete="off">
+        </div>
+
+        <div class="field">
           <label for="taboo">避用字 <span class="sub">名字中不要出现</span></label>
           <input type="text" id="taboo" placeholder="如：梓,涵">
         </div>
@@ -1593,7 +1742,17 @@ details.more > summary:hover { color: var(--jade); }
     <p><b>关于并排对比</b>　勾选几个中意的名字，点「并排对比」逐项对照
        （总分 / 五行 / 三才五格 / 热度 / 谐音 / 偏旁 / 诗词 / 小名）。
        对比跨批次保留，可以「换一批」继续挑，选中的不会丢。</p>
-    <p><b>关于数理</b>　三才五格采用康熙笔画，属姓名学「数理派」，与八字喜用神体系未必一致，仅作参考。</p>
+    <p><b>关于部首偏好</b>　选「偏旁」就是限定名字里要有那个偏旁的字
+       （默认只要有一个字带即可，也可勾选「每个字都要」）。
+       「按喜用神推荐」用的是系统给自己字库定的五行口径 ——
+       喜用神是火就推荐日/火/忄/彳，因为这个字库本来就是按这套规则给字定五行的，
+       两边一致，不算拍脑袋。<b>「按生肖推荐」是民间说法，没有经典出处，
+       各家流派也不一致，因此不会自动应用，必须你自己点了才生效，
+       优先级也低于八字喜用神。</b></p>
+    <p><b>关于找字</b>　字库里每个偏旁的字数都标在按钮右上角。
+       想找更多字，到「词库管理」的<b>按部首找字</b>里，
+       可以按部首从《新华字典》里列字（需先同步字典），
+       每字都带笔画、拼音、释义，挑中的可以一次加进字库。</p>
     <p><b>关于字库</b>　内置 373 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
        可在「词库管理」里联网更新：拉取公开的汉字拼音表、新华字典与诗词库，
        并把字库外的字加入进来。数据缓存在浏览器本地，更新一次后离线也可用。</p>
@@ -1720,6 +1879,22 @@ details.more > summary:hover { color: var(--jade); }
     '星|xing|1|火|中性|自然,灵动|星辰，寓意明亮|9',
     '旻|min|2|火|中性|文雅|秋天，寓意高远|8',
     '晞|xi|1|火|女|清冷|破晓，寓意初见光明|11',
+
+    /* ---------------- 辶（土，康熙 = 简体 + 4） ----------------
+     * 辶 在康熙字典里写作「辵」，算 **7 画**（简体的辶 是 3 画），
+     * 所以走之底的字：康熙笔画 = 简体笔画 + 4。
+     * 验证：字库里的 逸 = 15（辵 7 + 兔 8）、远 = 17（遠 = 辵 7 + 袁 10），
+     * core/infer.js 的 RADICAL_DELTA 也把辶记为 4。
+     * 原有字库里走之底只有「逸」「远」两个字，做成可选项没意义。 */
+    '逍|xiao|1|土|男|自然,灵动|逍遥，寓意自在无拘|14',
+    '遥|yao|2|土|中性|古风,清冷|遥远，寓意志向高远|17',
+    '遨|ao|2|土|男|大气|遨游，寓意广闻博见|17',
+    '迅|xun|4|土|男|大气|迅速，寓意敏行|10',
+    '迎|ying|2|土|中性|大气|迎接，寓意进取|11',
+    '逐|zhu|2|土|男|大气|追逐，寓意进取不息|14',
+    '逢|feng|2|土|中性|古风|相逢，寓意际遇|14',
+    '遇|yu|4|土|中性|古风|际遇，寓意相逢有缘|16',
+    '逾|yu|2|土|中性|文雅|逾越，寓意超越|16',
 
     /* ---------------- 热度表里高频、上一版漏收的最后几个 ---------------- */
     '宸|chen|2|金|中性|古风,大气|北极星居所，寓意尊贵|10',
@@ -3417,7 +3592,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '氵',
       label: '三点水 / 水字底',
-      chars: '淼清澈涵澜波洋海江河湖涛潮汐洛潇湘渭源渊泽润泓沛沁沐灏潜水洲涘沚温浩淇淳泠'
+      chars: '淼清澈涵澜波洋海江河湖涛潮汐洛潇湘渭源渊泽润泓沛沁沐灏潜水洲涘沚温浩淇淳泠淑洁'
     },
     {
       name: '木',
@@ -3467,7 +3642,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '亻',
       label: '单人旁',
-      chars: '伶依伟优佳倩仙仟化'
+      chars: '伶依伟优佳倩仙仟化俊'
     },
     {
       name: '雨',
@@ -3492,7 +3667,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '忄',
       label: '竖心旁',
-      chars: '恺恬悦恒忆'
+      chars: '恺恬悦恒忆怡'
     },
     {
       name: '心',
@@ -3517,7 +3692,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '女',
       label: '女字旁',
-      chars: '嫣婉娅姗'
+      chars: '嫣婉娅姗妍姝婷娟娜'
     },
     {
       name: '纟',
@@ -3552,7 +3727,7 @@ details.more > summary:hover { color: var(--jade); }
     {
       name: '辶',
       label: '走之底',
-      chars: '逸远'
+      chars: '逸远逍遥遨迅迎逐逢遇逾'
     },
     {
       name: '囗',
@@ -3563,6 +3738,74 @@ details.more > summary:hover { color: var(--jade); }
 
   /* 字 → 分组下标，运行时建一次 */
   NS.RADICAL_CHAR_INDEX = null;
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * radical-hints.js —— 部首推荐用的两张对照表
+ *
+ * 两张表的性质完全不同，界面上必须分开呈现，不能混为一谈：
+ *
+ *   一、五行 → 部首：见 core/radical.js 的 wuxingMap()
+ *       不在这里写死。因为字库各偏旁组的五行并不都齐：
+ *         全齐（100%）：氵木艹钅日山土雨竹刂冫鸟贝禾彳辶囗
+ *         将近齐：王 96%（瑛 是土）、火 93%（然 是金）
+ *         混　杂：女 78%、忄 67%、宀 50%、亻 44%、口 40%
+ *       硬写一张表就会出现「喜用神是土 → 建议单人旁」这种
+ *       在数据上站不住脚的推荐（实测时就是这么错的）。
+ *       所以改为从字库实时推导，只保留主导五行占比 ≥90% 的分组。
+ *
+ *   二、生肖 → 宜用部首（民俗，仅供参考）
+ *       这是民间姓名学的通俗说法，**没有经典出处，各家说法也不一致**。
+ *       典型逻辑是取象：属马要吃草（艹）、要有屋檐（宀）、要能跑（辶）；
+ *       属鼠要有洞（宀）、有粮（禾 米）。
+ *       本表只收录字库里真实存在的偏旁分组，并在界面上明确标为「民俗参考」。
+ *       系统**不会**自动应用它 —— 必须用户自己点了才会生效，
+ *       而且它的优先级低于八字喜用神（面板里会写明）。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  /* ---------------- 五行 → 部首：不硬编码 ----------------
+   * 用 NS.Radical.wuxingMap() 从字库实时推导，原因见文件头。
+   * 引用这个常量只是为了兼容旧代码与阅读方便。 */
+  Object.defineProperty(NS, 'WUXING_RADICALS', {
+    configurable: true,
+    get: function () {
+      if (!NS.Radical || !NS.Radical.wuxingMap) return null;
+      var m = NS.Radical.wuxingMap();
+      var out = {};
+      Object.keys(m).forEach(function (wx) {
+        out[wx] = m[wx].map(function (x) { return x.name; });
+      });
+      return out;
+    }
+  });
+
+  /* ---------------- 生肖 → 宜用部首（民俗，仅供参考） ---------------- */
+  NS.ZODIAC_RADICALS = {
+    '鼠': ['宀', '禾', '亻'],
+    '牛': ['艹', '宀', '禾'],
+    '虎': ['山', '木', '宀', '王', '氵'],
+    '兔': ['艹', '木', '宀'],
+    '龙': ['氵', '日', '雨', '王', '宀'],
+    '蛇': ['艹', '木', '宀'],
+    '马': ['艹', '宀', '木', '禾', '辶'],
+    '羊': ['艹', '木', '宀'],
+    '猴': ['木', '山', '宀', '王'],
+    '鸡': ['宀', '禾', '山'],
+    '狗': ['亻', '宀', '山'],
+    '猪': ['宀', '禾', '木']
+  };
+
+  /* 界面上的「常用部首」顺序：按字库内字数从多到少，排在前面的选择空间大 */
+  NS.RADICAL_PICKER_ORDER = [
+    '艹', '氵', '木', '王', '日', '钅', '火', '山', '土', '亻',
+    '雨', '宀', '辶', '女', '心', '忄', '竹', '口', '讠', '刂'
+  ];
 
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -4792,6 +5035,10 @@ details.more > summary:hover { color: var(--jade); }
       style: opts.style || '',
       keywords: (opts.keywords || []).filter(Boolean),
       xiyongshen: opts.xiyongshen || [],
+      /* 部首偏好：至少一个字带所选部首（默认 any），或每个字都要（all） */
+      preferRadicals: (opts.preferRadicals || []).filter(Boolean),
+      avoidRadicals: (opts.avoidRadicals || []).filter(Boolean),
+      radicalMode: opts.radicalMode === 'all' ? 'all' : 'any',
       taboo: {},
       mustInclude: {},
       rowCache: Object.create(null),
@@ -4800,6 +5047,14 @@ details.more > summary:hover { color: var(--jade); }
     };
     (opts.taboo || []).forEach(function (c) { if (c) ctx.taboo[c] = 1; });
     (opts.mustInclude || []).forEach(function (c) { if (c) ctx.mustInclude[c] = 1; });
+
+    /* 避用部首 = 硬排除。用户说「不要草字头」就该一个都不出现，
+     * 而不是靠扣分——扣分挡不住它照样出现在高分组合里。 */
+    if (ctx.avoidRadicals.length && NS.Radical) {
+      ctx.avoidRadicals.forEach(function (name) {
+        NS.Radical.charsOf(name).forEach(function (ch) { ctx.taboo[ch] = 1; });
+      });
+    }
     return ctx;
   }
 
@@ -5233,6 +5488,16 @@ details.more > summary:hover { color: var(--jade); }
     rows.forEach(function (r) { if (r.kwHits.length) forceIn(r); });
     rows.forEach(function (r) { if (ctx.mustInclude[r.char]) forceIn(r); });
 
+    /* 偏好部首的字必须进池。
+     * 候选池是按「单字基础分」剪枝的（双字名只留 100 字），
+     * 而走之底、鸟字旁这类字基础分未必排得进前 100——
+     * 不强制的话，用户选了「走之底」却一个候选都没有，约束直接被剪枝剪死。 */
+    if (ctx.preferRadicals && ctx.preferRadicals.length && NS.Radical) {
+      rows.forEach(function (r) {
+        if (NS.Radical.matchAny(r.char, ctx.preferRadicals)) forceIn(r);
+      });
+    }
+
     return {
       rows: picked,
       poolSize: rows.length,
@@ -5310,6 +5575,7 @@ details.more > summary:hover { color: var(--jade); }
     while ((combo = it.next()) !== null) {
       rows = combo.map(function (i) { return p.pool[i]; });
       if (!passMust(rows, p)) continue;
+      if (!passRadical(rows, p)) continue;
       ev = NS.Score.evaluate(rows.map(function (r) { return r.obj; }), p.ctx);
       if (!ev.detail.homophone.pass) continue;
       best.push({ score: ev.score, item: toResult(rows.map(function (r) { return r.obj; }), ev, p.ctx) });
@@ -5321,6 +5587,18 @@ details.more > summary:hover { color: var(--jade); }
     if (opt && opt.full) return ranking;
     var off = p.offset || 0;
     return ranking.slice(off, off + p.top);
+  }
+
+  /** 部首偏好：至少一个字带所选部首，或每个字都要带 */
+  function passRadical(rows, p) {
+    var want = p.ctx.preferRadicals;
+    if (!want || !want.length) return true;
+    if (!NS.Radical) return true;
+    var hit = 0;
+    for (var i = 0; i < rows.length; i++) {
+      if (NS.Radical.matchAny(rows[i].char, want)) hit++;
+    }
+    return p.ctx.radicalMode === 'all' ? hit === rows.length : hit >= 1;
   }
 
   /** rows 为候选行数组（含 .char） */
@@ -5363,6 +5641,7 @@ details.more > summary:hover { color: var(--jade); }
         done++;
         var rows = combo.map(function (i) { return p.pool[i]; });
         if (!passMust(rows, p)) continue;
+        if (!passRadical(rows, p)) continue;
         var chars = rows.map(function (r) { return r.obj; });
         var ev = NS.Score.evaluate(chars, p.ctx);
         if (!ev.detail.homophone.pass) continue;
@@ -7067,13 +7346,227 @@ details.more > summary:hover { color: var(--jade); }
     return { covered: n, total: list.length };
   }
 
-  function reset() { _index = null; }
+  /* 判别用的部首名集合缓存：分组名 → {names:{...}, chars:{...}} */
+  var _nameCache = null;
+
+  function nameIndex() {
+    if (_nameCache) return _nameCache;
+    _nameCache = Object.create(null);
+    (NS.RADICAL_GROUPS || []).forEach(function (g) {
+      _nameCache[g.name] = {
+        label: g.label || g.name,
+        chars: g.chars || ''
+      };
+    });
+    return _nameCache;
+  }
+
+  function isValidName(name) {
+    return !!nameIndex()[name];
+  }
+
+  /** 某字是否属于给定的任一分组名 */
+  function matchAny(ch, names) {
+    if (!names || !names.length) return false;
+    var idx = buildIndex();
+    var hit = idx[ch];
+    if (!hit) return false;
+    for (var i = 0; i < hit.length; i++) {
+      if (names.indexOf(NS.RADICAL_GROUPS[hit[i]].name) >= 0) return true;
+    }
+    return false;
+  }
+
+  /** 给定字表里属于某分组的字 */
+  function charsOf(name, list) {
+    var g = nameIndex()[name];
+    if (!g) return [];
+    var src = list || (NS.CHAR_LIST || []).map(function (c) { return c.char; });
+    var out = [];
+    for (var i = 0; i < src.length; i++) {
+      if (g.chars.indexOf(src[i]) >= 0) out.push(src[i]);
+    }
+    return out;
+  }
+
+  /** 每个分组在字库里有多少字 —— 界面上要如实告诉用户选择空间有多大 */
+  function poolCounts() {
+    var counts = Object.create(null);
+    (NS.RADICAL_GROUPS || []).forEach(function (g) {
+      counts[g.name] = charsOf(g.name).length;
+    });
+    return counts;
+  }
+
+  /**
+   * 从字库反推「五行 → 部首」。
+   *
+   * 为什么不硬编码：字库里各偏旁组的五行并不都是齐的。
+   * 统计全库后主导五行占比：
+   *   氵 木 艹 钅 日 山 土 雨 竹 刂 冫 鸟 贝 禾 彳 辶 囗   → 全部 100%
+   *   王 96%（瑛 是土）   火 93%（然 是金）
+   *   女 78%   忄 67%   宀 50%   亻 44%   口 40%   心/彡/讠 混杂
+   * 也就是说「喜用神是土 → 建议单人旁」在数据上站不住脚，
+   * 所以这里按阈值筛，只把真正齐整的分组拿出来推荐（默认 ≥90%）。
+   *
+   * @param {number} [threshold] 主导五行占比下限，默认 0.9
+   * @returns {Object} { 金:[{name,label,share,n}...], 木:[...], ... }
+   */
+  function wuxingMap(threshold) {
+    var th = threshold === undefined ? 0.9 : threshold;
+    var map = { '金': [], '木': [], '水': [], '火': [], '土': [] };
+    (NS.RADICAL_GROUPS || []).forEach(function (g) {
+      var dist = Object.create(null);
+      var total = 0;
+      for (var i = 0; i < g.chars.length; i++) {
+        var info = NS.CHAR_DB && NS.CHAR_DB[g.chars.charAt(i)];
+        if (!info) continue;
+        dist[info.wuxing] = (dist[info.wuxing] || 0) + 1;
+        total++;
+      }
+      if (!total) return;
+      var best = null, bestN = 0;
+      Object.keys(dist).forEach(function (w) {
+        if (dist[w] > bestN) { bestN = dist[w]; best = w; }
+      });
+      if (best && map[best] && bestN / total >= th) {
+        map[best].push({
+          name: g.name, label: g.label,
+          share: bestN / total, n: total
+        });
+      }
+    });
+    Object.keys(map).forEach(function (w) {
+      map[w].sort(function (a, b) {
+        if (b.share !== a.share) return b.share - a.share;
+        return b.n - a.n;
+      });
+    });
+    return map;
+  }
+
+  /** 按「字库内字数从多到少」排好的候选部首列表，供界面出选项 */
+  function pickerList() {
+    var counts = poolCounts();
+    var order = NS.RADICAL_PICKER_ORDER || [];
+    var names = order.filter(function (n) { return counts[n] > 0; });
+    /* 没列进 order 但确实有字的分组也补上，避免漏掉 */
+    (NS.RADICAL_GROUPS || []).forEach(function (g) {
+      if (names.indexOf(g.name) < 0 && counts[g.name] > 0) names.push(g.name);
+    });
+    return names.map(function (n) {
+      return { name: n, label: nameIndex()[n].label, count: counts[n] };
+    }).sort(function (a, b) { return b.count - a.count; });
+  }
+
+  /* ---------------- 联网字典里的部首 ---------------- */
+
+  /* 字典的部首字段用的是传统部首字（水 而非 氵、玉 而非 王），
+   * 所以按分组名查字典时必须把两种写法都试一遍。 */
+  var RADICAL_ALIAS = {
+    '氵': ['水'], '忄': ['心'], '讠': ['言'], '钅': ['金', '釒'],
+    '王': ['玉'], '亻': ['人'], '辶': ['辵'], '刂': ['刀'],
+    '纟': ['糸', '糹'], '贝': ['貝'], '鸟': ['鳥'], '艹': ['艸'],
+    '竹': ['竹'], '月': ['月'], '阝': ['阜', '邑'], '灬': ['火'],
+    '扌': ['手'], '犭': ['犬'], '饣': ['食'], '车': ['車'],
+    '马': ['馬'], '鱼': ['魚'], '页': ['頁'], '见': ['見'], '门': ['門']
+  };
+
+  function aliasOf(name) {
+    var extra = RADICAL_ALIAS[name] || [];
+    return [name].concat(extra);
+  }
+
+  /**
+   * 联网查询：从已同步的《新华字典》里列出某个部首下的字。
+   *
+   * 这是「联网找最合适的字」的实现方式 —— 字典给出了每个字的部首与简体笔画，
+   * 因此可以按部首反查。返回的候选带着素材（笔画/拼音/释义），
+   * 让用户自己判断要不要收进字库。
+   *
+   * @param {string} name 分组名（如 '艹'）
+   * @param {Object} [opt] { minStrokes, maxStrokes, limit, excludeInLib }
+   * @returns {{available:boolean, items:Array, total:number}}
+   */
+  function fromDict(name, opt) {
+    opt = opt || {};
+    var min = opt.minStrokes === undefined ? 4 : opt.minStrokes;
+    var max = opt.maxStrokes === undefined ? 16 : opt.maxStrokes;
+    var limit = opt.limit || 120;
+
+    var lex = NS.Lexicon;
+    var dict = lex && lex.dict;
+    /* 注意：ensureLoaded() 之后 lex.dict 是个**空对象**而不是 null，
+     * 所以不能只判真假 —— 必须看里面实际有没有字，
+     * 否则没同步字典时会提示「字典里没找到这个部首」而不是
+     * 「还没同步字典」，把用户往错误方向引。 */
+    var dictCount = (lex && lex.status) ? (lex.status().dictCount || 0) : 0;
+    if (!dict || !dictCount) {
+      return { available: false, items: [], total: 0, suitableTotal: 0 };
+    }
+
+    var want = aliasOf(name);
+    var looks = [];
+    Object.keys(dict).forEach(function (ch) {
+      if (ch.length !== 1) return;
+      var d = dict[ch];
+      if (!d) return;
+      var rad = d[1];
+      if (!rad || want.indexOf(rad) < 0) return;
+      /* 字库里已有的不重复列出 */
+      if (opt.excludeInLib !== false && NS.CHAR_DB[ch]) return;
+      var py = (lex.pinyinMap && lex.pinyinMap[ch]) || null;
+      /* 字典自己就带拼音（d[2]），拼音表只是用来补声调数字。
+       * 早期版本要求「拼音表里必须有这个字」才算适合起名，
+       * 结果只同步字典、没同步拼音表时，全部候选都被划成不适合（实测 0/92）。 */
+      var pinyin = d[2] || (py ? py.pinyin : '');
+      var strokes = d[0];
+      var meaning = NS.Infer && NS.Infer.cleanExplanation
+        ? NS.Infer.cleanExplanation(d[3] || '') : (d[3] || '');
+      /* 字典释义常以「（形声。从辵…)」这类六书说明开头，对选字没帮助，
+       * 而且会把界面上的释义占满（实测全是「(形声」）。 */
+      meaning = String(meaning).replace(/^\s*[（(][^）)]*[）)]\s*/, '').trim();
+      looks.push({
+        char: ch,
+        strokes: strokes,
+        radical: rad,
+        pinyin: pinyin,
+        tone: py ? py.tone : 0,
+        meaning: meaning,
+        /* 适不适合起名：笔画 4–16、有读音、有释义 */
+        suitable: strokes >= min && strokes <= max && !!meaning && !!pinyin
+      });
+    });
+
+    looks.sort(function (a, b) {
+      if (a.suitable !== b.suitable) return a.suitable ? -1 : 1;
+      if (a.strokes !== b.strokes) return a.strokes - b.strokes;
+      return a.char.localeCompare(b.char);
+    });
+
+    return {
+      available: true,
+      total: looks.length,
+      suitableTotal: looks.filter(function (x) { return x.suitable; }).length,
+      items: looks.slice(0, limit)
+    };
+  }
+
+  function reset() { _index = null; _nameCache = null; }
 
   NS.Radical = {
     groupsOf: groupsOf,
     check: check,
     describe: describe,
     coverage: coverage,
+    isValidName: isValidName,
+    matchAny: matchAny,
+    charsOf: charsOf,
+    poolCounts: poolCounts,
+    wuxingMap: wuxingMap,
+    pickerList: pickerList,
+    aliasOf: aliasOf,
+    fromDict: fromDict,
     reset: reset
   };
 
@@ -7797,6 +8290,35 @@ details.more > summary:hover { color: var(--jade); }
       custom.id = 'lexCustom';
       root.appendChild(custom);
 
+      /* 按部首找字 */
+      root.appendChild(el('div', 'lex-sub', '按部首找字'));
+      var radHint = el('p', 'hint');
+      radHint.innerHTML = '选一个部首，从已同步的《新华字典》里列出该部首的字，' +
+        '按「适不适合起名」排序（笔画 4–16、有读音、有释义）。' +
+        '勾选后一次加入字库。<b>需要先同步字典</b>，' +
+        '否则没有部首数据；加入时五行与康熙笔画仍按部首推断，请核对。';
+      root.appendChild(radHint);
+
+      var radRow = el('div', 'lex-lookup');
+      var sel = document.createElement('select');
+      sel.id = 'lexRadSel';
+      (NS.Radical ? NS.Radical.pickerList() : []).forEach(function (r) {
+        var o = document.createElement('option');
+        o.value = r.name;
+        o.textContent = r.name + '（' + r.label + '）· 字库已有 ' + r.count + ' 字';
+        sel.appendChild(o);
+      });
+      radRow.appendChild(sel);
+      var radBtn = el('button', 'btn ghost', '列出该部首的字');
+      radBtn.type = 'button';
+      radBtn.addEventListener('click', function () { SyncUI.radFind(); });
+      radRow.appendChild(radBtn);
+      root.appendChild(radRow);
+
+      var radOut = el('div', 'lex-result');
+      radOut.id = 'lexRadOut';
+      root.appendChild(radOut);
+
       /* 导入导出 */
       root.appendChild(el('div', 'lex-sub', '数据备份'));
       var io = el('div', 'lex-io');
@@ -8092,6 +8614,123 @@ details.more > summary:hover { color: var(--jade); }
       });
     },
 
+    /* ---------------- 按部首找字 ---------------- */
+
+    /**
+     * 按部首从已同步的字典里列字。
+     * 字典给出每个字的部首与简体笔画，所以可以反查；
+     * 结果按「适不适合起名」排序：笔画 4–16、有读音、有释义的排前面。
+     */
+    radFind: function () {
+      var out = $('lexRadOut');
+      var sel = $('lexRadSel');
+      if (!out || !sel || !NS.Radical) return;
+      var name = sel.value;
+      var res = NS.Radical.fromDict(name, { limit: 150 });
+
+      if (!res.available) {
+        out.innerHTML = '<div class="alert">还没有字典数据，没法按部首查字。' +
+          '请在上面勾选「新华字典」并点「开始联网更新」（约 26MB，' +
+          '首次下载实测约 1 分钟）。</div>';
+        return;
+      }
+      if (!res.items.length) {
+        out.innerHTML = '<div class="alert">字典里没找到「' + esc(name) +
+          '」部的字，或者它们都已经在字库里了。</div>';
+        return;
+      }
+
+      SyncUI._radItems = res.items;
+      var box = el('div', 'panel lex-rad-box');
+      box.appendChild(el('div', 'hint',
+        '共 ' + res.total + ' 个（其中 ' + (res.suitableTotal || 0) +
+        ' 个笔画适中），列出前 ' + res.items.length + ' 个：'));
+
+      var list = el('div', 'lex-rad-list');
+      res.items.forEach(function (it, i) {
+        var lab = el('label', 'lex-rad-item' + (it.suitable ? '' : ' dim'));
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.setAttribute('data-i', String(i));
+        lab.appendChild(cb);
+        var body = el('div');
+        body.innerHTML = '<b>' + esc(it.char) + '</b>' +
+          '<span class="lr-meta">' + it.strokes + '画 · ' +
+          esc(it.radical || name) + ' · ' + esc(it.pinyin || '无读音') +
+          (it.tone ? it.tone : '') + '</span>' +
+          '<span class="lr-mean">' +
+          esc(String(it.meaning).slice(0, 24)) + '</span>';
+        lab.appendChild(body);
+        list.appendChild(lab);
+      });
+      box.appendChild(list);
+
+      var bar = el('div', 'lex-io');
+      var addBtn = el('button', 'btn ghost', '加入字库（选中的）');
+      addBtn.type = 'button';
+      addBtn.addEventListener('click', function () { SyncUI.radAddSelected(name); });
+      bar.appendChild(addBtn);
+      var suitBtn = el('button', 'btn ghost', '只勾「笔画适中」的');
+      suitBtn.type = 'button';
+      suitBtn.addEventListener('click', function () {
+        Array.prototype.forEach.call(list.querySelectorAll('input[type=checkbox]'),
+          function (cb) {
+            var it = SyncUI._radItems[parseInt(cb.getAttribute('data-i'), 10)];
+            cb.checked = !!(it && it.suitable);
+          });
+      });
+      bar.appendChild(suitBtn);
+      box.appendChild(bar);
+      box.appendChild(el('p', 'hint',
+        '加入后五行按部首推断、康熙笔画按「简体 + 部首增量」估算。' +
+        '都能在「已加入字库的字」里看到，需要时可以移除重加。'));
+
+      out.innerHTML = '';
+      out.appendChild(box);
+    },
+
+    radAddSelected: function (radicalName) {
+      var out = $('lexRadOut');
+      if (!out) return;
+      var items = SyncUI._radItems || [];
+      var picked = [];
+      Array.prototype.forEach.call(out.querySelectorAll('input[type=checkbox]'),
+        function (cb) {
+          if (!cb.checked) return;
+          var it = items[parseInt(cb.getAttribute('data-i'), 10)];
+          if (it) picked.push(it);
+        });
+      if (!picked.length) {
+        global.alert('先勾选要加入的字。');
+        return;
+      }
+      if (picked.length > 30 &&
+        !global.confirm('要一次加入 ' + picked.length + ' 个字吗？\n\n' +
+          '加得太多会让字库变得很大，取名时可选的字反而不好挑。')) return;
+
+      var chain = Promise.resolve();
+      var ok = 0;
+      var fail = [];
+      picked.forEach(function (it) {
+        chain = chain.then(function () {
+          /* 走 lookupChar 而不是直接拿列表里的字段，
+           * 保证与「单字联网查询」入库的结果完全一致 */
+          var entry = NS.Lexicon.lookupChar(it.char);
+          if (!entry || entry.missing) { fail.push(it.char); return; }
+          entry.gender = '中性';
+          entry.styles = [];
+          return NS.Lexicon.addCustomChar(entry).then(function () { ok++; });
+        });
+      });
+      chain.then(function () {
+        SyncUI.refreshStatus();
+        SyncUI.log('按部首「' + radicalName + '」加入了 ' + ok + ' 个字' +
+          (fail.length ? '；' + fail.length + ' 个查不到：' + fail.join('') : '') +
+          '。', ok ? 'ok' : 'warn');
+        SyncUI.radFind();   /* 重列一遍，已入库的会自动消失 */
+      });
+    },
+
     renderCustomChars: function () {
       var box = $('lexCustom');
       if (!box) return;
@@ -8235,7 +8874,9 @@ details.more > summary:hover { color: var(--jade); }
     page: 0,
     onlyKw: false,
     /* 勾选待对比的名字（跨批次保留） */
-    picked: []
+    picked: [],
+    /* 选中的偏好部首（按钮选的；手输的另算） */
+    radPicked: []
   };
 
   /* ---------------- 初始化表单 ---------------- */
@@ -8357,8 +8998,191 @@ details.more > summary:hover { color: var(--jade); }
 
   /* ---------------- 视图切换 ---------------- */
 
-  function initViewSwitch() {
-    var wrap = $('viewSwitch');
+  /* ---------------- 部首偏好 ---------------- */
+
+  /** 建候选部首按钮。每个按钮右上角标出字库里有几个这样的字，
+   * 让用户在选之前就知道选择空间有多大（走之底只有 2 个字时一目了然）。 */
+  function initRadicalPicker() {
+    var box = $('radSeg');
+    if (!box || !NS.Radical) return;
+    box.innerHTML = '';
+    NS.Radical.pickerList().forEach(function (r) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rad-chip';
+      b.setAttribute('data-rad', r.name);
+      b.innerHTML = esc(r.name) + '<i>' + r.count + '</i>';
+      b.title = r.label + '：字库里有 ' + r.count + ' 个字';
+      b.addEventListener('click', function () {
+        var i = state.radPicked.indexOf(r.name);
+        if (i >= 0) state.radPicked.splice(i, 1);
+        else state.radPicked.push(r.name);
+        syncRadChips();
+        updateRadHint();
+      });
+      box.appendChild(b);
+    });
+
+    var xi = $('radByXi');
+    if (xi) xi.addEventListener('click', function () { recommendByXi(); });
+    var zo = $('radByZodiac');
+    if (zo) zo.addEventListener('click', function () { recommendByZodiac(); });
+    var cl = $('radClear');
+    if (cl) {
+      cl.addEventListener('click', function () {
+        state.radPicked = [];
+        if ($('radCustom')) $('radCustom').value = '';
+        syncRadChips();
+        updateRadHint();
+      });
+    }
+    var cu = $('radCustom');
+    if (cu) cu.addEventListener('input', updateRadHint);
+    var av = $('radAvoid');
+    if (av) av.addEventListener('input', updateRadHint);
+    syncRadChips();
+    updateRadHint();
+  }
+
+  function syncRadChips() {
+    var box = $('radSeg');
+    if (!box) return;
+    Array.prototype.forEach.call(box.children, function (b) {
+      var n = b.getAttribute('data-rad');
+      b.classList.toggle('on', state.radPicked.indexOf(n) >= 0);
+      b.setAttribute('aria-pressed', state.radPicked.indexOf(n) >= 0 ? 'true' : 'false');
+    });
+  }
+
+  /** 当前生效的偏好/避用部首（按钮选的 + 手输的） */
+  function pickedRadicals() {
+    var typed = splitWords($('radCustom') ? $('radCustom').value : '');
+    var all = state.radPicked.concat(typed);
+    return all.filter(function (n, i) { return all.indexOf(n) === i; });
+  }
+
+  function avoidedRadicals() {
+    return splitWords($('radAvoid') ? $('radAvoid').value : '');
+  }
+
+  function updateRadHint() {
+    var hint = $('radHint');
+    if (!hint || !NS.Radical) return;
+
+    var want = pickedRadicals();
+    var avoid = avoidedRadicals();
+    var msgs = [];
+
+    /* 手输的部首名可能根本不存在，得报出来而不是静默忽略 */
+    var unknown = want.concat(avoid).filter(function (n) {
+      return !NS.Radical.isValidName(n);
+    });
+    var uniqUnknown = unknown.filter(function (n, i) {
+      return unknown.indexOf(n) === i;
+    });
+    if (uniqUnknown.length) {
+      msgs.push('<b style="color:#a63a2e">认不出的部首：' + esc(uniqUnknown.join('、')) +
+        '</b>（可用的见上方按钮）');
+    }
+
+    if (want.length) {
+      var chars = [];
+      want.forEach(function (n) {
+        if (!NS.Radical.isValidName(n)) return;
+        NS.Radical.charsOf(n).forEach(function (c) {
+          if (chars.indexOf(c) < 0) chars.push(c);
+        });
+      });
+      if (!chars.length) {
+        msgs.push('<b style="color:#a63a2e">字库里没有符合这些部首的字，' +
+          '请换一个，或到词库管理的「按部首找字」联网扩充。</b>');
+      } else {
+        msgs.push('符合的候选字 <b>' + chars.length + '</b> 个：' +
+          esc(chars.slice(0, 24).join('')) + (chars.length > 24 ? '…' : ''));
+        var thin = want.filter(function (n) {
+          return NS.Radical.isValidName(n) && NS.Radical.charsOf(n).length < 3;
+        });
+        if (thin.length) {
+          msgs.push('其中 ' + esc(thin.join('、')) +
+            ' 的字偏少，结果会很局限，建议到词库管理联网找字。');
+        }
+      }
+    }
+
+    if (avoid.length) {
+      var n = 0;
+      avoid.forEach(function (x) {
+        if (NS.Radical.isValidName(x)) n += NS.Radical.charsOf(x).length;
+      });
+      if (n) msgs.push('已排除 ' + n + ' 个带这些偏旁的字。');
+    }
+
+    hint.innerHTML = msgs.join('　') ||
+      '不选则由系统按八字喜用神挑字。按生肖推荐属<b>民俗参考</b>。';
+  }
+
+  /** 按喜用神推荐部首：用的是系统自己给字库定的五行口径，两边一致 */
+  function recommendByXi() {
+    var xi = currentXi();
+    if (!xi || !xi.length) {
+      var dt = parseLocal($('birth').value);
+      if (dt) xi = computeBazi(dt).xiyongshen;
+    }
+    if (!xi || !xi.length) {
+      alert('还没定出喜用神。请填出生时间，或在上方手动勾选喜用神。');
+      return;
+    }
+    var names = [];
+    var wxMap = (NS.Radical && NS.Radical.wuxingMap) ? NS.Radical.wuxingMap() : null;
+    if (!wxMap) {
+      alert('部首数据还没就绪。');
+      return;
+    }
+    var parts = [];
+    xi.forEach(function (w) {
+      var rs = (wxMap[w] || []).filter(function (x) {
+        return NS.Radical.charsOf(x.name).length > 0;
+      });
+      if (rs.length) parts.push(w + '→' + rs.map(function (x) { return x.name; }).join('/'));
+      rs.forEach(function (x) { names.push(x.name); });
+    });
+    if (!names.length) {
+      alert('喜用神「' + xi.join('、') + '」在字库里没有五行一致的偏旁可用。');
+      return;
+    }
+    state.radPicked = names.filter(function (n, i) { return names.indexOf(n) === i; });
+    syncRadChips();
+    updateRadHint();
+    $('radHint').innerHTML = '喜用神 ' + esc(xi.join('、')) + ' → ' +
+      esc(parts.join('，')) + '。' + $('radHint').innerHTML;
+  }
+
+  /** 按生肖推荐部首。民俗说法，必须用户主动点，且界面上标明性质 */
+  function recommendByZodiac() {
+    var dt = parseLocal($('birth').value);
+    if (!dt) {
+      alert('按生肖推荐需要出生日期。请先填出生时间。');
+      return;
+    }
+    var info = computeBazi(dt);
+    var zodiac = info && info.shengxiao;
+    if (!zodiac || !NS.ZODIAC_RADICALS[zodiac]) {
+      alert('没能定出生肖。');
+      return;
+    }
+    var names = NS.ZODIAC_RADICALS[zodiac].filter(function (r) {
+      return NS.Radical.isValidName(r) && NS.Radical.charsOf(r).length > 0;
+    });
+    state.radPicked = names;
+    syncRadChips();
+    updateRadHint();
+    $('radHint').innerHTML = '属' + esc(zodiac) + ' → 已选中 ' +
+      esc(names.join('、')) +
+      '。<b>这是民间说法，没有经典出处，各流派不一致，仅供你参考；' +
+      '八字喜用神优先级更高。</b>' + $('radHint').innerHTML;
+  }
+
+  function initViewSwitch() {    var wrap = $('viewSwitch');
     if (!wrap) return;
     wrap.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
@@ -8565,6 +9389,9 @@ details.more > summary:hover { color: var(--jade); }
       keywords: splitWords($('keywords').value),
       taboo: splitChars($('taboo').value),
       mustInclude: splitChars($('mustInclude').value),
+      preferRadicals: pickedRadicals(),
+      avoidRadicals: avoidedRadicals(),
+      radicalMode: ($('radAll') && $('radAll').checked) ? 'all' : 'any',
       xiyongshen: xi || [],
       _baziInfo: baziInfo
     };
@@ -9500,6 +10327,7 @@ details.more > summary:hover { color: var(--jade); }
     initSegmented('genderSeg', 'gender');
     initSegmented('lenSeg', 'length');
     initViewSwitch();
+    initRadicalPicker();
 
     /* 词库管理面板：初始化后会自动恢复上次同步的数据 */
     if (NS.SyncUI && $('viewLexicon')) {

@@ -52,7 +52,9 @@
     page: 0,
     onlyKw: false,
     /* 勾选待对比的名字（跨批次保留） */
-    picked: []
+    picked: [],
+    /* 选中的偏好部首（按钮选的；手输的另算） */
+    radPicked: []
   };
 
   /* ---------------- 初始化表单 ---------------- */
@@ -174,8 +176,191 @@
 
   /* ---------------- 视图切换 ---------------- */
 
-  function initViewSwitch() {
-    var wrap = $('viewSwitch');
+  /* ---------------- 部首偏好 ---------------- */
+
+  /** 建候选部首按钮。每个按钮右上角标出字库里有几个这样的字，
+   * 让用户在选之前就知道选择空间有多大（走之底只有 2 个字时一目了然）。 */
+  function initRadicalPicker() {
+    var box = $('radSeg');
+    if (!box || !NS.Radical) return;
+    box.innerHTML = '';
+    NS.Radical.pickerList().forEach(function (r) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rad-chip';
+      b.setAttribute('data-rad', r.name);
+      b.innerHTML = esc(r.name) + '<i>' + r.count + '</i>';
+      b.title = r.label + '：字库里有 ' + r.count + ' 个字';
+      b.addEventListener('click', function () {
+        var i = state.radPicked.indexOf(r.name);
+        if (i >= 0) state.radPicked.splice(i, 1);
+        else state.radPicked.push(r.name);
+        syncRadChips();
+        updateRadHint();
+      });
+      box.appendChild(b);
+    });
+
+    var xi = $('radByXi');
+    if (xi) xi.addEventListener('click', function () { recommendByXi(); });
+    var zo = $('radByZodiac');
+    if (zo) zo.addEventListener('click', function () { recommendByZodiac(); });
+    var cl = $('radClear');
+    if (cl) {
+      cl.addEventListener('click', function () {
+        state.radPicked = [];
+        if ($('radCustom')) $('radCustom').value = '';
+        syncRadChips();
+        updateRadHint();
+      });
+    }
+    var cu = $('radCustom');
+    if (cu) cu.addEventListener('input', updateRadHint);
+    var av = $('radAvoid');
+    if (av) av.addEventListener('input', updateRadHint);
+    syncRadChips();
+    updateRadHint();
+  }
+
+  function syncRadChips() {
+    var box = $('radSeg');
+    if (!box) return;
+    Array.prototype.forEach.call(box.children, function (b) {
+      var n = b.getAttribute('data-rad');
+      b.classList.toggle('on', state.radPicked.indexOf(n) >= 0);
+      b.setAttribute('aria-pressed', state.radPicked.indexOf(n) >= 0 ? 'true' : 'false');
+    });
+  }
+
+  /** 当前生效的偏好/避用部首（按钮选的 + 手输的） */
+  function pickedRadicals() {
+    var typed = splitWords($('radCustom') ? $('radCustom').value : '');
+    var all = state.radPicked.concat(typed);
+    return all.filter(function (n, i) { return all.indexOf(n) === i; });
+  }
+
+  function avoidedRadicals() {
+    return splitWords($('radAvoid') ? $('radAvoid').value : '');
+  }
+
+  function updateRadHint() {
+    var hint = $('radHint');
+    if (!hint || !NS.Radical) return;
+
+    var want = pickedRadicals();
+    var avoid = avoidedRadicals();
+    var msgs = [];
+
+    /* 手输的部首名可能根本不存在，得报出来而不是静默忽略 */
+    var unknown = want.concat(avoid).filter(function (n) {
+      return !NS.Radical.isValidName(n);
+    });
+    var uniqUnknown = unknown.filter(function (n, i) {
+      return unknown.indexOf(n) === i;
+    });
+    if (uniqUnknown.length) {
+      msgs.push('<b style="color:#a63a2e">认不出的部首：' + esc(uniqUnknown.join('、')) +
+        '</b>（可用的见上方按钮）');
+    }
+
+    if (want.length) {
+      var chars = [];
+      want.forEach(function (n) {
+        if (!NS.Radical.isValidName(n)) return;
+        NS.Radical.charsOf(n).forEach(function (c) {
+          if (chars.indexOf(c) < 0) chars.push(c);
+        });
+      });
+      if (!chars.length) {
+        msgs.push('<b style="color:#a63a2e">字库里没有符合这些部首的字，' +
+          '请换一个，或到词库管理的「按部首找字」联网扩充。</b>');
+      } else {
+        msgs.push('符合的候选字 <b>' + chars.length + '</b> 个：' +
+          esc(chars.slice(0, 24).join('')) + (chars.length > 24 ? '…' : ''));
+        var thin = want.filter(function (n) {
+          return NS.Radical.isValidName(n) && NS.Radical.charsOf(n).length < 3;
+        });
+        if (thin.length) {
+          msgs.push('其中 ' + esc(thin.join('、')) +
+            ' 的字偏少，结果会很局限，建议到词库管理联网找字。');
+        }
+      }
+    }
+
+    if (avoid.length) {
+      var n = 0;
+      avoid.forEach(function (x) {
+        if (NS.Radical.isValidName(x)) n += NS.Radical.charsOf(x).length;
+      });
+      if (n) msgs.push('已排除 ' + n + ' 个带这些偏旁的字。');
+    }
+
+    hint.innerHTML = msgs.join('　') ||
+      '不选则由系统按八字喜用神挑字。按生肖推荐属<b>民俗参考</b>。';
+  }
+
+  /** 按喜用神推荐部首：用的是系统自己给字库定的五行口径，两边一致 */
+  function recommendByXi() {
+    var xi = currentXi();
+    if (!xi || !xi.length) {
+      var dt = parseLocal($('birth').value);
+      if (dt) xi = computeBazi(dt).xiyongshen;
+    }
+    if (!xi || !xi.length) {
+      alert('还没定出喜用神。请填出生时间，或在上方手动勾选喜用神。');
+      return;
+    }
+    var names = [];
+    var wxMap = (NS.Radical && NS.Radical.wuxingMap) ? NS.Radical.wuxingMap() : null;
+    if (!wxMap) {
+      alert('部首数据还没就绪。');
+      return;
+    }
+    var parts = [];
+    xi.forEach(function (w) {
+      var rs = (wxMap[w] || []).filter(function (x) {
+        return NS.Radical.charsOf(x.name).length > 0;
+      });
+      if (rs.length) parts.push(w + '→' + rs.map(function (x) { return x.name; }).join('/'));
+      rs.forEach(function (x) { names.push(x.name); });
+    });
+    if (!names.length) {
+      alert('喜用神「' + xi.join('、') + '」在字库里没有五行一致的偏旁可用。');
+      return;
+    }
+    state.radPicked = names.filter(function (n, i) { return names.indexOf(n) === i; });
+    syncRadChips();
+    updateRadHint();
+    $('radHint').innerHTML = '喜用神 ' + esc(xi.join('、')) + ' → ' +
+      esc(parts.join('，')) + '。' + $('radHint').innerHTML;
+  }
+
+  /** 按生肖推荐部首。民俗说法，必须用户主动点，且界面上标明性质 */
+  function recommendByZodiac() {
+    var dt = parseLocal($('birth').value);
+    if (!dt) {
+      alert('按生肖推荐需要出生日期。请先填出生时间。');
+      return;
+    }
+    var info = computeBazi(dt);
+    var zodiac = info && info.shengxiao;
+    if (!zodiac || !NS.ZODIAC_RADICALS[zodiac]) {
+      alert('没能定出生肖。');
+      return;
+    }
+    var names = NS.ZODIAC_RADICALS[zodiac].filter(function (r) {
+      return NS.Radical.isValidName(r) && NS.Radical.charsOf(r).length > 0;
+    });
+    state.radPicked = names;
+    syncRadChips();
+    updateRadHint();
+    $('radHint').innerHTML = '属' + esc(zodiac) + ' → 已选中 ' +
+      esc(names.join('、')) +
+      '。<b>这是民间说法，没有经典出处，各流派不一致，仅供你参考；' +
+      '八字喜用神优先级更高。</b>' + $('radHint').innerHTML;
+  }
+
+  function initViewSwitch() {    var wrap = $('viewSwitch');
     if (!wrap) return;
     wrap.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
@@ -382,6 +567,9 @@
       keywords: splitWords($('keywords').value),
       taboo: splitChars($('taboo').value),
       mustInclude: splitChars($('mustInclude').value),
+      preferRadicals: pickedRadicals(),
+      avoidRadicals: avoidedRadicals(),
+      radicalMode: ($('radAll') && $('radAll').checked) ? 'all' : 'any',
       xiyongshen: xi || [],
       _baziInfo: baziInfo
     };
@@ -1317,6 +1505,7 @@
     initSegmented('genderSeg', 'gender');
     initSegmented('lenSeg', 'length');
     initViewSwitch();
+    initRadicalPicker();
 
     /* 词库管理面板：初始化后会自动恢复上次同步的数据 */
     if (NS.SyncUI && $('viewLexicon')) {

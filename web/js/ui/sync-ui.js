@@ -229,6 +229,35 @@
       custom.id = 'lexCustom';
       root.appendChild(custom);
 
+      /* 按部首找字 */
+      root.appendChild(el('div', 'lex-sub', '按部首找字'));
+      var radHint = el('p', 'hint');
+      radHint.innerHTML = '选一个部首，从已同步的《新华字典》里列出该部首的字，' +
+        '按「适不适合起名」排序（笔画 4–16、有读音、有释义）。' +
+        '勾选后一次加入字库。<b>需要先同步字典</b>，' +
+        '否则没有部首数据；加入时五行与康熙笔画仍按部首推断，请核对。';
+      root.appendChild(radHint);
+
+      var radRow = el('div', 'lex-lookup');
+      var sel = document.createElement('select');
+      sel.id = 'lexRadSel';
+      (NS.Radical ? NS.Radical.pickerList() : []).forEach(function (r) {
+        var o = document.createElement('option');
+        o.value = r.name;
+        o.textContent = r.name + '（' + r.label + '）· 字库已有 ' + r.count + ' 字';
+        sel.appendChild(o);
+      });
+      radRow.appendChild(sel);
+      var radBtn = el('button', 'btn ghost', '列出该部首的字');
+      radBtn.type = 'button';
+      radBtn.addEventListener('click', function () { SyncUI.radFind(); });
+      radRow.appendChild(radBtn);
+      root.appendChild(radRow);
+
+      var radOut = el('div', 'lex-result');
+      radOut.id = 'lexRadOut';
+      root.appendChild(radOut);
+
       /* 导入导出 */
       root.appendChild(el('div', 'lex-sub', '数据备份'));
       var io = el('div', 'lex-io');
@@ -521,6 +550,123 @@
           strokes + '画）。', 'ok');
         $('lexResult').innerHTML = '';
         $('lexChar').value = '';
+      });
+    },
+
+    /* ---------------- 按部首找字 ---------------- */
+
+    /**
+     * 按部首从已同步的字典里列字。
+     * 字典给出每个字的部首与简体笔画，所以可以反查；
+     * 结果按「适不适合起名」排序：笔画 4–16、有读音、有释义的排前面。
+     */
+    radFind: function () {
+      var out = $('lexRadOut');
+      var sel = $('lexRadSel');
+      if (!out || !sel || !NS.Radical) return;
+      var name = sel.value;
+      var res = NS.Radical.fromDict(name, { limit: 150 });
+
+      if (!res.available) {
+        out.innerHTML = '<div class="alert">还没有字典数据，没法按部首查字。' +
+          '请在上面勾选「新华字典」并点「开始联网更新」（约 26MB，' +
+          '首次下载实测约 1 分钟）。</div>';
+        return;
+      }
+      if (!res.items.length) {
+        out.innerHTML = '<div class="alert">字典里没找到「' + esc(name) +
+          '」部的字，或者它们都已经在字库里了。</div>';
+        return;
+      }
+
+      SyncUI._radItems = res.items;
+      var box = el('div', 'panel lex-rad-box');
+      box.appendChild(el('div', 'hint',
+        '共 ' + res.total + ' 个（其中 ' + (res.suitableTotal || 0) +
+        ' 个笔画适中），列出前 ' + res.items.length + ' 个：'));
+
+      var list = el('div', 'lex-rad-list');
+      res.items.forEach(function (it, i) {
+        var lab = el('label', 'lex-rad-item' + (it.suitable ? '' : ' dim'));
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.setAttribute('data-i', String(i));
+        lab.appendChild(cb);
+        var body = el('div');
+        body.innerHTML = '<b>' + esc(it.char) + '</b>' +
+          '<span class="lr-meta">' + it.strokes + '画 · ' +
+          esc(it.radical || name) + ' · ' + esc(it.pinyin || '无读音') +
+          (it.tone ? it.tone : '') + '</span>' +
+          '<span class="lr-mean">' +
+          esc(String(it.meaning).slice(0, 24)) + '</span>';
+        lab.appendChild(body);
+        list.appendChild(lab);
+      });
+      box.appendChild(list);
+
+      var bar = el('div', 'lex-io');
+      var addBtn = el('button', 'btn ghost', '加入字库（选中的）');
+      addBtn.type = 'button';
+      addBtn.addEventListener('click', function () { SyncUI.radAddSelected(name); });
+      bar.appendChild(addBtn);
+      var suitBtn = el('button', 'btn ghost', '只勾「笔画适中」的');
+      suitBtn.type = 'button';
+      suitBtn.addEventListener('click', function () {
+        Array.prototype.forEach.call(list.querySelectorAll('input[type=checkbox]'),
+          function (cb) {
+            var it = SyncUI._radItems[parseInt(cb.getAttribute('data-i'), 10)];
+            cb.checked = !!(it && it.suitable);
+          });
+      });
+      bar.appendChild(suitBtn);
+      box.appendChild(bar);
+      box.appendChild(el('p', 'hint',
+        '加入后五行按部首推断、康熙笔画按「简体 + 部首增量」估算。' +
+        '都能在「已加入字库的字」里看到，需要时可以移除重加。'));
+
+      out.innerHTML = '';
+      out.appendChild(box);
+    },
+
+    radAddSelected: function (radicalName) {
+      var out = $('lexRadOut');
+      if (!out) return;
+      var items = SyncUI._radItems || [];
+      var picked = [];
+      Array.prototype.forEach.call(out.querySelectorAll('input[type=checkbox]'),
+        function (cb) {
+          if (!cb.checked) return;
+          var it = items[parseInt(cb.getAttribute('data-i'), 10)];
+          if (it) picked.push(it);
+        });
+      if (!picked.length) {
+        global.alert('先勾选要加入的字。');
+        return;
+      }
+      if (picked.length > 30 &&
+        !global.confirm('要一次加入 ' + picked.length + ' 个字吗？\n\n' +
+          '加得太多会让字库变得很大，取名时可选的字反而不好挑。')) return;
+
+      var chain = Promise.resolve();
+      var ok = 0;
+      var fail = [];
+      picked.forEach(function (it) {
+        chain = chain.then(function () {
+          /* 走 lookupChar 而不是直接拿列表里的字段，
+           * 保证与「单字联网查询」入库的结果完全一致 */
+          var entry = NS.Lexicon.lookupChar(it.char);
+          if (!entry || entry.missing) { fail.push(it.char); return; }
+          entry.gender = '中性';
+          entry.styles = [];
+          return NS.Lexicon.addCustomChar(entry).then(function () { ok++; });
+        });
+      });
+      chain.then(function () {
+        SyncUI.refreshStatus();
+        SyncUI.log('按部首「' + radicalName + '」加入了 ' + ok + ' 个字' +
+          (fail.length ? '；' + fail.length + ' 个查不到：' + fail.join('') : '') +
+          '。', ok ? 'ok' : 'warn');
+        SyncUI.radFind();   /* 重列一遍，已入库的会自动消失 */
       });
     },
 

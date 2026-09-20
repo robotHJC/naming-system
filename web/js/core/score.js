@@ -55,6 +55,10 @@
       style: opts.style || '',
       keywords: (opts.keywords || []).filter(Boolean),
       xiyongshen: opts.xiyongshen || [],
+      /* 部首偏好：至少一个字带所选部首（默认 any），或每个字都要（all） */
+      preferRadicals: (opts.preferRadicals || []).filter(Boolean),
+      avoidRadicals: (opts.avoidRadicals || []).filter(Boolean),
+      radicalMode: opts.radicalMode === 'all' ? 'all' : 'any',
       taboo: {},
       mustInclude: {},
       rowCache: Object.create(null),
@@ -63,6 +67,14 @@
     };
     (opts.taboo || []).forEach(function (c) { if (c) ctx.taboo[c] = 1; });
     (opts.mustInclude || []).forEach(function (c) { if (c) ctx.mustInclude[c] = 1; });
+
+    /* 避用部首 = 硬排除。用户说「不要草字头」就该一个都不出现，
+     * 而不是靠扣分——扣分挡不住它照样出现在高分组合里。 */
+    if (ctx.avoidRadicals.length && NS.Radical) {
+      ctx.avoidRadicals.forEach(function (name) {
+        NS.Radical.charsOf(name).forEach(function (ch) { ctx.taboo[ch] = 1; });
+      });
+    }
     return ctx;
   }
 

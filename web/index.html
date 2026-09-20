@@ -98,6 +98,28 @@
         <summary>高级选项</summary>
 
         <div class="field">
+          <label>偏好部首 <span class="sub">名字里要有这些偏旁的字</span></label>
+          <div class="rad-chips" id="radSeg"></div>
+          <input type="text" id="radCustom" placeholder="也可自己输入部首，逗号分隔，如 艹,氵,宀"
+                 autocomplete="off">
+          <div class="rad-actions">
+            <button type="button" class="btn ghost tiny" id="radByXi">按喜用神推荐</button>
+            <button type="button" class="btn ghost tiny" id="radByZodiac">按生肖推荐</button>
+            <button type="button" class="btn ghost tiny" id="radClear">清空</button>
+          </div>
+          <label class="check" style="margin-top:8px">
+            <input type="checkbox" id="radAll">
+            <span>名中每个字都要带所选偏旁（默认只要有一个）</span>
+          </label>
+          <p class="hint" id="radHint" style="margin:6px 0 0"></p>
+        </div>
+
+        <div class="field">
+          <label for="radAvoid">避用部首 <span class="sub">名字里不要出现这些偏旁</span></label>
+          <input type="text" id="radAvoid" placeholder="如：刂,戈" autocomplete="off">
+        </div>
+
+        <div class="field">
           <label for="taboo">避用字 <span class="sub">名字中不要出现</span></label>
           <input type="text" id="taboo" placeholder="如：梓,涵">
         </div>
@@ -179,7 +201,17 @@
     <p><b>关于并排对比</b>　勾选几个中意的名字，点「并排对比」逐项对照
        （总分 / 五行 / 三才五格 / 热度 / 谐音 / 偏旁 / 诗词 / 小名）。
        对比跨批次保留，可以「换一批」继续挑，选中的不会丢。</p>
-    <p><b>关于数理</b>　三才五格采用康熙笔画，属姓名学「数理派」，与八字喜用神体系未必一致，仅作参考。</p>
+    <p><b>关于部首偏好</b>　选「偏旁」就是限定名字里要有那个偏旁的字
+       （默认只要有一个字带即可，也可勾选「每个字都要」）。
+       「按喜用神推荐」用的是系统给自己字库定的五行口径 ——
+       喜用神是火就推荐日/火/忄/彳，因为这个字库本来就是按这套规则给字定五行的，
+       两边一致，不算拍脑袋。<b>「按生肖推荐」是民间说法，没有经典出处，
+       各家流派也不一致，因此不会自动应用，必须你自己点了才生效，
+       优先级也低于八字喜用神。</b></p>
+    <p><b>关于找字</b>　字库里每个偏旁的字数都标在按钮右上角。
+       想找更多字，到「词库管理」的<b>按部首找字</b>里，
+       可以按部首从《新华字典》里列字（需先同步字典），
+       每字都带笔画、拼音、释义，挑中的可以一次加进字库。</p>
     <p><b>关于字库</b>　内置 373 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
        可在「词库管理」里联网更新：拉取公开的汉字拼音表、新华字典与诗词库，
        并把字库外的字加入进来。数据缓存在浏览器本地，更新一次后离线也可用。</p>
@@ -211,6 +243,7 @@
 <script src="js/data/sichuan.js"></script>
 <script src="js/data/nickname.js"></script>
 <script src="js/data/radicals.js"></script>
+<script src="js/data/radical-hints.js"></script>
 <!-- 核心层 -->
 <script src="js/core/wuxing.js"></script>
 <script src="js/core/calendar.js"></script>

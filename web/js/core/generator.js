@@ -185,6 +185,16 @@
     rows.forEach(function (r) { if (r.kwHits.length) forceIn(r); });
     rows.forEach(function (r) { if (ctx.mustInclude[r.char]) forceIn(r); });
 
+    /* 偏好部首的字必须进池。
+     * 候选池是按「单字基础分」剪枝的（双字名只留 100 字），
+     * 而走之底、鸟字旁这类字基础分未必排得进前 100——
+     * 不强制的话，用户选了「走之底」却一个候选都没有，约束直接被剪枝剪死。 */
+    if (ctx.preferRadicals && ctx.preferRadicals.length && NS.Radical) {
+      rows.forEach(function (r) {
+        if (NS.Radical.matchAny(r.char, ctx.preferRadicals)) forceIn(r);
+      });
+    }
+
     return {
       rows: picked,
       poolSize: rows.length,
@@ -262,6 +272,7 @@
     while ((combo = it.next()) !== null) {
       rows = combo.map(function (i) { return p.pool[i]; });
       if (!passMust(rows, p)) continue;
+      if (!passRadical(rows, p)) continue;
       ev = NS.Score.evaluate(rows.map(function (r) { return r.obj; }), p.ctx);
       if (!ev.detail.homophone.pass) continue;
       best.push({ score: ev.score, item: toResult(rows.map(function (r) { return r.obj; }), ev, p.ctx) });
@@ -273,6 +284,18 @@
     if (opt && opt.full) return ranking;
     var off = p.offset || 0;
     return ranking.slice(off, off + p.top);
+  }
+
+  /** 部首偏好：至少一个字带所选部首，或每个字都要带 */
+  function passRadical(rows, p) {
+    var want = p.ctx.preferRadicals;
+    if (!want || !want.length) return true;
+    if (!NS.Radical) return true;
+    var hit = 0;
+    for (var i = 0; i < rows.length; i++) {
+      if (NS.Radical.matchAny(rows[i].char, want)) hit++;
+    }
+    return p.ctx.radicalMode === 'all' ? hit === rows.length : hit >= 1;
   }
 
   /** rows 为候选行数组（含 .char） */
@@ -315,6 +338,7 @@
         done++;
         var rows = combo.map(function (i) { return p.pool[i]; });
         if (!passMust(rows, p)) continue;
+        if (!passRadical(rows, p)) continue;
         var chars = rows.map(function (r) { return r.obj; });
         var ev = NS.Score.evaluate(chars, p.ctx);
         if (!ev.detail.homophone.pass) continue;

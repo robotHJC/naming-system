@@ -21,6 +21,7 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/homophone.js',
   'data/popularity.js', 'data/fanti.js', 'data/sources.js',
   'data/cities.js', 'data/sichuan.js', 'data/nickname.js', 'data/radicals.js',
+  'data/radical-hints.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/net.js', 'core/infer.js', 'core/dialect.js',
@@ -635,12 +636,26 @@ section('6e. 偏旁重复检测');
   eq('高频起名用字必须已归组', ungrouped.length, 0,
     '漏了：' + ungrouped.join(''));
 
-  /* 关键设计约束：偏旁重复只提示、不参与评分。
-   * 偏旁表只覆盖内置字库，若参与扣分，会让「联网加字」暗中拉低分数。 */
+  /* 关键设计约束：**偏旁重复检测**只提示、不参与评分。
+   * 偏旁表只覆盖字库里的常用字，若拿它扣分，会让「联网加字」暗中拉低分数。
+   *
+   * 注意别把约束写粗了：score.js 的 buildContext 里确实用了 NS.Radical，
+   * 那是「避用部首」的硬排除（用户显式要求「不要草字头」），属于筛选不是扣分。
+   * 所以要守的是 evaluate() 本体，而不是整个文件 —— 最初写成整文件断言，
+   * 加避用部首功能时就误报了。 */
   const scoreSrc = require('fs').readFileSync(
     path.join(BASE, 'core', 'score.js'), 'utf8');
-  ok('评分模块完全不引用偏旁检测（确保不参与扣分）',
-    scoreSrc.indexOf('Radical') < 0 && scoreSrc.indexOf('偏旁') < 0);
+  const evStart = scoreSrc.indexOf('function evaluate(');
+  const evEnd = scoreSrc.indexOf('function uniq(', evStart);
+  const evSrc = (evStart >= 0 && evEnd > evStart)
+    ? scoreSrc.slice(evStart, evEnd) : '';
+  ok('evaluate() 本体不引用偏旁检测（偏旁重复不参与打分）',
+    evSrc.length > 200 && evSrc.indexOf('Radical') < 0 && evSrc.indexOf('偏旁') < 0,
+    'evaluate 片段长度 ' + evSrc.length);
+  ok('避用部首走 buildContext 的硬排除，不是扣分',
+    scoreSrc.indexOf('NS.Radical') >= 0 &&
+    scoreSrc.indexOf('NS.Radical') < evStart,
+    'NS.Radical 出现在 ' + scoreSrc.indexOf('NS.Radical') + '，evaluate 在 ' + evStart);
 }
 
 /* ---------------- 6f. 同音替换 ---------------- */
@@ -803,6 +818,165 @@ section('6g. 词库外同音字（联网拼音表）');
     ok('新名字确实用上了替换字',
       g0.options.every(o => o.name.indexOf(o.char) >= 0));
   }
+}
+
+/* ---------------- 6h. 部首偏好 ---------------- */
+section('6h. 部首偏好（选偏旁限定用字）');
+{
+  const list = NS.Radical.pickerList();
+  console.log('  可选部首 ' + list.length + ' 个，前 8：' +
+    list.slice(0, 8).map(x => x.name + '(' + x.count + ')').join(' '));
+  ok('部首候选表非空', list.length > 5);
+  ok('候选表按字库内字数降序',
+    list.every((x, i) => i === 0 || list[i - 1].count >= x.count));
+  ok('每个候选都标了字库内字数', list.every(x => x.count > 0));
+  ok('「艹」在候选中且字数不少', list.some(x => x.name === '艹' && x.count >= 30));
+
+  /* 用户点名的走之底：原来字库里只有 2 个字，做成选项没意义，已补到 10 个以上 */
+  const zouzhi = NS.Radical.charsOf('辶');
+  console.log('  走之底：' + zouzhi.length + ' 字 ' + zouzhi.join(''));
+  ok('走之底至少 8 个字可供选择', zouzhi.length >= 8, zouzhi.join(''));
+
+  ok('matchAny 能识别单字所属部首',
+    NS.Radical.matchAny('芝', ['艹']) === true &&
+    NS.Radical.matchAny('芝', ['氵']) === false);
+  ok('matchAny 支持多个部首任选',
+    NS.Radical.matchAny('芝', ['氵', '艹']) === true);
+  ok('认不出不存在的部首名', NS.Radical.isValidName('不存在的部首') === false);
+
+  /* 五行→部首表现在是**从字库实时推导**的（以前硬编码，硬编码版本会推荐
+   * 「喜用神土 → 单人旁」，而字库里单人旁 44% 是土、33% 是金，站不住脚）。
+   * 断言两件事：①按阈值筛出来的组确实达标；②几个公认的映射必须存在。 */
+  const wxMap = NS.Radical.wuxingMap();
+  const wxRows = [];
+  Object.keys(wxMap).forEach(wx => wxMap[wx].forEach(x => wxRows.push({ wx, ...x })));
+  console.log('  五行→部首推导结果：' + Object.keys(wxMap).map(wx =>
+    wx + ':' + wxMap[wx].map(x => x.name + '(' + Math.round(x.share * 100) + '%)').join('/')
+  ).join('  '));
+  ok('推导出的每个部首组，主导五行占比都 ≥90%',
+    wxRows.length > 0 && wxRows.every(x => x.share >= 0.9),
+    wxRows.filter(x => x.share < 0.9).map(x => x.name + '=' + x.share).join(','));
+  ok('每个推导项都带样本数，避免小组凭运气达标',
+    wxRows.every(x => x.n > 0));
+  const mustHave = [['水', '氵'], ['木', '艹'], ['木', '木'], ['金', '钅'], ['火', '日']];
+  const wxNames = {};
+  Object.keys(wxMap).forEach(wx => { wxNames[wx] = wxMap[wx].map(x => x.name); });
+  ok('公认映射存在（氵→水、艹→木、钅→金、日→火）',
+    mustHave.every(([w, r]) => wxNames[w] && wxNames[w].indexOf(r) >= 0),
+    JSON.stringify(wxNames));
+  /* 混杂的分组不能被推荐出去 */
+  ok('混杂分组不会被推荐（亻/宀/口/忄 至少不在土与火的推荐里）',
+    !(wxNames['土'] || []).includes('宀') &&
+    !(wxNames['土'] || []).includes('亻') &&
+    !(wxNames['火'] || []).includes('忄'),
+    '土=' + (wxNames['土'] || []).join('/') + ' 火=' + (wxNames['火'] || []).join('/'));
+
+  /* NS.WUXING_RADICALS 是 wuxingMap 的便捷视图，两者必须一致 */
+  ok('NS.WUXING_RADICALS 与 wuxingMap 一致',
+    NS.WUXING_RADICALS && NS.WUXING_RADICALS['水'].indexOf('氵') >= 0 &&
+    NS.WUXING_RADICALS['金'].indexOf('钅') >= 0,
+    JSON.stringify(NS.WUXING_RADICALS && NS.WUXING_RADICALS['水']));
+
+  /* 生肖表只能引用真实存在的部首，且界面上要标明是民俗 */
+  const zoBad = [];
+  Object.keys(NS.ZODIAC_RADICALS).forEach(z => {
+    NS.ZODIAC_RADICALS[z].forEach(name => {
+      if (!NS.Radical.isValidName(name)) zoBad.push(z + '→' + name);
+    });
+  });
+  ok('生肖→部首表只引用真实存在的部首', zoBad.length === 0, zoBad.join('、'));
+
+  /* --- 真正参与生成 --- */
+  const base = { surname: '李', length: 2, top: 8 };
+
+  const zou = NS.Generator.runSync(NS.Generator.plan(
+    Object.assign({ preferRadicals: ['辶'] }, base)));
+  console.log('  限定走之底 → ' + zou.map(r => r.name).join(' '));
+  ok('限定「走之底」时结果非空', zou.length > 0);
+  ok('每个结果都含走之底的字',
+    zou.every(r => r.chars.some(c => NS.Radical.matchAny(c, ['辶']))),
+    zou.map(r => r.name).join(' '));
+
+  const two = NS.Generator.runSync(NS.Generator.plan(
+    Object.assign({ preferRadicals: ['艹', '氵'] }, base)));
+  ok('多个部首任选其一也生效',
+    two.every(r => r.chars.some(c => NS.Radical.matchAny(c, ['艹', '氵']))),
+    two.map(r => r.name).join(' '));
+
+  const allMust = NS.Generator.runSync(NS.Generator.plan(
+    Object.assign({ preferRadicals: ['艹'], radicalMode: 'all' }, base)));
+  console.log('  要求每个字都带艹 → ' + allMust.map(r => r.name).join(' '));
+  ok('「每个字都要带」模式下两个字都有该部首',
+    allMust.length > 0 &&
+    allMust.every(r => r.chars.every(c => NS.Radical.matchAny(c, ['艹']))),
+    allMust.map(r => r.name).join(' '));
+
+  const avoided = NS.Generator.runSync(NS.Generator.plan(
+    Object.assign({ avoidRadicals: ['艹'] }, base)));
+  console.log('  避用草字头 → ' + avoided.slice(0, 6).map(r => r.name).join(' '));
+  ok('避用部首是硬排除，一个字都不出现',
+    avoided.length > 0 &&
+    avoided.every(r => r.chars.every(c => !NS.Radical.matchAny(c, ['艹']))),
+    avoided.map(r => r.name).join(' '));
+
+  /* 不设偏好时行为与以前一致（不该凭空少结果） */
+  const plain = NS.Generator.runSync(NS.Generator.plan(base));
+  ok('未设部首偏好时结果不受影响', plain.length === base.top);
+
+  /* 联网字典未同步时，部首找字要如实说「不可用」，不能假装有结果。
+   * 这里必须连 dictCount 一起置 0 —— ensureLoaded() 之后 dict 是**空对象**而非 null，
+   * 只把 dict 置 null 是测不出这个 bug 的（实测漏过一次，界面上报的是
+   * 「字典里没找到这个部首」而不是「还没同步字典」，把用户往错误方向引）。 */
+  const savedDict = NS.Lexicon.dict;
+  NS.Lexicon.dict = Object.create(null);   /* dictCount 由它算出来，会跟着变 0 */
+  const q0 = NS.Radical.fromDict('辶');
+  NS.Lexicon.dict = savedDict;
+  ok('未同步字典时 fromDict 标记为不可用',
+    q0.available === false && q0.items.length === 0,
+    JSON.stringify(q0).slice(0, 60));
+
+  /* 造一份字典夹具，验证按部首反查（字典的部首字段用传统部首字：辵 而非 辶） */
+  NS.Lexicon.applyDict({
+    '迤': [10, '辵', 'yǐ', '（形声。从辵，也声）曲折连绵'],
+    '迢': [8, '辵', 'tiáo', '遥远'],
+    '蓬': [13, '艹', 'péng', '蓬草']
+  });
+  NS.Lexicon.applyPinyin({
+    '迤': { pinyin: 'yi', tone: 3 },
+    '迢': { pinyin: 'tiao', tone: 2 }
+  });
+  const q1 = NS.Radical.fromDict('辶');
+  console.log('  按走之底查字典 → ' + q1.items.map(x => x.char).join(' ') +
+    '（可用 ' + q1.available + '）');
+  ok('字典里用传统部首「辵」也能被「辶」查到',
+    q1.items.some(x => x.char === '迤') && q1.items.some(x => x.char === '迢'),
+    q1.items.map(x => x.char).join(''));
+  ok('查出来的候选带齐笔画/拼音/释义',
+    q1.items.every(x => x.strokes > 0 && x.meaning && x.radical));
+  /* 字典释义常以「（形声。从辵…）」开头，占满界面且对选字没帮助，要去掉 */
+  const yiItem = q1.items.filter(x => x.char === '迤')[0];
+  ok('释义头部的六书说明被去掉',
+    yiItem && yiItem.meaning.indexOf('形声') < 0 &&
+    yiItem.meaning.indexOf('曲折连绵') >= 0,
+    yiItem ? yiItem.meaning : '(缺)');
+  ok('不相关的部首不会被带进来',
+    q1.items.every(x => x.char !== '蓬'));
+  /* 只同步字典、没同步拼音表时，候选也必须被正确判为「适合」。
+   * 字典自己带拼音（d[2]），早期版本却要求拼音表里也有这个字，
+   * 实测导致 0/92 全部被划成不适合。
+   * 注意这段必须放在字典夹具**之后** —— 放到前面就是在测空字典。 */
+  const dictOnly = NS.Radical.fromDict('辶');
+  const suitableN = dictOnly.items.filter(x => x.suitable).length;
+  console.log('  只看字典（无拼音表）→ ' + dictOnly.items.length +
+    ' 个候选，其中 ' + suitableN + ' 个笔画适中');
+  ok('只有字典时也能判定「适合起名」', suitableN > 0,
+    suitableN + '/' + dictOnly.items.length);
+  ok('候选都带上了字典提供的拼音',
+    dictOnly.items.every(x => !!x.pinyin));
+
+  /* 已经在字库里的字不该再列一遍，否则用户会重复入库 */
+  ok('字库里已有的字不重复列出',
+    NS.Radical.fromDict('艹').items.every(x => !NS.CHAR_DB[x.char]));
 }
 
 /* ---------------- 7. 预置数据灌入 ---------------- */

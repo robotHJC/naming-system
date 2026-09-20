@@ -596,8 +596,135 @@ input::placeholder { color: #b6b0a4; }
   letter-spacing: .04em;
 }
 
-/* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */
-.nc-poetry-kind {
+/* =========================================================================
+ * 部首偏好选择
+ * ========================================================================= */
+
+.rad-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.rad-chip {
+  position: relative;
+  padding: 5px 16px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfaf6;
+  color: var(--ink-2);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+  transition: all .12s;
+}
+
+/* 右上角的角标：字库里有几个这样的字。选择空间大小先摆出来，
+ * 免得用户选了「走之底」才发现只有两个字可用 */
+.rad-chip i {
+  position: absolute;
+  top: -6px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #e6e1d6;
+  color: var(--ink-3);
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 9.5px;
+  line-height: 15px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.rad-chip:hover { border-color: var(--jade-light); color: var(--jade); }
+
+.rad-chip.on {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #fff;
+}
+
+.rad-chip.on i { background: rgba(255, 255, 255, .3); color: #fff; }
+
+.rad-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn.tiny {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+/* =========================================================================
+ * 按部首找字（词库管理）
+ * ========================================================================= */
+
+.lex-rad-box {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.lex-rad-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 6px;
+  margin: 10px 0;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.lex-rad-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfaf6;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.lex-rad-item:hover { border-color: var(--jade-light); }
+
+.lex-rad-item b {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--ink);
+  margin-right: 4px;
+}
+
+.lex-rad-item .lr-meta { color: var(--ink-3); font-size: 11px; }
+
+.lex-rad-item .lr-mean {
+  display: block;
+  color: var(--ink-2);
+  font-size: 11px;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 笔画不在 4–16 区间或没有读音/释义的，视觉上压暗：
+ * 不是不能用，只是不当起名用字 */
+.lex-rad-item.dim { opacity: .52; }
+
+.lex-rad-item input { accent-color: var(--jade); }
+
+/* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */.nc-poetry-kind {
   display: inline-block;
   margin-right: 6px;
   padding: 1px 7px;
