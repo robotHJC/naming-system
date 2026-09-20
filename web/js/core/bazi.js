@@ -149,6 +149,39 @@
   }
 
   /**
+   * 十神力量：用与五行力量完全相同的权重
+   * （天干 1.0、藏干按本气 1.0 / 中气 0.5 / 余气 0.3、月令 ×1.5）。
+   *
+   * 两个容易搞错的地方：
+   *  1. 日主自己不算十神 —— 它是参照物。所以日柱的**天干**跳过，
+   *     但日柱的**地支藏干**要算（那是夫妻宫，是别人）。
+   *  2. 十神不只看天干，藏干也要看 —— 只算四个天干会丢掉大部分信息。
+   */
+  function shishenStrength(bz) {
+    var dayGan = bz.日[0];
+    var s = Object.create(null);
+    ['年', '月', '日', '时'].forEach(function (k) {
+      if (k !== '日') {
+        var g = NS.shishen(dayGan, bz[k][0]);
+        if (g) s[g] = (s[g] || 0) + 1.0;
+      }
+      var cg = NS.DIZHI_CANGGAN[bz[k][1]];
+      for (var i = 0; i < cg.length; i++) {
+        var w = NS.CANGGAN_WEIGHT[i] || 0.3;
+        if (k === '月') w *= 1.5;
+        var n = NS.shishen(dayGan, NS.TIANGAN.indexOf(cg[i]));
+        if (n) s[n] = (s[n] || 0) + w;
+      }
+    });
+    return s;
+  }
+
+  /* 十神的固定展示顺序（比劫 → 印 → 食伤 → 财 → 官杀），
+   * 不按数值排 —— 按数值排会让同一次八字的不同说明里顺序乱跳。 */
+  var SHISHEN_ORDER = ['比肩', '劫财', '偏印', '正印', '食神', '伤官',
+    '偏财', '正财', '七杀', '正官'];
+
+  /**
    * 完整分析：五行、日主、身强身弱、喜用神
    */
   function analyzeBazi(year, month, day, hour, minute, opts) {
@@ -202,7 +235,7 @@
 
     var missing = NS.WUXING.filter(function (w) { return count[w] === 0; });
 
-    return {
+    var result = {
       bazi: bz,
       baziStr: baziString(bz),
       pillars: ['年', '月', '日', '时'].map(function (k) {
@@ -212,8 +245,16 @@
           zhi: NS.DIZHI[bz[k][1]],
           ganWx: NS.TIANGAN_WUXING[bz[k][0]],
           zhiWx: NS.DIZHI_WUXING[bz[k][1]],
+          /* 十神相对日主而言；日柱天干就是日主本身，所以留空不标 */
+          ganShishen: (k === '日') ? '日主' : NS.shishen(dayGan, bz[k][0]),
+          ganYinYang: NS.ganYinYang(bz[k][0]),
           cangGan: NS.DIZHI_CANGGAN[bz[k][1]].map(function (g) {
-            return { gan: g, wx: NS.TIANGAN_WUXING[NS.TIANGAN.indexOf(g)] };
+            return {
+              gan: g,
+              wx: NS.TIANGAN_WUXING[NS.TIANGAN.indexOf(g)],
+              shishen: NS.shishen(dayGan, NS.TIANGAN.indexOf(g)),
+              yinYang: NS.ganYinYang(NS.TIANGAN.indexOf(g))
+            };
           })
         };
       }),
@@ -225,16 +266,40 @@
       ratio: ratio,
       dayGan: NS.TIANGAN[dayGan],
       dayWx: dayWx,
+      dayYinYang: NS.ganYinYang(dayGan),
       strength: strength,
       xiyongshen: candidates,
       missing: missing,
       shengxiao: NS.SHENGXIAO[bz.年[1]],
+      /* 十神（完整十个）。和身强身弱用的 byRel 是两回事：
+       * byRel 只分 5 大类且按五行汇总，这里是按十神逐个汇总，
+       * 用于展示「这个八字里哪些十神旺、哪些全无」。 */
+      shishen: (function () {
+        var power = shishenStrength(bz);
+        var present = SHISHEN_ORDER.filter(function (n) { return power[n] > 0; });
+        return {
+          power: power,
+          present: present,
+          /* 八字里一个都没有的十神。传统上「缺什么」不等于「该补什么」，
+           * 和 missing（五行）同理，只作展示，不直接驱动选字。 */
+          missing: SHISHEN_ORDER.filter(function (n) { return !power[n]; }),
+          dominant: present.slice().sort(function (a, b) {
+            return power[b] - power[a];
+          })[0] || null,
+          dayYinYang: NS.ganYinYang(dayGan)
+        };
+      })(),
       /* 年柱纳音（民俗命理口径）。
        * 与年柱干支五行**不同源**，2026 丙午就是典型案例：
        * 干支是火、纳音却是「天河水」属水。所以两者要并列展示，不能合并。 */
       nayin: NS.nayinOfGanzhi ? NS.nayinOfGanzhi(bz.年[0], bz.年[1]) : null,
       meta: bz.meta
     };
+
+    /* 调候（寒暖燥湿）。单独一步、放在最后 ——
+     * 它要读刚算好的 power 与 xiyongshen，而且只做提示不改结果。 */
+    result.tiaohou = NS.Tiaohou ? NS.Tiaohou.analyze(result) : null;
+    return result;
   }
 
   NS.Bazi = {
@@ -242,6 +307,8 @@
     baziString: baziString,
     wuxingCount: wuxingCount,
     wuxingStrength: wuxingStrength,
+    shishenStrength: shishenStrength,
+    SHISHEN_ORDER: SHISHEN_ORDER,
     analyzeBazi: analyzeBazi,
     trueSolar: trueSolar
   };

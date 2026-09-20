@@ -10,8 +10,9 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
-  'data/nayin.js',
-  'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
+  'data/nayin.js', 'data/shuli81.js',
+  'core/wuxing.js', 'core/calendar.js', 'core/tiaohou.js', 'core/bazi.js',
+  'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/infer.js', 'core/lexicon.js', 'core/radical.js', 'core/variant.js',
   'core/hexagram.js', 'core/zodiac.js', 'core/report.js'
@@ -822,6 +823,157 @@ section('16. 名字评估（自定义名字）');
   /* 全生僻字：应返回 null 而不是崩 */
   const none = NS.Report.evaluate('郝', '龘靐', { bazi: b });
   eq('字库外的名字返回 null 而不是崩溃', none, null);
+}
+
+/* ---------------- 17. 十神 ---------------- */
+section('17. 十神');
+{
+  /* 口诀对照：这些关系在任何一本命理入门书里都固定，用来锁死实现别写反。
+   * 重点是同时覆盖阳干与阴干 —— 只测甲木日主的话，
+   * 阴阳判断写反了也照样全过。 */
+  const CASES = [
+    ['甲', '甲', '比肩'], ['甲', '乙', '劫财'],
+    ['甲', '丙', '食神'], ['甲', '丁', '伤官'],
+    ['甲', '戊', '偏财'], ['甲', '己', '正财'],
+    ['甲', '庚', '七杀'], ['甲', '辛', '正官'],
+    ['甲', '壬', '偏印'], ['甲', '癸', '正印'],
+    ['辛', '辛', '比肩'], ['辛', '庚', '劫财'],
+    ['辛', '壬', '伤官'], ['辛', '癸', '食神'],
+    ['辛', '甲', '正财'], ['辛', '乙', '偏财'],
+    ['辛', '丙', '正官'], ['辛', '丁', '七杀'],
+    ['辛', '戊', '正印'], ['辛', '己', '偏印'],
+    ['壬', '甲', '食神'], ['壬', '乙', '伤官'],
+    ['壬', '戊', '七杀'], ['壬', '己', '正官'],
+    ['壬', '庚', '偏印'], ['壬', '辛', '正印']
+  ];
+  let wrong = 0;
+  CASES.forEach(([d, t, want]) => { if (NS.shishen(d, t) !== want) wrong++; });
+  eq('十神口诀对照全部正确（含阳干与阴干日主）', wrong, 0);
+
+  /* 阴阳必须与天干下标奇偶一致 */
+  let yy = 0;
+  NS.TIANGAN.forEach((g, i) => {
+    const want = (i % 2 === 0) ? '阳' : '阴';
+    if (NS.ganYinYang(i) !== want || NS.ganYinYang(g) !== want) yy++;
+  });
+  eq('天干阴阳与下标奇偶一致', yy, 0);
+
+  const r = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  eq('四柱正确', r.baziStr, '丙午 癸巳 甲午 己巳');
+  eq('日主为甲（阳木）', r.dayGan + r.dayYinYang + r.dayWx, '甲阳木');
+  /* 日柱天干就是日主自己，不能标成某个十神 */
+  eq('日柱天干标注为「日主」', r.pillars[2].ganShishen, '日主');
+  eq('年柱天干为食神（甲见丙）', r.pillars[0].ganShishen, '食神');
+  eq('月柱天干为正印（甲见癸）', r.pillars[1].ganShishen, '正印');
+  eq('时柱天干为正财（甲见己）', r.pillars[3].ganShishen, '正财');
+  /* 藏干也要带十神，只算四个天干会丢掉大半信息 */
+  eq('月支巳藏干十神齐全', r.pillars[1].cangGan.map(c => c.shishen).join(','),
+    '食神,七杀,偏财');
+  /* 月令 ×1.5：已中丙(食神) 1.5 + 年干丙 1.0 + 时支巳丙 1.0 = 3.5 */
+  ok('月令加成算进十神力量', Math.abs(r.shishen.power['食神'] - 3.5) < 0.01,
+    String(r.shishen.power['食神']));
+  eq('最旺十神为食神', r.shishen.dominant, '食神');
+  eq('没出现的十神只有 4 个', r.shishen.missing.length, 4);
+  ok('十个十神都有展示顺序', NS.Bazi.SHISHEN_ORDER.length === 10);
+
+  /* 换一个八字，确认十个十神都能产出（不是只有这一组碰巧） */
+  const seen = new Set();
+  for (let y = 1980; y <= 2020; y += 2) {
+    for (let m = 1; m <= 12; m += 3) {
+      const a = NS.Bazi.analyzeBazi(y, m, 15, 10, 0);
+      Object.keys(a.shishen.power).forEach(k => seen.add(k));
+    }
+  }
+  eq('多种八字能覆盖全部十个十神', seen.size, 10);
+
+  const rep = NS.Report.evaluate('郝', '清和', { bazi: r });
+  ok('评估报告里有「十神」块',
+    rep.blocks.some(x => x.title === '十神'),
+    rep.blocks.map(x => x.title).join(','));
+}
+
+/* ---------------- 18. 调候 ---------------- */
+section('18. 调候（寒暖燥湿）');
+{
+  /* 十二地支必须不重不漏地归入四季，且四季各三个 */
+  const seasons = {};
+  NS.DIZHI.forEach(z => {
+    const s = NS.Tiaohou.SEASON_OF[z];
+    seasons[s] = (seasons[s] || 0) + 1;
+  });
+  eq('十二地支全部归季', Object.keys(seasons).length, 4);
+  eq('每季恰好三个月支',
+    ['春', '夏', '秋', '冬'].map(s => seasons[s]).join(','), '3,3,3,3');
+  eq('冬月宜火', NS.Tiaohou.NEED['冬'], '火');
+  eq('夏月宜水', NS.Tiaohou.NEED['夏'], '水');
+  /* 春秋必须不判定 —— 这是刻意的克制，不是漏了 */
+  ok('春秋不给方向（各家说法不一，宁可不判）',
+    !NS.Tiaohou.NEED['春'] && !NS.Tiaohou.NEED['秋']);
+
+  const summer = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);   /* 巳月 */
+  ok('巳月判定为夏', summer.tiaohou.season === '夏' && summer.tiaohou.applies);
+  eq('夏月调候宜水', summer.tiaohou.needWx, '水');
+
+  const winter = NS.Bazi.analyzeBazi(2026, 1, 20, 10, 0);   /* 丑月 */
+  eq('丑月判定为冬、宜火', winter.tiaohou.needWx, '火');
+
+  const spring = NS.Bazi.analyzeBazi(2026, 4, 20, 10, 0);   /* 辰月 */
+  ok('辰月不判定', spring.tiaohou.applies === false);
+  ok('不判定时也有说明文案', spring.tiaohou.note.length > 10);
+
+  /* 冲突时必须标出来，且说明以扶抑法为准 —— 不能默默换口径 */
+  const conf = NS.Bazi.analyzeBazi(2026, 6, 15, 10, 0);
+  if (conf.tiaohou.conflict) {
+    ok('口径冲突时 note 里点明「不一致」', conf.tiaohou.note.indexOf('不一致') >= 0);
+    ok('调候不进入喜用神（不参与选字）',
+      conf.xiyongshen.indexOf(conf.tiaohou.needWx) < 0);
+    const rp = NS.Report.evaluate('郝', '清和', { bazi: conf });
+    const blk = rp.blocks.filter(x => x.title.indexOf('调候') >= 0)[0];
+    ok('报告里用 warn 色标出冲突', !!blk && blk.tone === 'warn',
+      blk ? blk.tone : '(没有调候块)');
+  } else {
+    ok('该样本本不冲突，跳过冲突断言', true);
+  }
+}
+
+/* ---------------- 19. 八十一数理 ---------------- */
+section('19. 八十一数理');
+{
+  eq('收录 1-81 全部', Object.keys(NS.SHULI81).length, 81);
+  let miss = 0;
+  for (let i = 1; i <= 81; i++) if (!NS.SHULI81[i]) miss++;
+  eq('没有缺号', miss, 0);
+  ok('每条都有吉凶与数名', Object.keys(NS.SHULI81).every(n => {
+    const e = NS.SHULI81[n];
+    return e.ji && e.name && e.text;
+  }));
+
+  /* 超过 81 减 80，直到落回 1..81 */
+  eq('83 → 3', NS.shuliOf(83).n, 3);
+  eq('90 → 10', NS.shuliOf(90).n, 10);
+  eq('162 → 2', NS.shuliOf(162).n, 2);
+  /* 161-80=81，81 已在范围内，所以停在 81（不是继续减到 1） */
+  eq('161 → 81（减到范围内即停）', NS.shuliOf(161).n, 81);
+  eq('非法输入返回 null', NS.shuliOf(0), null);
+
+  /* 与真实姓名联动：五个格都必须查得到判语 */
+  const w = NS.Wuge.calcWuge([14], [12, 8]);      /* 郝 + 清和 */
+  const found = ['天格', '人格', '地格', '总格', '外格']
+    .map(k => NS.shuliOf(w[k])).filter(Boolean);
+  eq('五个格都能查到数理判语', found.length, 5);
+  console.log('  郝清和 五格：' + ['天格', '人格', '地格', '总格', '外格']
+    .map(k => k + w[k] + '「' + NS.shuliOf(w[k]).name + '·' + NS.shuliOf(w[k]).ji + '」')
+    .join('　'));
+
+  /* 报告里要把数理判语带出来 */
+  const b = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  const rep = NS.Report.evaluate('郝', '清和', { bazi: b });
+  const shu = rep.blocks.filter(x => x.basis === '数理')[0];
+  ok('数理块里有八十一数理', !!shu && shu.lines.join('').indexOf('八十一数理') >= 0,
+    shu ? shu.lines.join(' | ').slice(0, 80) : '(没有数理块)');
+  /* 数理派必须说明它不加分，否则会被当成和五行同权重的依据 */
+  ok('数理块说明了它不参与评分',
+    !!shu && shu.lines.join('').indexOf('不参与评分') >= 0);
 }
 
 console.log(`\n${'='.repeat(52)}`);

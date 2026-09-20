@@ -418,7 +418,25 @@ input::placeholder { color: #b6b0a4; }
   font-size: 11px;
   color: var(--ink-3);
   letter-spacing: .18em;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+/* 十神：传统排盘放在干支上方 */
+.pillar .ss {
+  font-size: 10.5px;
+  color: var(--ink-2);
+  letter-spacing: .06em;
+  margin-bottom: 3px;
+  padding: 1px 0;
+  border-radius: 4px;
+  background: #f1eee7;
+}
+
+/* 日柱天干就是日主自己，不是十神，用不同底色区分 */
+.pillar .ss.self {
+  background: var(--jade-pale);
+  color: var(--jade);
+  font-weight: 600;
 }
 
 .pillar .gz {
@@ -434,6 +452,100 @@ input::placeholder { color: #b6b0a4; }
   color: var(--ink-3);
   margin-top: 4px;
   letter-spacing: .02em;
+}
+
+.pillar .cg span { cursor: help; }
+
+/* ---------------- 十神汇总 ---------------- */
+.ss-box {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fbfaf6;
+}
+
+.ss-head {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.ss-head .ss-sub {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.ss-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ss-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.ss-item b { font-weight: 500; }
+.ss-item i {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* 八字里没有这个十神 —— 压暗但留着，让人看到「十神齐全与否」 */
+.ss-item.zero { opacity: .45; }
+.ss-item.zero i { color: var(--ink-3); }
+
+/* 最旺的那个高亮 */
+.ss-item.top {
+  background: var(--jade-pale);
+  border-color: #cfe0d8;
+  color: var(--jade);
+}
+
+.ss-item.top i { color: var(--jade); font-weight: 600; }
+
+/* ---------------- 调候提示 ----------------
+ * 只是「多给一个视角」，不改推荐，所以做得比十神那块轻：
+ * 一行文字、不占大块版面。与扶抑法口径不一致时才换警示色。 */
+.th-box {
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--jade);
+  border-radius: 6px;
+  background: var(--jade-pale);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: #3c5a50;
+}
+
+.th-box.warn {
+  border-left-color: var(--gold);
+  background: var(--gold-pale);
+  color: #6b5a30;
+}
+
+.th-box .th-cf {
+  display: block;
+  margin-top: 3px;
+  color: #8a6a20;
+}
+
+.th-box .th-ok {
+  margin-left: 6px;
+  opacity: .8;
 }
 
 .wx-1 { color: var(--jade); }
@@ -867,6 +979,26 @@ details.more > summary:hover { color: var(--jade); }
 .wuge-table td:first-child { color: var(--ink-3); font-size: 12px; width: 88px; }
 .wuge-table td b { color: var(--ink); font-size: 14px; }
 .wuge-table td .wx { font-family: var(--font-serif); margin-left: 4px; }
+
+/* 第三列：八十一数理的判语。这一列以前一直是空的 */
+.wuge-table td.sl-cell {
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+
+.wuge-table td.sl-cell b {
+  display: inline-block;
+  min-width: 14px;
+  margin-right: 5px;
+  font-size: 12px;
+}
+
+/* 吉凶用色区分，但饱和度压低 —— 数理派不该比五行更抢眼 */
+.wuge-table .sl-ji { color: var(--jade); }
+.wuge-table .sl-xiong { color: #a63a2e; }
+.wuge-table .sl-half { color: var(--gold); }
+.wuge-table td.sl-cell .sl-name { color: var(--ink-3); }
 
 .more-note {
   margin: 10px 0 0;
@@ -2282,6 +2414,35 @@ details.more > summary:hover { color: var(--jade); }
        <b>本系统的立场：三套并列展示、不合并、不按生肖自动限制用字</b>；
        真要取舍时<b>以八字喜用神为准</b>。万一生肖宜忌与喜用神冲突，
        评估报告里会专门列一段把冲突指出来。</p>
+    <p><b>关于十神</b>　十神是八字分析的基本语言：把五行力量换成「相对日主扮演什么角色」——
+       <b>比肩/劫财</b>（同辈）、<b>正印/偏印</b>（长辈、学业）、<b>食神/伤官</b>（才华、子女）、
+       <b>正财/偏财</b>（财物）、<b>正官/七杀</b>（事业、约束）。
+       分法是「生克关系 + 阴阳异同」：同性为偏（偏印/偏财/七杀），异性为正，
+       只有比劫一对反着来（同阴阳才是比肩）。所以<b>不需要额外的数据表</b>，
+       天干下标奇偶就是阴阳。力量按天干 1.0、藏干本气 1.0／中气 0.5／余气 0.3、月令 ×1.5 加权，
+       <b>日柱天干是日主自己，不计入十神</b>。
+       注意：<b>「十神齐不齐」和「五行缺不缺」一样，不等于该补什么</b> ——
+       要看它对日主是喜是忌，本系统不因「缺某个十神」而改推荐。</p>
+    <p><b>关于调候（寒暖燥湿）</b>　除了「扶抑法」（身弱宜生扶、身强宜克泄耗），
+       命理里还有一套平行的<b>调候法</b>：冬月生天寒宜见火暖局、夏月生天燥宜见水润局。
+       两套经常给出不同结论，这很正常 ——
+       <b>扶抑看的是全局力量对比，调候看的只是寒暖燥湿，本来就不是一回事。</b>
+       本系统两套都算：冬夏两季会给出调候方向，与扶抑法不一致时用醒目颜色标出来，
+       并明确<b>仍按扶抑法选字</b>。
+       <b>春、秋两季本系统不判定</b>：调候取向随日干而变、各家印本说法不一，
+       既然没有把握，就宁可少说一条 —— 这比拿一个不确定的依据去反驳正确的结论要好。
+       本系统没有收录《穷通宝鉴》那种「日干 × 月令 → 用神」的 120 条查表，
+       原因同上：那张表各版本之间本就有出入，而<b>凭记忆录入 120 条、错了不会有任何报错</b>，
+       这和字库康熙笔画那件事是同一个教训。</p>
+    <p><b>关于八十一数理</b>　天格、人格、地格、总格、外格各自落到 1-81 的某个数，
+       每个数配一段吉凶判语（如 15 福寿之数·吉、22 秋草逢霜·凶）。超过 81 的按惯例减 80，
+       直到落回 1-81（例：83 → 3）。
+       <b>这是姓名学（五格剖象法）的内容，源自 20 世纪初日本熊崎健翁的整理，
+       与正统子平八字没有渊源。</b>
+       另外<b>吉凶分级各家印本有出入</b>：像 3、13、23、35 这些各本一致，
+       但 26、27、30、38、40、51、55、58、71、73、75、77、78 有的本子标「凶」、
+       有的标「半吉」，本表取了较通行的一种并标为「半吉」。
+       既然各家不一致，就不宜给它更多权重 —— 所以<b>八十一数理只作展示，不参与评分</b>。</p>
     <p><b>关于姓名卦</b>　<b>这是民俗做法，不是《周易》原书的用法。</b>
        原书以蓍草起卦问事，「用姓名笔画起卦」是后人（主要是梅花易数与姓名学）
        的推演，而且各家取卦法并不一致。本系统采用一套并写明：
@@ -3999,6 +4160,144 @@ details.more > summary:hover { color: var(--jade); }
 </script>
 <script>
 /* =========================================================================
+ * shuli81.js —— 八十一数理吉凶（五格剖象法）
+ *
+ * 这是姓名学（五格剖象法 / 熊崎氏姓名学）里最常被引用的内容：
+ * 天格、人格、地格、总格、外格各自落到 1-81 的某个数，
+ * 每个数配一段吉凶判语。之前系统只给了三才吉凶，五格的具体数没有解释。
+ *
+ * ⚠️ 口径说明（必读）
+ * -------------------------------------------------------------------------
+ * 1. **这是姓名学的说法，不是《周易》原书的内容，也不是八字体系的一部分。**
+ *    它出自 20 世纪初日本熊崎健翁整理的五格剖象法，后传入中国，
+ *    与正统子平八字（以日主与月令论喜忌）没有渊源。
+ * 2. **吉凶分级各家印本有出入**：绝大多数数（如 3、13、23、35）各本一致，
+ *    但少数数（26、27、30、38、40、51、55、58、71、73、75、77、78）
+ *    有的本子标「凶」、有的标「半吉」，本表取了**较通行的一种**并标为「半吉」，
+ *    不做更细的加权——既然各家不一致，就不宜给它更多分数权重。
+ * 3. 因此本表**只作展示**，不参与评分。现有评分里「三才五格」那一项
+ *    仍然只给 6 分（满分 100），权重远低于五行与音韵，理由见 index.html 的脚注。
+ *
+ * 格式：数|吉凶|数名|判语
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+  var NS = (global.NS = global.NS || {});
+
+  NS.SHULI81_RAW = [
+    '1|吉|太极之数|万物开泰，生发无穷，利禄亨通',
+    '2|凶|两仪之数|混沌未开，进退保守，志望难达',
+    '3|吉|三才之数|天地人和，智达明敏，名利兼收',
+    '4|凶|四象之数|待机而动，凡事难顺，须自守',
+    '5|吉|五行之数|福禄长寿，阴阳和合，生意兴隆',
+    '6|吉|六爻之数|安稳余庆，天赋吉运，德泽四方',
+    '7|吉|七政之数|刚毅果断，独立权威，排除万难',
+    '8|吉|八卦之数|意志刚健，勤勉发展，志向坚定',
+    '9|凶|大成之数|利去劫空，蕴藏凶险，须慎行',
+    '10|凶|终结之数|万事终局，暗淡无光，宜守旧',
+    '11|吉|旱苗逢雨|万物更新，调顺发达，稳健着实',
+    '12|凶|掘井无泉|无理之数，徒劳无功，力弱无助',
+    '13|吉|春日牡丹|才艺多能，智谋奇略，忍柔当事',
+    '14|凶|破兆之数|家庭缘薄，孤独遭难，谋事不达',
+    '15|吉|福寿之数|福寿圆满，雅量厚德，慈祥有德',
+    '16|吉|厚重之数|能获众望，成就大业，名利双收',
+    '17|吉|刚强之数|权威刚强，突破万难，宜养柔德',
+    '18|吉|铁镜重磨|有志竟成，内外有运，宜自谨慎',
+    '19|凶|多难之数|风云蔽月，虽有智谋，万事挫折',
+    '20|凶|屋下藏金|非业破运，灾难重重，宜求和顺',
+    '21|吉|明月中天|光风霁月，万物确立，官运亨通',
+    '22|凶|秋草逢霜|怀才不遇，忧愁怨苦，事不如意',
+    '23|吉|壮丽之数|旭日东升，壮丽壮观，权威旺盛',
+    '24|吉|掘藏得金|家门余庆，金钱丰盈，白手成家',
+    '25|吉|荣俊之数|资性英敏，刚毅果断，惟性偏执',
+    '26|半吉|变怪之数|波澜重叠，怪异不测，须自守为上',
+    '27|半吉|欲望之数|多受诽谤，欲望无止，宜知足守成',
+    '28|凶|阔水浮萍|家亲缘薄，波涛重叠，宜自谨守',
+    '29|吉|智谋之数|智谋优秀，财力归集，名闻海内',
+    '30|半吉|非运之数|浮沉不定，吉凶难料，宜守方可安',
+    '31|吉|春日花开|智勇得志，博得名利，统领众人',
+    '32|吉|宝马金鞍|贵人相助，向上发展，权势不退',
+    '33|吉|旭日升天|鸾凤相会，名闻天下，隆昌至极',
+    '34|凶|破家之数|家破身亡，此数大凶，宜谨慎守',
+    '35|吉|高楼望月|温和平静，智达通畅，技艺有成',
+    '36|凶|波澜重叠|波澜重叠，侠肝义胆，侠义逢凶',
+    '37|吉|猛虎出林|权威显达，热诚忠信，宜养雅量',
+    '38|半吉|磨铁成针|意志薄弱，刻意为学，技艺有成',
+    '39|吉|富贵荣华|云开见月，富贵荣华，德泽四方',
+    '40|凶|退安之数|谨慎保安，智谋胆力，退步守安',
+    '41|吉|有德之数|德高望重，事事如意，处世安泰',
+    '42|凶|寒蝉在柳|博识多能，精通世情，却难专一',
+    '43|凶|散财之数|雨夜之花，外祥内苦，宜守则安',
+    '44|凶|烦闷之数|事难遂愿，贪功好进，终成烦闷',
+    '45|吉|顺风之数|新生泰和，顺风扬帆，智谋经纬',
+    '46|凶|浪里淘金|罗网系身，载宝沉溺，宜慎保身',
+    '47|吉|点石成金|花开之象，万事如意，负重可成',
+    '48|吉|古松立鹤|德智兼备，威望成师，高洁守正',
+    '49|凶|转变之数|吉临则吉，凶来则凶，遇吉则吉',
+    '50|凶|小舟入海|一成一败，吉凶参半，小舟入海',
+    '51|半吉|沉浮之数|一盛一衰，浮沉不定，须自谨守',
+    '52|吉|达眼之数|先见之明，理想实现，名利双收',
+    '53|凶|曲卷之数|外祥内患，劳而无功，宜守谨慎',
+    '54|凶|石上栽花|多难非运，难望成功，宜自谨守',
+    '55|半吉|善恶之数|外美内苦，先吉后凶，宜守可安',
+    '56|凶|浪里行舟|事与愿违，终难成功，欲速不达',
+    '57|吉|月照春松|寒雪青松，历尽艰辛，终获成功',
+    '58|半吉|晚行遇月|浮沉多端，先苦后甜，宽宏扬名',
+    '59|凶|寒蝉悲风|寒蝉悲风，意志薄弱，缺乏忍耐',
+    '60|凶|无谋之数|黑暗无光，心迷意乱，摇动不安',
+    '61|吉|牡丹芙蓉|名利双收，繁荣富贵，须防内变',
+    '62|凶|衰败之数|内外不和，志望难达，衰败之象',
+    '63|吉|舟归平海|富贵荣华，身心安泰，智达通畅',
+    '64|凶|骨肉分离|骨肉分离，孤独悲愁，宜守则安',
+    '65|吉|巨流归海|天长地久，家运隆昌，事事亨通',
+    '66|凶|岩头步马|内外不和，进退维谷，艰难不堪',
+    '67|吉|顺风扬帆|独营事业，事事如意，功成名就',
+    '68|吉|顺天创基|思虑周详，意志坚固，兴家立业',
+    '69|凶|非业之数|坐立不安，常陷逆境，动摇不安',
+    '70|凶|残菊逢霜|惨淡忧愁，空费心力，宜自谨守',
+    '71|半吉|石上金花|内心劳苦，贯彻始终，养神定志',
+    '72|凶|劳苦之数|先甘后苦，云头望月，宜守则安',
+    '73|半吉|志高力微|志高力微，安闲自得，须养精神',
+    '74|凶|残菊经霜|秋叶落寞，坐立不安，宜自谨守',
+    '75|半吉|退守之数|退守保吉，静守可安，动则失机',
+    '76|凶|离散之数|内外不和，先苦后甘，倾覆离散',
+    '77|半吉|半吉之数|前半享福，后半困苦，宜先苦后甜',
+    '78|半吉|晚苦之数|功成名就，中年发达，晚景凄怆',
+    '79|凶|云头望月|身疲力尽，穷迫不伸，宜自谨守',
+    '80|凶|遁吉之数|凶星入命，早入隐遁，宜守则安',
+    '81|吉|万物回春|还本归元，能得繁荣，发达成功'
+  ];
+
+  /* 解析成以数为键的表 */
+  NS.SHULI81 = (function () {
+    var m = Object.create(null);
+    NS.SHULI81_RAW.forEach(function (line) {
+      var p = line.split('|');
+      if (p.length !== 4) return;
+      var n = parseInt(p[0], 10);
+      if (!isFinite(n) || n < 1 || n > 81) return;
+      if (m[n] === undefined) m[n] = { n: n, ji: p[1], name: p[2], text: p[3] };
+    });
+    return m;
+  })();
+
+  /**
+   * 查某个数（1-81）的吉凶判语
+   * 超过 81 的按传统做法：减去 80，直到落回 1-81。
+   * （姓名学惯例，例：83 → 3、90 → 10）
+   * @returns {Object|null}
+   */
+  NS.shuliOf = function (n) {
+    var x = parseInt(n, 10);
+    if (!isFinite(x) || x <= 0) return null;
+    while (x > 81) x -= 80;
+    return NS.SHULI81[x] || null;
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
  * fanti.js —— 繁体 → 简体 归一化表
  *
  * 为什么需要：
@@ -5146,6 +5445,66 @@ details.more > summary:hover { color: var(--jade); }
     if (NS.KE[wx] === dayWx) return 'officer';
     return 'same';
   };
+
+  /* ---------------- 十神（完整十个） ----------------
+   *
+   * relOf 给的只是 5 类粗分（比劫/印星/食伤/财星/官杀），
+   * 用来算身强身弱够用，但展示给人看不够 —— 八字工具都该显示完整的十神。
+   * 区分办法是再看「阴阳异同」：
+   *
+   *   同我：同阴阳=比肩   异阴阳=劫财
+   *   生我：同阴阳=偏印   异阴阳=正印
+   *   我生：同阴阳=食神   异阴阳=伤官
+   *   我克：同阴阳=偏财   异阴阳=正财
+   *   克我：同阴阳=七杀   异阴阳=正官
+   *
+   * 口诀是「同性为偏、异性为正」（偏印/偏财/七杀都带偏字），
+   * 只有比劫一对反着来 —— 同阴阳是比肩（兄弟同心），异阴阳才是劫财。
+   *
+   * 阴阳不用另建表：甲乙丙丁戊己庚辛壬癸 下标偶数为阳、奇数为阴，
+   * 所以直接看下标奇偶即可。
+   * 验证：甲(0,阳)见庚(6,阳) → 金克木、同为阳 → 七杀 ✓
+   *       甲见辛(7,阴) → 阴阳异 → 正官 ✓
+   *       甲见丙(2,阳) → 木生火、同阳 → 食神 ✓
+   *       甲见乙(1,阴) → 同为木、阴阳异 → 劫财 ✓ */
+  NS.SHISHEN = {
+    same: ['比肩', '劫财'],
+    print: ['偏印', '正印'],
+    output: ['食神', '伤官'],
+    wealth: ['偏财', '正财'],
+    officer: ['七杀', '正官']
+  };
+
+  /* 十神 → 所属大类（用于汇总展示） */
+  NS.SHISHEN_GROUP = {
+    比肩: '比劫', 劫财: '比劫',
+    偏印: '印星', 正印: '印星',
+    食神: '食伤', 伤官: '食伤',
+    偏财: '财星', 正财: '财星',
+    七杀: '官杀', 正官: '官杀'
+  };
+
+  /** 天干的阴阳 */
+  NS.ganYinYang = function (gan) {
+    var i = (typeof gan === 'number') ? gan : NS.TIANGAN.indexOf(gan);
+    if (i < 0) return '';
+    return (i % 2 === 0) ? '阳' : '阴';
+  };
+
+  /**
+   * 求某天干相对日主的十神
+   * @param {number|string} dayGan 日主天干（下标或字）
+   * @param {number|string} gan    被判断的天干
+   * @returns {string} 十神名，无法判断时返回 ''
+   */
+  NS.shishen = function (dayGan, gan) {
+    var d = (typeof dayGan === 'number') ? dayGan : NS.TIANGAN.indexOf(dayGan);
+    var t = (typeof gan === 'number') ? gan : NS.TIANGAN.indexOf(gan);
+    if (d < 0 || t < 0) return '';
+    var rel = NS.relOf(NS.TIANGAN_WUXING[d], NS.TIANGAN_WUXING[t]);
+    var same = ((d % 2) === (t % 2));
+    return NS.SHISHEN[rel][same ? 0 : 1];
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>
@@ -5514,6 +5873,39 @@ details.more > summary:hover { color: var(--jade); }
   }
 
   /**
+   * 十神力量：用与五行力量完全相同的权重
+   * （天干 1.0、藏干按本气 1.0 / 中气 0.5 / 余气 0.3、月令 ×1.5）。
+   *
+   * 两个容易搞错的地方：
+   *  1. 日主自己不算十神 —— 它是参照物。所以日柱的**天干**跳过，
+   *     但日柱的**地支藏干**要算（那是夫妻宫，是别人）。
+   *  2. 十神不只看天干，藏干也要看 —— 只算四个天干会丢掉大部分信息。
+   */
+  function shishenStrength(bz) {
+    var dayGan = bz.日[0];
+    var s = Object.create(null);
+    ['年', '月', '日', '时'].forEach(function (k) {
+      if (k !== '日') {
+        var g = NS.shishen(dayGan, bz[k][0]);
+        if (g) s[g] = (s[g] || 0) + 1.0;
+      }
+      var cg = NS.DIZHI_CANGGAN[bz[k][1]];
+      for (var i = 0; i < cg.length; i++) {
+        var w = NS.CANGGAN_WEIGHT[i] || 0.3;
+        if (k === '月') w *= 1.5;
+        var n = NS.shishen(dayGan, NS.TIANGAN.indexOf(cg[i]));
+        if (n) s[n] = (s[n] || 0) + w;
+      }
+    });
+    return s;
+  }
+
+  /* 十神的固定展示顺序（比劫 → 印 → 食伤 → 财 → 官杀），
+   * 不按数值排 —— 按数值排会让同一次八字的不同说明里顺序乱跳。 */
+  var SHISHEN_ORDER = ['比肩', '劫财', '偏印', '正印', '食神', '伤官',
+    '偏财', '正财', '七杀', '正官'];
+
+  /**
    * 完整分析：五行、日主、身强身弱、喜用神
    */
   function analyzeBazi(year, month, day, hour, minute, opts) {
@@ -5567,7 +5959,7 @@ details.more > summary:hover { color: var(--jade); }
 
     var missing = NS.WUXING.filter(function (w) { return count[w] === 0; });
 
-    return {
+    var result = {
       bazi: bz,
       baziStr: baziString(bz),
       pillars: ['年', '月', '日', '时'].map(function (k) {
@@ -5577,8 +5969,16 @@ details.more > summary:hover { color: var(--jade); }
           zhi: NS.DIZHI[bz[k][1]],
           ganWx: NS.TIANGAN_WUXING[bz[k][0]],
           zhiWx: NS.DIZHI_WUXING[bz[k][1]],
+          /* 十神相对日主而言；日柱天干就是日主本身，所以留空不标 */
+          ganShishen: (k === '日') ? '日主' : NS.shishen(dayGan, bz[k][0]),
+          ganYinYang: NS.ganYinYang(bz[k][0]),
           cangGan: NS.DIZHI_CANGGAN[bz[k][1]].map(function (g) {
-            return { gan: g, wx: NS.TIANGAN_WUXING[NS.TIANGAN.indexOf(g)] };
+            return {
+              gan: g,
+              wx: NS.TIANGAN_WUXING[NS.TIANGAN.indexOf(g)],
+              shishen: NS.shishen(dayGan, NS.TIANGAN.indexOf(g)),
+              yinYang: NS.ganYinYang(NS.TIANGAN.indexOf(g))
+            };
           })
         };
       }),
@@ -5590,16 +5990,40 @@ details.more > summary:hover { color: var(--jade); }
       ratio: ratio,
       dayGan: NS.TIANGAN[dayGan],
       dayWx: dayWx,
+      dayYinYang: NS.ganYinYang(dayGan),
       strength: strength,
       xiyongshen: candidates,
       missing: missing,
       shengxiao: NS.SHENGXIAO[bz.年[1]],
+      /* 十神（完整十个）。和身强身弱用的 byRel 是两回事：
+       * byRel 只分 5 大类且按五行汇总，这里是按十神逐个汇总，
+       * 用于展示「这个八字里哪些十神旺、哪些全无」。 */
+      shishen: (function () {
+        var power = shishenStrength(bz);
+        var present = SHISHEN_ORDER.filter(function (n) { return power[n] > 0; });
+        return {
+          power: power,
+          present: present,
+          /* 八字里一个都没有的十神。传统上「缺什么」不等于「该补什么」，
+           * 和 missing（五行）同理，只作展示，不直接驱动选字。 */
+          missing: SHISHEN_ORDER.filter(function (n) { return !power[n]; }),
+          dominant: present.slice().sort(function (a, b) {
+            return power[b] - power[a];
+          })[0] || null,
+          dayYinYang: NS.ganYinYang(dayGan)
+        };
+      })(),
       /* 年柱纳音（民俗命理口径）。
        * 与年柱干支五行**不同源**，2026 丙午就是典型案例：
        * 干支是火、纳音却是「天河水」属水。所以两者要并列展示，不能合并。 */
       nayin: NS.nayinOfGanzhi ? NS.nayinOfGanzhi(bz.年[0], bz.年[1]) : null,
       meta: bz.meta
     };
+
+    /* 调候（寒暖燥湿）。单独一步、放在最后 ——
+     * 它要读刚算好的 power 与 xiyongshen，而且只做提示不改结果。 */
+    result.tiaohou = NS.Tiaohou ? NS.Tiaohou.analyze(result) : null;
+    return result;
   }
 
   NS.Bazi = {
@@ -5607,6 +6031,8 @@ details.more > summary:hover { color: var(--jade); }
     baziString: baziString,
     wuxingCount: wuxingCount,
     wuxingStrength: wuxingStrength,
+    shishenStrength: shishenStrength,
+    SHISHEN_ORDER: SHISHEN_ORDER,
     analyzeBazi: analyzeBazi,
     trueSolar: trueSolar
   };
@@ -10037,6 +10463,123 @@ details.more > summary:hover { color: var(--jade); }
 </script>
 <script>
 /* =========================================================================
+ * tiaohou.js —— 调候（寒暖燥湿）
+ *
+ * ⚠️ 为什么这里**没有**做《穷通宝鉴》那种「日干 × 月令 → 用神」的 120 条查表
+ * -------------------------------------------------------------------------
+ * 一开始的计划是把那张表录进来。但逐条写的时候发现两件事：
+ *
+ *   1. 那张表各版本之间**本来就有出入**。同是「庚金生未月」，
+ *      不同印本给的用神不完全一致，我手上没有可校勘的原本。
+ *   2. 更关键：**凭记忆录 120 条，错了不会有任何报错**，
+ *      而错的后果是系统会拿一个错的依据去反驳原本正确的扶抑法结论 ——
+ *      这比不做更糟。这和字库康熙笔画那条教训是同一件事
+ *      （见 chars-extra.js 头部：规则推算在库内只有 76% 命中）。
+ *
+ * 所以这里只做**无争议的那部分核心原则**：
+ *
+ *     冬月（亥子丑）天寒 → 命局宜见火暖局
+ *     夏月（巳午未）天燥 → 命局宜见水润局
+ *     春月（寅卯辰）、秋月（申酉戌）→ **不判定**
+ *
+ * 春秋两季的调候取向随日干而变（春木喜火泄秀、秋金喜水润或火炼，
+ * 说法不一），既然没有把握，就不装作有把握 —— 少说一条，好过说错一条。
+ *
+ * 判定结果只作**并列提示**，不参与评分、不改推荐：
+ * 与扶抑法取的喜用神冲突时，明确告诉用户冲突在哪、本系统默认以扶抑法为准。
+ * 这个处理方式和「生肖形义派 vs 八字」（zodiac.js）完全一致 ——
+ * 不同流派并列展示、不合并、冲突时说明取舍依据。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+  var NS = (global.NS = global.NS || {});
+
+  /* 月支 → 季节（调候只看寒暖燥湿，所以按四季分而不是按十二节） */
+  var SEASON_OF = {
+    亥: '冬', 子: '冬', 丑: '冬',
+    巳: '夏', 午: '夏', 未: '夏',
+    寅: '春', 卯: '春', 辰: '春',
+    申: '秋', 酉: '秋', 戌: '秋'
+  };
+
+  var NEED = { 冬: '火', 夏: '水' };
+
+  /* 「明显不足」的门槛：该五行占总力量的比例低于 15% 就算不足。
+   * 定 15% 是因为五行的平均期望值是 20%，低于 15% 才称得上「虚」；
+   * 门槛定高了会把大量正常命局误判成「需要调候」。 */
+  var WEAK_RATIO = 0.15;
+
+  /**
+   * 调候分析
+   * @param {Object} bz NS.Bazi.analyzeBazi() 的结果
+   * @returns {Object} {
+   *   season, monthZhi, applies, needWx, ratio, weak, conflict, xiyongshen, note
+   * }
+   */
+  function analyze(bz) {
+    var monthZhi = bz.pillars[1].zhi;
+    var season = SEASON_OF[monthZhi] || '';
+
+    var out = {
+      season: season,
+      seasonLabel: season ? season + '月' : '',
+      monthZhi: monthZhi,
+      applies: false,
+      needWx: null,
+      ratio: 0,
+      weak: false,
+      conflict: false,
+      xiyongshen: (bz.xiyongshen || []).slice(),
+      note: ''
+    };
+
+    /* 春秋不判定 —— 见文件头说明 */
+    if (season !== '冬' && season !== '夏') {
+      out.note = '生月属' + (season || '未知') +
+        '，调候取向随日干而变、各家说法不一，本系统不做判定，只看扶抑法。';
+      return out;
+    }
+
+    var need = NEED[season];
+    out.applies = true;
+    out.needWx = need;
+
+    var total = 0;
+    NS.WUXING.forEach(function (w) { total += (bz.power[w] || 0); });
+    out.ratio = total > 0 ? (bz.power[need] || 0) / total : 0;
+    out.weak = out.ratio < WEAK_RATIO;
+
+    /* 与扶抑法的喜用神是否冲突：调候需要的五行不在喜用神里 */
+    out.conflict = out.weak && out.xiyongshen.indexOf(need) < 0;
+
+    var pct = (out.ratio * 100).toFixed(0);
+    if (!out.weak) {
+      out.note = '生月属' + season + '月，调候上宜见' + need + '；' +
+        '本命局' + need + '占 ' + pct + '%，不虚，无需特别调候。';
+    } else if (out.conflict) {
+      out.note = '生月属' + season + '月，调候上宜见' + need + '暖局/润局，' +
+        '而本命局' + need + '仅占 ' + pct + '%；' +
+        '但扶抑法给出的喜用神是「' + (bz.xiyongshen.join('、') || '—') +
+        '」，两者不一致。';
+    } else {
+      out.note = '生月属' + season + '月，调候上宜见' + need + '；' +
+        '本命局' + need + '占 ' + pct + '%，偏虚，' +
+        '而扶抑法的喜用神也包含' + need + '，两种口径方向一致。';
+    }
+    return out;
+  }
+
+  NS.Tiaohou = {
+    analyze: analyze,
+    SEASON_OF: SEASON_OF,
+    NEED: NEED,
+    WEAK_RATIO: WEAK_RATIO
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
  * report.js —— 名字评估报告（自定义名字 / 已有名字的命理批注）
  *
  * 用户需求：「增加一个输入自定义名字的功能，你根据输入的名字时辰年份八字等
@@ -10194,6 +10737,53 @@ details.more > summary:hover { color: var(--jade); }
           '身旺时缺的往往正是该泄的）');
       }
       add('命理', '八字排盘', l1);
+
+      /* 6a-2. 十神。
+       * 与「五行分布」是同一批能量的两种说法：五行讲属性，
+       * 十神讲这股能量相对日主扮演什么角色（同辈／长辈／子女／财／官）。
+       * 列全十个而不是只列有的 —— 「十神齐不齐」本身就有人看。 */
+      if (bazi.shishen) {
+        var l2 = [];
+        l2.push('日主 ' + bazi.dayGan + '（' + bazi.dayYinYang + bazi.dayWx + '）' +
+          '　日柱天干即日主本身，不属十神');
+        var ssLine = NS.Bazi.SHISHEN_ORDER.map(function (n) {
+          var v = bazi.shishen.power[n] || 0;
+          return n + ' ' + (v ? v.toFixed(1) : '—');
+        }).join('　');
+        l2.push('十神力量：' + ssLine);
+        l2.push('按天干 1.0、藏干本气 1.0 / 中气 0.5 / 余气 0.3、月令 ×1.5 加权。' +
+          '日柱天干是日主自己，不计入。');
+        if (bazi.shishen.missing.length) {
+          l2.push('八字里没有出现的十神：' + bazi.shishen.missing.join('、') +
+            '。与「五行缺」同理 —— **缺什么不等于该补什么**，' +
+            '要看它对日主是喜是忌，本系统不因「缺某个十神」而改推荐。');
+        }
+        add('命理', '十神', l2);
+      }
+
+      /* 6a-3. 调候（寒暖燥湿）。
+       * 只做「冬宜火、夏宜水」这条无争议的核心原则 ——
+       * 春秋不判定（见 core/tiaohou.js 头部的说明）。
+       * 与扶抑法不一致时并列指出，不改推荐。 */
+      if (bazi.tiaohou && bazi.tiaohou.applies) {
+        var l3 = [];
+        l3.push('月支 ' + bazi.tiaohou.monthZhi + '（' + bazi.tiaohou.seasonLabel +
+          '），调候上宜见 **' + bazi.tiaohou.needWx + '**；' +
+          '本命局该五行占 ' + (bazi.tiaohou.ratio * 100).toFixed(0) + '%，' +
+          (bazi.tiaohou.weak ? '偏虚。' : '不虚，无需特别调候。'));
+        if (bazi.tiaohou.conflict) {
+          l3.push('**两种口径不一致**：扶抑法取「' + bazi.xiyongshen.join('、') +
+            '」，调候法取「' + bazi.tiaohou.needWx + '」。');
+          l3.push('本系统默认以**扶抑法**为准 —— 调候只是多给一个视角，' +
+            '不因此改动推荐结果。两者本来就不是一套体系：' +
+            '扶抑看的是全局力量对比，调候看的只是寒暖燥湿。' +
+            '真要取舍，建议找真人命理师按全盘定夺。');
+          add('命理', '调候（与扶抑法口径不一致）', l3, 'warn');
+        } else {
+          l3.push('与扶抑法取的喜用神方向一致。');
+          add('命理', '调候', l3);
+        }
+      }
     }
 
     /* 6b. 用字与喜用神
@@ -10306,13 +10896,34 @@ details.more > summary:hover { color: var(--jade); }
     /* 6f. 笔画数理（数理派） */
     if (score.detail.wuge) {
       var w = score.detail.wuge;
-      add('数理', '三才五格', [
+      var lw = [
         '天格 ' + w['天格'] + '　人格 ' + w['人格'] + '　地格 ' + w['地格'] +
-          '　总格 ' + w['总格'] + '　外格 ' + w['外格'],
-        '三才 ' + w['三才'] + '（' + w['三才关系'] + '）→ ' + w['三才吉凶'],
-        '说明：三才五格是**数理派**，按康熙笔画取数，与八字五行不同源。' +
-        '本系统只给它 6 分（满分 100），权重远低于五行与音韵。'
-      ]);
+        '　总格 ' + w['总格'] + '　外格 ' + w['外格'],
+        '三才 ' + w['三才'] + '（' + w['三才关系'] + '）→ ' + w['三才吉凶']
+      ];
+      /* 八十一数理判语。这是姓名学里最常被引用的内容，
+       * 但各家印本对少数数的吉凶分级有出入（26/27/30/38/51/55/58/71/73/75/77/78），
+       * 本表取了较通行的一种，因此只作展示、不加分。 */
+      if (NS.shuliOf) {
+        var sl = ['天格', '人格', '地格', '总格', '外格'].map(function (k) {
+          var s = NS.shuliOf(w[k]);
+          return s ? k + ' ' + w[k] + '「' + s.name + '·' + s.ji + '」' : null;
+        }).filter(Boolean);
+        if (sl.length) {
+          lw.push('八十一数理：' + sl.join('　'));
+          var jiCount = sl.filter(function (x) { return x.indexOf('·吉') >= 0; }).length;
+          var xiongCount = sl.filter(function (x) { return x.indexOf('·凶') >= 0; }).length;
+          lw.push('其中吉 ' + jiCount + ' 格、凶 ' + xiongCount + ' 格。' +
+            '五格剖象法认为**人格与总格最重要** —— ' +
+            '总格看一生总运，人格看一生命运与性格。');
+        }
+      }
+      lw.push('说明：三才五格与八十一数理都是**数理派**（源自五格剖象法），' +
+        '按康熙笔画取数，与八字五行不同源；' +
+        '八十一数的吉凶分级各家印本还略有出入，本表取了较通行的一种。' +
+        '本系统只给三才五格 6 分（满分 100），权重远低于五行与音韵，' +
+        '八十一数理只作展示、不参与评分。');
+      add('数理', '三才五格', lw);
     }
 
     /* 6g. 出处与现代感 */
@@ -13644,11 +14255,22 @@ details.more > summary:hover { color: var(--jade); }
     info.pillars.forEach(function (p) {
       var cell = el('div', 'pillar');
       cell.appendChild(el('div', 'lbl', p.label + '柱'));
+      /* 十神按传统排盘放在干支**上方** —— 先看十神再看字，
+       * 这也是所有八字软件的习惯位置，换位置反而要重新适应。 */
+      var ss = el('div', 'ss' + (p.ganShishen === '日主' ? ' self' : ''),
+        p.ganShishen);
+      if (p.ganYinYang) ss.title = p.gan + '为' + p.ganYinYang + p.ganWx;
+      cell.appendChild(ss);
       var gz = el('div', 'gz');
       gz.innerHTML = '<span class="' + WX_CLASS[p.ganWx] + '">' + esc(p.gan) +
         '</span><span class="' + WX_CLASS[p.zhiWx] + '">' + esc(p.zhi) + '</span>';
       cell.appendChild(gz);
-      var cg = el('div', 'cg', p.cangGan.map(function (g) { return g.gan; }).join('·'));
+      /* 藏干带上各自的十神，鼠标悬停可见 */
+      var cg = el('div', 'cg');
+      cg.innerHTML = p.cangGan.map(function (g) {
+        return '<span title="' + esc(g.gan + '（' + g.yinYang + '）＝' + g.shishen) +
+          '">' + esc(g.gan) + '</span>';
+      }).join('·');
       cell.appendChild(cg);
       grid.appendChild(cell);
     });
@@ -13694,6 +14316,64 @@ details.more > summary:hover { color: var(--jade); }
     }
     fact('当前节气', '<b>' + esc(info.meta.jieqi) + '</b>');
     panel.appendChild(facts);
+
+    /* 十神。放在五行之后、结论之前 ——
+     * 它是「五行力量的另一种说法」：五行说的是能量的属性，
+     * 十神说的是这股能量相对于日主扮演什么角色（同辈/长辈/子女/财/官）。
+     * 顺序写死（比劫→印→食伤→财→官杀），不按数值排，
+     * 否则同一份八字在不同页面上的顺序会乱跳。 */
+    if (info.shishen) {
+      var ssBox = el('div', 'ss-box');
+      var ssHead = el('div', 'ss-head');
+      ssHead.innerHTML = '十神　<span class="ss-sub">日主 ' +
+        esc(info.dayGan) + '（' + esc(info.dayYinYang + info.dayWx) + '）　' +
+        '力量按天干 1.0、藏干本气 1.0 / 中气 0.5 / 余气 0.3、月令 ×1.5 加权</span>';
+      ssBox.appendChild(ssHead);
+
+      var ssList = el('div', 'ss-list');
+      NS.Bazi.SHISHEN_ORDER.forEach(function (n) {
+        var v = info.shishen.power[n] || 0;
+        var item = el('span', 'ss-item' + (v ? '' : ' zero') +
+          (n === info.shishen.dominant ? ' top' : ''));
+        item.innerHTML = '<b>' + esc(n) + '</b><i>' +
+          (v ? v.toFixed(1) : '—') + '</i>';
+        item.title = n + '（' + NS.SHISHEN_GROUP[n] + '）　力量 ' +
+          (v ? v.toFixed(1) : '0，八字里没有出现');
+        ssList.appendChild(item);
+      });
+      ssBox.appendChild(ssList);
+
+      if (info.shishen.missing.length) {
+        var ssNote = el('p', 'more-note');
+        ssNote.innerHTML = '八字里没有出现的十神：<b>' +
+          esc(info.shishen.missing.join('、')) + '</b>。' +
+          '和「五行缺」一样，<b>缺什么不等于该补什么</b> —— ' +
+          '十神要不要补，要看它对日主是喜是忌，本系统不因「缺某个十神」而改推荐。';
+        ssBox.appendChild(ssNote);
+      }
+      panel.appendChild(ssBox);
+    }
+
+    /* 调候：只做「冬宜火、夏宜水」这条无争议的原则，春秋不判定。
+     * 与扶抑法不一致时用 warn 色标出来，但**不改推荐**。 */
+    if (info.tiaohou && info.tiaohou.applies) {
+      var th = info.tiaohou;
+      var thBox = el('div', 'th-box' + (th.conflict ? ' warn' : ''));
+      thBox.innerHTML = '<b>调候</b>　月支 ' + esc(th.monthZhi) +
+        '（' + esc(th.seasonLabel) + '）宜见 ' +
+        '<b class="' + WX_CLASS[th.needWx] + '">' + esc(th.needWx) + '</b>' +
+        '（本命局占 ' + (th.ratio * 100).toFixed(0) + '%' +
+        (th.weak ? '，偏虚' : '，不虚') + '）';
+      if (th.conflict) {
+        thBox.innerHTML += '<span class="th-cf">与扶抑法口径不一致：' +
+          '扶抑取「' + esc(info.xiyongshen.join('、')) + '」，' +
+          '调候取「' + esc(th.needWx) + '」—— <b>本次仍按扶抑法选字</b></span>';
+      } else if (th.weak) {
+        thBox.innerHTML += '<span class="th-ok">与扶抑法方向一致</span>';
+      }
+      thBox.title = th.note;
+      panel.appendChild(thBox);
+    }
 
     if (opts.xiyongshen.join('') !== info.xiyongshen.join('')) {
       var note = el('p', 'more-note');
@@ -14015,7 +14695,17 @@ details.more > summary:hover { color: var(--jade); }
         var td2 = el('td');
         td2.innerHTML = '<b>' + r[1] + '</b><span class="wx ' +
           WX_CLASS[r[2]] + '">' + r[2] + '</span>';
-        var td3 = el('td', null, '');
+        /* 第三列原本一直是空的（建了 td 却没填内容，也一直没人发现）。
+         * 现在放 81 数理的判语 —— 这才是姓名学使用者真正想看的东西。 */
+        var td3 = el('td', 'sl-cell');
+        var sl = NS.shuliOf ? NS.shuliOf(r[1]) : null;
+        if (sl) {
+          td3.innerHTML = '<b class="sl-' + (sl.ji === '吉' ? 'ji' :
+            sl.ji === '凶' ? 'xiong' : 'half') + '">' + esc(sl.ji) +
+            '</b><span class="sl-name">' + esc(sl.name) + '</span>';
+          td3.title = sl.n + ' ' + sl.name + '（' + sl.ji + '）：' + sl.text +
+            '\n\n此为姓名学（五格剖象法）说法，与八字喜用神不同源，仅供参考。';
+        }
         tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
         t.appendChild(tr);
       });

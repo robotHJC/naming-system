@@ -156,6 +156,53 @@
           '身旺时缺的往往正是该泄的）');
       }
       add('命理', '八字排盘', l1);
+
+      /* 6a-2. 十神。
+       * 与「五行分布」是同一批能量的两种说法：五行讲属性，
+       * 十神讲这股能量相对日主扮演什么角色（同辈／长辈／子女／财／官）。
+       * 列全十个而不是只列有的 —— 「十神齐不齐」本身就有人看。 */
+      if (bazi.shishen) {
+        var l2 = [];
+        l2.push('日主 ' + bazi.dayGan + '（' + bazi.dayYinYang + bazi.dayWx + '）' +
+          '　日柱天干即日主本身，不属十神');
+        var ssLine = NS.Bazi.SHISHEN_ORDER.map(function (n) {
+          var v = bazi.shishen.power[n] || 0;
+          return n + ' ' + (v ? v.toFixed(1) : '—');
+        }).join('　');
+        l2.push('十神力量：' + ssLine);
+        l2.push('按天干 1.0、藏干本气 1.0 / 中气 0.5 / 余气 0.3、月令 ×1.5 加权。' +
+          '日柱天干是日主自己，不计入。');
+        if (bazi.shishen.missing.length) {
+          l2.push('八字里没有出现的十神：' + bazi.shishen.missing.join('、') +
+            '。与「五行缺」同理 —— **缺什么不等于该补什么**，' +
+            '要看它对日主是喜是忌，本系统不因「缺某个十神」而改推荐。');
+        }
+        add('命理', '十神', l2);
+      }
+
+      /* 6a-3. 调候（寒暖燥湿）。
+       * 只做「冬宜火、夏宜水」这条无争议的核心原则 ——
+       * 春秋不判定（见 core/tiaohou.js 头部的说明）。
+       * 与扶抑法不一致时并列指出，不改推荐。 */
+      if (bazi.tiaohou && bazi.tiaohou.applies) {
+        var l3 = [];
+        l3.push('月支 ' + bazi.tiaohou.monthZhi + '（' + bazi.tiaohou.seasonLabel +
+          '），调候上宜见 **' + bazi.tiaohou.needWx + '**；' +
+          '本命局该五行占 ' + (bazi.tiaohou.ratio * 100).toFixed(0) + '%，' +
+          (bazi.tiaohou.weak ? '偏虚。' : '不虚，无需特别调候。'));
+        if (bazi.tiaohou.conflict) {
+          l3.push('**两种口径不一致**：扶抑法取「' + bazi.xiyongshen.join('、') +
+            '」，调候法取「' + bazi.tiaohou.needWx + '」。');
+          l3.push('本系统默认以**扶抑法**为准 —— 调候只是多给一个视角，' +
+            '不因此改动推荐结果。两者本来就不是一套体系：' +
+            '扶抑看的是全局力量对比，调候看的只是寒暖燥湿。' +
+            '真要取舍，建议找真人命理师按全盘定夺。');
+          add('命理', '调候（与扶抑法口径不一致）', l3, 'warn');
+        } else {
+          l3.push('与扶抑法取的喜用神方向一致。');
+          add('命理', '调候', l3);
+        }
+      }
     }
 
     /* 6b. 用字与喜用神
@@ -268,13 +315,34 @@
     /* 6f. 笔画数理（数理派） */
     if (score.detail.wuge) {
       var w = score.detail.wuge;
-      add('数理', '三才五格', [
+      var lw = [
         '天格 ' + w['天格'] + '　人格 ' + w['人格'] + '　地格 ' + w['地格'] +
-          '　总格 ' + w['总格'] + '　外格 ' + w['外格'],
-        '三才 ' + w['三才'] + '（' + w['三才关系'] + '）→ ' + w['三才吉凶'],
-        '说明：三才五格是**数理派**，按康熙笔画取数，与八字五行不同源。' +
-        '本系统只给它 6 分（满分 100），权重远低于五行与音韵。'
-      ]);
+        '　总格 ' + w['总格'] + '　外格 ' + w['外格'],
+        '三才 ' + w['三才'] + '（' + w['三才关系'] + '）→ ' + w['三才吉凶']
+      ];
+      /* 八十一数理判语。这是姓名学里最常被引用的内容，
+       * 但各家印本对少数数的吉凶分级有出入（26/27/30/38/51/55/58/71/73/75/77/78），
+       * 本表取了较通行的一种，因此只作展示、不加分。 */
+      if (NS.shuliOf) {
+        var sl = ['天格', '人格', '地格', '总格', '外格'].map(function (k) {
+          var s = NS.shuliOf(w[k]);
+          return s ? k + ' ' + w[k] + '「' + s.name + '·' + s.ji + '」' : null;
+        }).filter(Boolean);
+        if (sl.length) {
+          lw.push('八十一数理：' + sl.join('　'));
+          var jiCount = sl.filter(function (x) { return x.indexOf('·吉') >= 0; }).length;
+          var xiongCount = sl.filter(function (x) { return x.indexOf('·凶') >= 0; }).length;
+          lw.push('其中吉 ' + jiCount + ' 格、凶 ' + xiongCount + ' 格。' +
+            '五格剖象法认为**人格与总格最重要** —— ' +
+            '总格看一生总运，人格看一生命运与性格。');
+        }
+      }
+      lw.push('说明：三才五格与八十一数理都是**数理派**（源自五格剖象法），' +
+        '按康熙笔画取数，与八字五行不同源；' +
+        '八十一数的吉凶分级各家印本还略有出入，本表取了较通行的一种。' +
+        '本系统只给三才五格 6 分（满分 100），权重远低于五行与音韵，' +
+        '八十一数理只作展示、不参与评分。');
+      add('数理', '三才五格', lw);
     }
 
     /* 6g. 出处与现代感 */

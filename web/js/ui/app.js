@@ -876,11 +876,22 @@
     info.pillars.forEach(function (p) {
       var cell = el('div', 'pillar');
       cell.appendChild(el('div', 'lbl', p.label + '柱'));
+      /* 十神按传统排盘放在干支**上方** —— 先看十神再看字，
+       * 这也是所有八字软件的习惯位置，换位置反而要重新适应。 */
+      var ss = el('div', 'ss' + (p.ganShishen === '日主' ? ' self' : ''),
+        p.ganShishen);
+      if (p.ganYinYang) ss.title = p.gan + '为' + p.ganYinYang + p.ganWx;
+      cell.appendChild(ss);
       var gz = el('div', 'gz');
       gz.innerHTML = '<span class="' + WX_CLASS[p.ganWx] + '">' + esc(p.gan) +
         '</span><span class="' + WX_CLASS[p.zhiWx] + '">' + esc(p.zhi) + '</span>';
       cell.appendChild(gz);
-      var cg = el('div', 'cg', p.cangGan.map(function (g) { return g.gan; }).join('·'));
+      /* 藏干带上各自的十神，鼠标悬停可见 */
+      var cg = el('div', 'cg');
+      cg.innerHTML = p.cangGan.map(function (g) {
+        return '<span title="' + esc(g.gan + '（' + g.yinYang + '）＝' + g.shishen) +
+          '">' + esc(g.gan) + '</span>';
+      }).join('·');
       cell.appendChild(cg);
       grid.appendChild(cell);
     });
@@ -926,6 +937,64 @@
     }
     fact('当前节气', '<b>' + esc(info.meta.jieqi) + '</b>');
     panel.appendChild(facts);
+
+    /* 十神。放在五行之后、结论之前 ——
+     * 它是「五行力量的另一种说法」：五行说的是能量的属性，
+     * 十神说的是这股能量相对于日主扮演什么角色（同辈/长辈/子女/财/官）。
+     * 顺序写死（比劫→印→食伤→财→官杀），不按数值排，
+     * 否则同一份八字在不同页面上的顺序会乱跳。 */
+    if (info.shishen) {
+      var ssBox = el('div', 'ss-box');
+      var ssHead = el('div', 'ss-head');
+      ssHead.innerHTML = '十神　<span class="ss-sub">日主 ' +
+        esc(info.dayGan) + '（' + esc(info.dayYinYang + info.dayWx) + '）　' +
+        '力量按天干 1.0、藏干本气 1.0 / 中气 0.5 / 余气 0.3、月令 ×1.5 加权</span>';
+      ssBox.appendChild(ssHead);
+
+      var ssList = el('div', 'ss-list');
+      NS.Bazi.SHISHEN_ORDER.forEach(function (n) {
+        var v = info.shishen.power[n] || 0;
+        var item = el('span', 'ss-item' + (v ? '' : ' zero') +
+          (n === info.shishen.dominant ? ' top' : ''));
+        item.innerHTML = '<b>' + esc(n) + '</b><i>' +
+          (v ? v.toFixed(1) : '—') + '</i>';
+        item.title = n + '（' + NS.SHISHEN_GROUP[n] + '）　力量 ' +
+          (v ? v.toFixed(1) : '0，八字里没有出现');
+        ssList.appendChild(item);
+      });
+      ssBox.appendChild(ssList);
+
+      if (info.shishen.missing.length) {
+        var ssNote = el('p', 'more-note');
+        ssNote.innerHTML = '八字里没有出现的十神：<b>' +
+          esc(info.shishen.missing.join('、')) + '</b>。' +
+          '和「五行缺」一样，<b>缺什么不等于该补什么</b> —— ' +
+          '十神要不要补，要看它对日主是喜是忌，本系统不因「缺某个十神」而改推荐。';
+        ssBox.appendChild(ssNote);
+      }
+      panel.appendChild(ssBox);
+    }
+
+    /* 调候：只做「冬宜火、夏宜水」这条无争议的原则，春秋不判定。
+     * 与扶抑法不一致时用 warn 色标出来，但**不改推荐**。 */
+    if (info.tiaohou && info.tiaohou.applies) {
+      var th = info.tiaohou;
+      var thBox = el('div', 'th-box' + (th.conflict ? ' warn' : ''));
+      thBox.innerHTML = '<b>调候</b>　月支 ' + esc(th.monthZhi) +
+        '（' + esc(th.seasonLabel) + '）宜见 ' +
+        '<b class="' + WX_CLASS[th.needWx] + '">' + esc(th.needWx) + '</b>' +
+        '（本命局占 ' + (th.ratio * 100).toFixed(0) + '%' +
+        (th.weak ? '，偏虚' : '，不虚') + '）';
+      if (th.conflict) {
+        thBox.innerHTML += '<span class="th-cf">与扶抑法口径不一致：' +
+          '扶抑取「' + esc(info.xiyongshen.join('、')) + '」，' +
+          '调候取「' + esc(th.needWx) + '」—— <b>本次仍按扶抑法选字</b></span>';
+      } else if (th.weak) {
+        thBox.innerHTML += '<span class="th-ok">与扶抑法方向一致</span>';
+      }
+      thBox.title = th.note;
+      panel.appendChild(thBox);
+    }
 
     if (opts.xiyongshen.join('') !== info.xiyongshen.join('')) {
       var note = el('p', 'more-note');
@@ -1247,7 +1316,17 @@
         var td2 = el('td');
         td2.innerHTML = '<b>' + r[1] + '</b><span class="wx ' +
           WX_CLASS[r[2]] + '">' + r[2] + '</span>';
-        var td3 = el('td', null, '');
+        /* 第三列原本一直是空的（建了 td 却没填内容，也一直没人发现）。
+         * 现在放 81 数理的判语 —— 这才是姓名学使用者真正想看的东西。 */
+        var td3 = el('td', 'sl-cell');
+        var sl = NS.shuliOf ? NS.shuliOf(r[1]) : null;
+        if (sl) {
+          td3.innerHTML = '<b class="sl-' + (sl.ji === '吉' ? 'ji' :
+            sl.ji === '凶' ? 'xiong' : 'half') + '">' + esc(sl.ji) +
+            '</b><span class="sl-name">' + esc(sl.name) + '</span>';
+          td3.title = sl.n + ' ' + sl.name + '（' + sl.ji + '）：' + sl.text +
+            '\n\n此为姓名学（五格剖象法）说法，与八字喜用神不同源，仅供参考。';
+        }
         tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
         t.appendChild(tr);
       });

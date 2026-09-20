@@ -411,7 +411,25 @@ input::placeholder { color: #b6b0a4; }
   font-size: 11px;
   color: var(--ink-3);
   letter-spacing: .18em;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+/* 十神：传统排盘放在干支上方 */
+.pillar .ss {
+  font-size: 10.5px;
+  color: var(--ink-2);
+  letter-spacing: .06em;
+  margin-bottom: 3px;
+  padding: 1px 0;
+  border-radius: 4px;
+  background: #f1eee7;
+}
+
+/* 日柱天干就是日主自己，不是十神，用不同底色区分 */
+.pillar .ss.self {
+  background: var(--jade-pale);
+  color: var(--jade);
+  font-weight: 600;
 }
 
 .pillar .gz {
@@ -427,6 +445,100 @@ input::placeholder { color: #b6b0a4; }
   color: var(--ink-3);
   margin-top: 4px;
   letter-spacing: .02em;
+}
+
+.pillar .cg span { cursor: help; }
+
+/* ---------------- 十神汇总 ---------------- */
+.ss-box {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fbfaf6;
+}
+
+.ss-head {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.ss-head .ss-sub {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.ss-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ss-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.ss-item b { font-weight: 500; }
+.ss-item i {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* 八字里没有这个十神 —— 压暗但留着，让人看到「十神齐全与否」 */
+.ss-item.zero { opacity: .45; }
+.ss-item.zero i { color: var(--ink-3); }
+
+/* 最旺的那个高亮 */
+.ss-item.top {
+  background: var(--jade-pale);
+  border-color: #cfe0d8;
+  color: var(--jade);
+}
+
+.ss-item.top i { color: var(--jade); font-weight: 600; }
+
+/* ---------------- 调候提示 ----------------
+ * 只是「多给一个视角」，不改推荐，所以做得比十神那块轻：
+ * 一行文字、不占大块版面。与扶抑法口径不一致时才换警示色。 */
+.th-box {
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--jade);
+  border-radius: 6px;
+  background: var(--jade-pale);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: #3c5a50;
+}
+
+.th-box.warn {
+  border-left-color: var(--gold);
+  background: var(--gold-pale);
+  color: #6b5a30;
+}
+
+.th-box .th-cf {
+  display: block;
+  margin-top: 3px;
+  color: #8a6a20;
+}
+
+.th-box .th-ok {
+  margin-left: 6px;
+  opacity: .8;
 }
 
 .wx-1 { color: var(--jade); }
@@ -860,6 +972,26 @@ details.more > summary:hover { color: var(--jade); }
 .wuge-table td:first-child { color: var(--ink-3); font-size: 12px; width: 88px; }
 .wuge-table td b { color: var(--ink); font-size: 14px; }
 .wuge-table td .wx { font-family: var(--font-serif); margin-left: 4px; }
+
+/* 第三列：八十一数理的判语。这一列以前一直是空的 */
+.wuge-table td.sl-cell {
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+
+.wuge-table td.sl-cell b {
+  display: inline-block;
+  min-width: 14px;
+  margin-right: 5px;
+  font-size: 12px;
+}
+
+/* 吉凶用色区分，但饱和度压低 —— 数理派不该比五行更抢眼 */
+.wuge-table .sl-ji { color: var(--jade); }
+.wuge-table .sl-xiong { color: #a63a2e; }
+.wuge-table .sl-half { color: var(--gold); }
+.wuge-table td.sl-cell .sl-name { color: var(--ink-3); }
 
 .more-note {
   margin: 10px 0 0;
