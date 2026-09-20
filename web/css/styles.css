@@ -741,6 +741,13 @@ input::placeholder { color: #b6b0a4; }
   color: #fff;
 }
 
+/* 「日常词语」——两个字在诗里相邻，但它是风雨/明月这种普通词，不算典故 */
+.nc-poetry-kind.warn {
+  background: rgba(141, 116, 64, .1);
+  color: #8a7f66;
+  border: 1px dashed rgba(141, 116, 64, .35);
+}
+
 /* 同篇出处信号很弱（诗词库扩到上千首后几乎人人都有），视觉上压暗 */
 .nc-poetry.weak {
   border-left-color: #d8cdb0;

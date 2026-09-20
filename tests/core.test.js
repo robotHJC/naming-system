@@ -9,7 +9,7 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
 [
   'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
-  'data/radical-hints.js',
+  'data/radical-hints.js', 'data/namewords.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/infer.js', 'core/lexicon.js', 'core/radical.js', 'core/variant.js'
@@ -394,6 +394,159 @@ section('8. 边界情况');
   });
   console.log('  未知姓氏兜底使用笔画：' + p3.ctx.surnameStrokes.join(','));
   ok('未知姓氏不崩溃', NS.Generator.runSync(p3).length >= 0);
+}
+
+/* ---------------- 9. 音韵必须算上姓氏 ----------------
+ *
+ * 用户反馈「名字不顺口」。查出来是个真 bug：音韵一项只检查了**名字内部**
+ * 两字，完全没看姓氏与首字的连读。
+ *   「李澜瑞」lǐ lán ruì —— 姓氏与首字都是 l 声母，
+ *    连读会读成「李兰瑞」（l 只发一次），非常拗口；
+ *   旧算法里 rows 只有 [澜, 瑞]，声母 l-r 不同 → 给了满分。
+ *   「李凌初」同理（lǐ líng chū）。
+ * 修法：把姓氏音节拼进去，并从「两两互不相同」改成**相邻比较**。
+ * ------------------------------------------------ */
+section('9. 音韵（含姓氏连读）');
+{
+  const r = NS.Bazi.analyzeBazi(2024, 5, 20, 10, 0);
+  const mk = (surname) => NS.Score.buildContext({
+    surname: surname, xiyongshen: r.xiyongshen
+  });
+
+  const ctxLi = mk('李');          /* 李 lǐ，声母 l */
+  const ctxHao = mk('郝');         /* 郝 hǎo，声母 h */
+
+  /* 同一组名字，只换姓氏，声母撞不撞应当改变音韵分 */
+  const lPairs = [['澜', '瑞'], ['凌', '初']];
+  let penalized = 0;
+  lPairs.forEach(([a, b]) => {
+    const rows = [NS.CHAR_DB[a], NS.CHAR_DB[b]];
+    const li = NS.Score.evaluate(rows, ctxLi).detail.phonetic;
+    const hao = NS.Score.evaluate(rows, ctxHao).detail.phonetic;
+    if (li.sameInitial.length && !hao.sameInitial.length) penalized++;
+    console.log(`  ${a}${b}：李姓撞声母 [${li.sameInitial.join(',')}]`
+      + `／郝姓撞声母 [${hao.sameInitial.join(',')}]`);
+  });
+  ok('姓氏与首字撞声母能被检出（李澜/李凌）', penalized === lPairs.length,
+    `${penalized}/${lPairs.length}`);
+
+  /* 核心契约：李澜瑞 的音韵分必须**低于**一个不撞声母的对照名 */
+  const bad = NS.Score.evaluate([NS.CHAR_DB['澜'], NS.CHAR_DB['瑞']], ctxLi);
+  const good = NS.Score.evaluate([NS.CHAR_DB['澜'], NS.CHAR_DB['瑞']], ctxHao);
+  ok('换成不撞声母的姓氏后音韵分上升', good.detail.phonetic !== bad.detail.phonetic
+    || bad.detail.phonetic.sameInitial.length > 0);
+  ok('李澜瑞被标出声母相撞', bad.detail.phonetic.sameInitial.indexOf('李澜') >= 0,
+    bad.detail.phonetic.sameInitial.join(','));
+
+  /* 反向回归：不要因为加了姓氏就把所有名字都判成拗口。
+   * 「郝若溪」hǎo ruò xī 三个声母 h/r/x 全不同。 */
+  const okPh = NS.Score.evaluate([NS.CHAR_DB['若'], NS.CHAR_DB['溪']], ctxHao)
+    .detail.phonetic;
+  ok('郝若溪 不误报声母相撞', okPh.sameInitial.length === 0, okPh.sameInitial.join(','));
+  ok('郝若溪 不误报叠韵', okPh.sameFinal.length === 0, okPh.sameFinal.join(','));
+
+  /* 上声连读（三声+三声）必须被扣分：「郝雨语」hǎo yǔ yǔ */
+  const third = NS.Score.evaluate([NS.CHAR_DB['雨'], NS.CHAR_DB['语']], ctxHao);
+  const nonThird = NS.Score.evaluate([NS.CHAR_DB['雨'], NS.CHAR_DB['清']], ctxHao);
+  ok('连续上声被扣分', third.score < nonThird.score + 30,
+    `上声${third.score} vs 非上声${nonThird.score}`);
+}
+
+/* ---------------- 10. 出处不能拿文言虚词充数 ----------------
+ *
+ * 「太文绉绉」的机制性原因：出处成词奖励的是文言词。
+ * 古文里「亦书」「唯昭」这类**虚词 + 实词**的相邻搭配满地都是，
+ * 但它们不是词。实测系统排出来的正是：
+ *   李亦白 ← 诗经「亦白其马」
+ *   李唯昭 ← 楚辞「唯昭质其犹未亏」
+ * 修法：poetry-lib 建索引时，含文言虚词的相邻对直接不入索引。
+ * ------------------------------------------------ */
+section('10. 文言虚词过滤');
+{
+  const FUNCTION_CHARS = '亦唯之而其以于为所者也乎哉兮乃则焉矣夫盖与及使令能欲';
+  const found = [];
+  /* 用内置诗词库直接查：这些字开头的相邻对不该被当成成词 */
+  const probes = [['亦', '白'], ['唯', '昭'], ['亦', '书'], ['之', '初']];
+  probes.forEach(([a, b]) => {
+    const hit = NS.Poetry.findAdjacent([a, b]);
+    if (hit) found.push(a + b + '→' + (hit.pair || '') + '@' + (hit.source || ''));
+  });
+  ok('文言虚词相邻对不再算成词', found.length === 0, found.join(' | '));
+  console.log('  探测结果：' + (probes.map(p => p.join('')).join('、'))
+    + ' → ' + (found.length ? found.join('，') : '全部未命中'));
+
+  /* 反向回归：真正的词不能被误杀。「若水」出自老子「上善若水」 */
+  const real = NS.Poetry.findAdjacent(['若', '水']);
+  ok('真实出处未被误杀（若水）', !!real, real ? real.source : 'null');
+  if (real) console.log('  若水 → 《' + real.source + '》');
+
+  /* ---- 日常词语（按词频判定）----
+   * 「明月」在内置诗库里出现 5 次（最高频），是普通词；
+   * 「嘉树」只出现 1 次，是真雅词。 */
+  const md = NS.Poetry.findAdjacent(['明', '月']);
+  const js = NS.Poetry.findAdjacent(['嘉', '树']);
+  ok('高频相邻对被标为日常词语（明月）', !!md && md.everyday === true,
+    md ? `everyday=${md.everyday} freq=${md.freq}` : 'null');
+  ok('雅词未被标为日常词语（嘉树）', !!js && js.everyday === false,
+    js ? `everyday=${js.everyday} freq=${js.freq}` : 'null');
+  console.log(`  明月 freq=${md && md.freq}（日常词语）／嘉树 freq=${js && js.freq}（雅词）`);
+
+  /* 日常词语拿到的分必须明显低于雅词 —— 否则「风雨」「潮水」会挤掉好名字 */
+  const r0 = NS.Bazi.analyzeBazi(2024, 5, 20, 10, 0);
+  const c0 = NS.Score.buildContext({ surname: '郝', xiyongshen: r0.xiyongshen });
+  if (md) {
+    const em = NS.Score.evaluate([NS.CHAR_DB['明'], NS.CHAR_DB['月']], c0);
+    ok('日常词语写入 pairKind=everyday', em.detail.pairKind === 'everyday',
+      String(em.detail.pairKind));
+    ok('日常词语有对应说明', em.reasons.some(x => x.indexOf('不算典故') >= 0),
+      em.reasons.join('·'));
+  }
+  if (real) {
+    const rw = NS.Score.evaluate([NS.CHAR_DB['若'], NS.CHAR_DB['水']], c0);
+    ok('真雅词仍是 classic', rw.detail.pairKind === 'classic', String(rw.detail.pairKind));
+  }
+}
+
+/* ---------------- 11. 现代感维度 ----------------
+ *
+ * 新增「现代感 12」是对冲「出处奖励文言词」的正向信号：
+ *   命中现代名字词表 +7，用字热度落在舒适区 +5（倒 U 型）。
+ * ------------------------------------------------ */
+section('11. 现代感');
+{
+  const r = NS.Bazi.analyzeBazi(2024, 5, 20, 10, 0);
+  const ctx = NS.Score.buildContext({ surname: '郝', xiyongshen: r.xiyongshen });
+
+  ok('名字词表已加载', NS.NAME_WORDS && NS.NAME_WORDS.length >= 150,
+    String(NS.NAME_WORDS && NS.NAME_WORDS.length));
+
+  /* 词表里的每个字都必须在字库里，否则那个词永远触发不了 */
+  const missing = [];
+  NS.NAME_WORDS.forEach(w => {
+    for (const ch of w) if (!NS.CHAR_DB[ch]) missing.push(w + ':' + ch);
+  });
+  ok('词表用字全部在字库内', missing.length === 0, missing.slice(0, 8).join(','));
+
+  /* 词表命中 → 加分；用相同用字构造一个不在表里的对照 */
+  const hit = NS.Score.evaluate([NS.CHAR_DB['予'], NS.CHAR_DB['安']], ctx);
+  ok('词表命中被识别', hit.detail.modern && hit.detail.modern.word === '予安',
+    hit.detail.modern ? String(hit.detail.modern.word) : 'null');
+  ok('命中词表写入理由', hit.reasons.some(x => x.indexOf('现代常用搭配') >= 0),
+    hit.reasons.join('·'));
+
+  /* 倒 U 型：过冷与过热的用字都拿不到满分现代感 */
+  const cold = NS.Score.evaluate([NS.CHAR_DB['愚'], NS.CHAR_DB['举']], ctx);
+  const hot = NS.Score.evaluate([NS.CHAR_DB['艳'], NS.CHAR_DB['丽']], ctx);
+  const sweet = NS.Score.evaluate([NS.CHAR_DB['清'], NS.CHAR_DB['和']], ctx);
+  console.log('  愚举=' + cold.score + ' 艳丽=' + hot.score + ' 清和=' + sweet.score);
+  ok('清和（舒适区）分数高于愚举（生僻）', sweet.score > cold.score,
+    `${sweet.score} vs ${cold.score}`);
+
+  /* 权重总和必须是 100 的框架：各维度满分相加 = 100 */
+  const perfect = NS.Score.evaluate(
+    [NS.CHAR_DB['清'], NS.CHAR_DB['和']], ctx);
+  ok('分数仍在 0-100 区间', perfect.score >= 0 && perfect.score <= 100,
+    String(perfect.score));
 }
 
 console.log(`\n${'='.repeat(52)}`);

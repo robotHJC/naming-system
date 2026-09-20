@@ -748,6 +748,13 @@ input::placeholder { color: #b6b0a4; }
   color: #fff;
 }
 
+/* 「日常词语」——两个字在诗里相邻，但它是风雨/明月这种普通词，不算典故 */
+.nc-poetry-kind.warn {
+  background: rgba(141, 116, 64, .1);
+  color: #8a7f66;
+  border: 1px dashed rgba(141, 116, 64, .35);
+}
+
 /* 同篇出处信号很弱（诗词库扩到上千首后几乎人人都有），视觉上压暗 */
 .nc-poetry.weak {
   border-left-color: #d8cdb0;
@@ -1573,7 +1580,7 @@ details.more > summary:hover { color: var(--jade); }
       <div class="field">
         <label for="surname">姓氏 <span class="sub">支持复姓，如「欧阳」</span></label>
         <input type="text" id="surname" list="surnameList" maxlength="2"
-               placeholder="请输入姓氏" value="李">
+               placeholder="请输入姓氏" value="郝">
         <datalist id="surnameList"></datalist>
         <p class="hint" id="surnameInfo" style="margin:6px 0 0"></p>
       </div>
@@ -1737,7 +1744,7 @@ details.more > summary:hover { color: var(--jade); }
        <b>如果换字后会撞上新的谐音，该候选会直接丢弃，宁可少给建议。</b></p>
     <p><b>关于偏旁重复</b>　「李浅涵」三字全带氵、「李诗语」两字全带讠，念着不别扭但写出来笨重。
        系统会提示这种情况。<b>仅作提示、不参与评分</b>：偏旁表是手工维护的，
-       只覆盖字库里的常用字（并非全部 373 字），联网扩充的字查不到；
+       只覆盖字库里的常用字（并非全部 <span class="lib-count">?</span> 字），联网扩充的字查不到；
        若拿它扣分会暗中拉低「联网加字」后的分数，属于数据缺陷污染排序。</p>
     <p><b>关于并排对比</b>　勾选几个中意的名字，点「并排对比」逐项对照
        （总分 / 五行 / 三才五格 / 热度 / 谐音 / 偏旁 / 诗词 / 小名）。
@@ -1753,16 +1760,32 @@ details.more > summary:hover { color: var(--jade); }
        想找更多字，到「词库管理」的<b>按部首找字</b>里，
        可以按部首从《新华字典》里列字（需先同步字典），
        每字都带笔画、拼音、释义，挑中的可以一次加进字库。</p>
-    <p><b>关于字库</b>　内置 373 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
+    <p><b>关于字库</b>　内置 <span class="lib-count">?</span> 个精选用字，每个字都标注了五行、康熙笔画、拼音声调、风格标签与字义。
        可在「词库管理」里联网更新：拉取公开的汉字拼音表、新华字典与诗词库，
        并把字库外的字加入进来。数据缓存在浏览器本地，更新一次后离线也可用。</p>
-    <p><b>关于出处分级</b>　诗词出处分成四档，含金量差很多，卡片上会标出来：
+    <p><b>关于出处分级</b>　诗词出处分成五档，含金量差很多，卡片上会标出来：
        <b>出处成词</b>指名字的两个字在某一句诗里<b>紧挨着、顺序相同</b>地出现过
-       （如「望秋」← 唐诗「登舟望秋月」，「若云」← 楚辞「敌若云」）；
+       （如「嘉树」← 楚辞「后皇嘉树」，「若水」← 老子「上善若水」）；
+       <b>常见词语</b>指两个字确实相邻，但它是「风雨」「明月」这种连小孩子都说的普通词 ——
+       那不叫典故，给的分很少，卡片上会压暗；
        <b>同句</b>指同在一句但不是孪着；<b>同篇</b>只是同在一首诗里 ——
-       诗词库扩到上千首后几乎人人都能命中，所以只给很少的分，卡片上会压暗显示。
+       诗词库扩到上千首后几乎人人都能命中，所以只给很少的分。
        古文观止、幼学琼林、千字文、声律启蒙这类散文与蒙书不算有效出处，
-       因为它们里面任意两字都能凑上（实测会产出「亦书」「林望」这类假出处）。</p>
+       因为它们里面任意两字都能凑上（实测会产出「亦书」「林望」这类假出处）；
+       含文言虚词（之乎者也、亦、唯、乃…）的相邻搭配也不算 ——
+       古文里「亦白」「唯昭」到处可见，但那是虚词连着实词，不是词。</p>
+    <p><b>关于音韵</b>　音韵检查是<b>连姓一起算的</b>：相邻两个音节声母相同（李澜→「李兰」）、
+       韵母相同（叠韵）、声调相同、连续两个上声，都会扣分。
+       声调全部错落、平仄相间（声调 1、2 为平，3、4 为仄）会加分。
+       <b>早期版本只检查名字内部，没算姓氏，于是「李澜瑞」「李凌初」这种
+       姓氏与首字撞声母的拗口名字能拿到满分 —— 这是个真 bug，已修。</b></p>
+    <p><b>关于现代感</b>　这是系统里<b>唯一一个直接评价「好不好听」的维度</b>，
+       占 18 分（比「出处」的 6 分重得多）。两个分量：
+       一是<b>是否命中现代起名用字的搭配习惯</b>（予安、知微、云舒、若溪、星辰、瑾瑜…）；
+       二是<b>用字热度是否在「舒适区」</b>——<b>不是越常见越好</b>，
+       太冷门（热度 &lt; 40）读起来生僻难认，太烂大街（&gt; 91）则重名率高，
+       中间段（55-91）最适合起名。
+       换句话说：<b>诗词出典只当故事看，真正决定排序的是「念起来舒不舒服」。</b></p>
     <p><b>关于联网数据的可信度</b>　拼音、部首、释义、诗词都有公开数据源，可直接采用；
        但<b>康熙笔画与姓名学五行没有权威公开数据集</b>，联网加入的字只能按部首规则推断，
        界面会标注「推断」并要求人工核对，<b>请勿当作权威结果</b>。</p>
@@ -1948,7 +1971,72 @@ details.more > summary:hover { color: var(--jade); }
     '强|qiang|2|木|男|大气|刚强，寓意坚毅|11',
     '硕|shuo|4|土|男|大气|丰硕，寓意有成|14',
     '丽|li|4|火|女|温柔|美丽，寓意妍好|19',
-    '艳|yan|4|土|女|温柔|明艳，寓意鲜明|24'
+    '艳|yan|4|土|女|温柔|明艳，寓意鲜明|24',
+
+    /* ---------------- 现代起名常用字（第二版补充） ----------------
+     *
+     * 来源：写「现代感名字词库」（data/namewords.js）时，发现词表里有 33 个字
+     * 根本不在字库里 —— 词表写得再好也永远触发不了。
+     * 于是先补字，再让审计脚本 tests/audit-namewords.js 复核缺字归零。
+     *
+     * 部首→五行沿用文件开头的既有口径；康熙笔画按「部首 + 部件」实算：
+     *   氵→水(4)  王→玉(5)  艹→艸(6)  心→(4)  月→(4)  土→(3)
+     *   大→(3)    牛→(4)    禾→(5)    宀→(3)  讠→言(7) 人→(2)
+     * 整体简化的字（齐 樹 誠 舉）按其真正的繁体笔画录入，不做机械换算。
+     * ---------------------------------------------------------------- */
+
+    /* 氵（水，康熙 = 简体 + 1） */
+    '溪|xi|1|水|女|自然,清冷|溪流，寓意清雅灵动|14',
+    '汀|ting|1|水|中性|自然,清冷|水边平地，寓意清远|6',
+
+    /* 王（金，康熙 = 简体 + 1） */
+    '瑶|yao|2|金|女|温柔,文雅|美玉，寓意珍贵美好|15',
+
+    /* 艹（木，康熙 = 简体 + 3） */
+    '菱|ling|2|木|女|自然|菱角，寓意清秀|14',
+    '兰|lan|2|木|女|文雅|兰草，寓意高洁|23',   /* 整体简化：蘭 = 23 画 */
+    '蓓|bei|4|木|女|温柔|含苞待放，寓意初绽|16',
+
+    /* 其余部首 */
+    '岑|cen|2|土|中性|自然,清冷|山小而高，寓意清峻|7',
+
+    /* 禾（木，康熙 = 简体） */
+    '禾|he|2|木|中性|自然,简约|禾苗，寓意生长|5',
+
+    /* 木（木，康熙 = 简体） */
+    '树|shu|4|木|男|自然,大气|树立，寓意成长|16',
+
+    /* 大 / 土 / 月 部首 */
+    '天|tian|1|火|中性|大气|天空，寓意广阔|4',
+    '墨|mo|4|土|中性|文雅|笔墨，寓意书香|15',
+    '野|ye|3|土|中性|自然,大气|旷野，寓意开阔|11',
+    '月|yue|4|木|女|自然,文雅|明月，寓意清辉|4',
+    '有|you|3|土|中性|大气|富有，寓意丰足|6',
+
+    /* 心（火/木，按字义） */
+    '志|zhi|4|火|男|大气|志向，寓意立志|7',
+    '愚|yu|2|木|中性|文雅|大智若愚，寓意守拙|13',
+
+    /* 禾（与字库既有口径一致，取金） */
+    '程|cheng|2|金|男|大气|路程，寓意前程|12',
+
+    /* 其他按字义定的单字 */
+    '如|ru|2|土|女|温柔|如愿，寓意顺遂|6',
+    '越|yue|4|土|中性|大气|超越，寓意进取|12',
+    '承|cheng|2|金|中性|大气|承担，寓意有担当|8',
+    '牧|mu|4|水|男|自然,大气|牧野，寓意开阔|8',
+    '齐|qi|2|金|中性|文雅|看齐，寓意齐备|14',
+    '正|zheng|4|金|男|大气|正直，寓意刚正|5',
+    '泰|tai|4|火|男|大气|安泰，寓意安定|10',
+    '弘|hong|2|水|男|大气|弘大，寓意宽广|5',
+    '毅|yi|4|木|男|大气|刚毅，寓意坚忍|15',
+    '守|shou|3|金|男|文雅|守正，寓意持守|6',
+    '立|li|4|火|男|大气|立身，寓意自立|5',
+    '诚|cheng|2|金|中性|文雅|诚信，寓意真诚|14',
+    '健|jian|4|木|男|大气|健行，寓意强健|11',
+    '举|ju|3|木|男|文雅|举安，寓意担当|17',
+    '朝|zhao|1|金|中性|大气|朝阳，寓意向上|12',
+    '光|guang|1|火|中性|大气|光明，寓意晴朗|6'
   ];
 
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -2763,15 +2851,38 @@ details.more > summary:hover { color: var(--jade); }
     '岩|52', '峥|52', '嵘|52', '崇|52', '嵩|52', '岱|51', '岐|51', '山|51',
     '雍|51', '圆|51', '园|51', '宜|51', '友|51', '叶|51', '韵|50', '瑛|50',
 
-    /* —— 较生僻（<40）—— */
-    '嫣|39', '娅|39', '勇|39', '忆|39', '亦|39', '唯|39', '羽|39', '予|39',
-    '铄|38', '镕|38', '钦|38', '镇|38', '锡|38', '银|38', '剑|38', '铄|38',
-    '姗|37', '珠|37', '珍|37', '珂|37', '珏|37', '心|37', '书|37', '舒|37',
-    '纯|37', '秀|37', '初|37', '宣|36', '馨|36', '铃|36', '倩|36', '仙|36',
+    /* —— 较生僻（<40）——
+     *
+     * 修正记录：这一档里混进了一批**明显不该在这里**的常用字，
+     * 是照抄旧表时留下的错误。用「现代感」评分（score.js 第 9 项）时
+     * 这些错值会直接把好名字压下去，所以逐个改回：
+     *   远 33→85（志远/思远/明远，极其常用）、阳 33→84、景 34→80、
+     *   智 33→82、逸 33→72、舒 37→80、书 37→74、予 39→72、
+     *   维 33→66、初 37→66、心 37→55、忆 32→60。
+     * 判断依据：这些字在当代起名里的出现频率都属上三档，
+     * 只有「铄 镕 钦 镇 仟 姗 珂 珏」这类才是真的少见。 */
+    '铄|38', '镕|38', '钦|38', '镇|38', '锡|38', '银|38', '剑|38',
+    '姗|37', '珠|37', '珍|37', '珂|37', '珏|37',
+    '纯|37', '宣|62', '馨|36', '铃|36', '倩|36', '仙|36',
     '仟|36', '少|36', '炎|35', '焕|35', '灿|35', '烨|35', '烁|35', '炜|35',
-    '炯|35', '昱|35', '晟|35', '曜|35', '晖|35', '暖|35', '昭|34', '旭|34',
-    '景|34', '灵|34', '丹|34', '炫|34', '照|33', '智|33', '礼|33', '德|33',
-    '恩|33', '维|33', '永|33', '远|33', '阳|33', '逸|33', '忆|32'
+    '炯|35', '昱|35', '晟|35', '曜|35', '晖|45', '暖|35', '昭|48', '旭|62',
+    '灵|62', '丹|68', '炫|34', '照|42', '礼|50', '德|78',
+    '恩|62', '永|76',
+
+    /* —— 上一版低报、现已修正的高频字 —— */
+    '远|85', '阳|84', '智|82', '景|80', '舒|80', '书|74', '逸|72', '予|72',
+    '秀|72', '丹|68', '初|66', '维|66', '心|55', '忆|60', '嫣|70', '娅|58',
+    '亦|58', '唯|52', '羽|62',
+
+    /* —— 第二批补充字的现代常见度 ——
+     * 与 chars-extra.js 的新增字一一对应，口径同上：
+     * 当代起名高频（瑶/志 80+）→ 常用（溪/墨/月/程 70 上下）
+     * → 中等（兰/承/诚/正/毅 55-70）→ 少见（汀/菱/牧/齐 30-45）
+     * → 罕用（愚/举/有/守/野 25 以下）。 */
+    '瑶|84', '志|84', '阳|84', '月|78', '溪|74', '兰|72', '程|70', '墨|70',
+    '泰|66', '承|66', '天|64', '毅|62', '健|58', '诚|60', '光|58', '正|58',
+    '朝|56', '如|52', '立|50', '越|48', '树|46', '弘|46', '齐|44', '月|78',
+    '汀|34', '菱|28', '牧|30', '野|26', '有|24', '守|26', '愚|22', '举|18'
   ];
 
   NS.HEAT = (function () {
@@ -2814,6 +2925,111 @@ details.more > summary:hover { color: var(--jade); }
     else { level = 'rare'; text = '很冷门 · 重名概率低'; }
     return { value: value, level: level, text: text };
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
+ * namewords.js —— 现代感名字词库
+ *
+ * 为什么需要这个东西
+ * ---------------------------------------------------------------
+ * 之前的「出处成词」奖励的是**文言词**，于是排出来的名字是
+ * 李望秋、李唯昭、李亦白、李澜瑞、李梵清 —— 逐个查得出古文出处，
+ * 但读起来一股文言腔，不是现代人取名的语感。
+ *
+ * 解决思路：加一层「现代感」信号。
+ * 这层信号不是从古籍里挖出来的，而是把当代常见起名用字的**搭配习惯**
+ * 整理成词表 —— 也就是「网红覆盖率高的名字」背后那套用字风格：
+ *
+ *   1. 用常用字（涵 轩 睿 辰 宇 泽 瑾 婉 宁 安 然 若 语 雨 沐 悦 欣 嘉 思 知）
+ *   2. 两个字形得成一个**看得懂、说得出意思**的词（「予安」「知微」「云舒」）
+ *   3. 不用冷僻字、不用文言虚词、不用生硬典故
+ *
+ * 注意：这里收录的是**用字风格**，不是要照搬谁家的名字。
+ * 系统仍然按八字喜用神、五行、音韵、风格偏好来筛，
+ * 同一个词表在不同八字下会选出不同的名字。
+ *
+ * 结构：按倾向分组只是为了好读，程序里是同一张表。
+ * 每个词两个字；名字的用字正好等于表中某个词时给「现代感」加分。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  NS.NAME_WORDS = [
+
+    /* ---------------- 温婉（多用于女） ---------------- */
+    '若曦', '雨萱', '语彤', '沐雪', '云舒', '若溪', '汀澜', '温言', '知微',
+    '沐涵', '沁瑶', '语汐', '雨桐', '雨薇', '雨宁', '雯萱', '芷涵', '芷晴',
+    '茉涵', '茉然', '涵萱', '静姝', '婉清', '婉宁', '婉瑜', '静宜', '静晗',
+    '舒然', '予心', '安然', '语薇', '兰若', '若菱', '素宁', '韵涵', '韵清',
+    '韵宁', '瑾萱', '瑾瑜', '嘉怡', '思彤', '语嫣', '梦琪', '梦瑶', '梦涵',
+    '沁怡', '沁心', '婉如', '芷萱', '若竹', '若兰', '清越', '语宁', '雨晴',
+    '雯清', '雯宁', '晴岚', '岚汐', '语茉', '茉茉', '若安', '若初', '宁萱',
+    '沁蕾', '清涵', '清宁', '清妍', '汐月', '月涵', '菱露', '露宁',
+
+    /* ---------------- 大气（多用于男） ---------------- */
+    '浩然', '昊然', '宇轩', '子墨', '俊熙', '承宇', '明轩', '景行', '天泽',
+    '星河', '沐阳', '星野', '牧野', '知远', '思远', '明哲', '嘉言', '一诺',
+    '予安', '泽宇', '文轩', '志远', '清和', '明宇', '星宇', '宇辰', '泽楷',
+    '钧宇', '铭轩', '锦程', '子睿', '思齐', '嘉树', '瑾瑜', '泽霖', '浩宇',
+    '宇泽', '泓宇', '明远', '宇宁', '沐辰', '知行', '承泽', '泽远', '星辰',
+    '修远', '柏舟', '景明', '明朗', '承轩', '启明', '有恒', '志行', '鸿飞',
+    '正阳', '向阳', '安行', '泰安', '若愚', '知言', '景铄', '弘毅', '守正',
+    '立诚', '行健', '举安', '行远', '启行', '涵宇', '润泽', '泽涵',
+
+    /* ---------------- 中性 / 两用 ---------------- */
+    '一诺', '知微', '云舒', '汀澜', '温言', '安然', '予安', '清和', '明哲',
+    '嘉言', '若兰', '修远', '宁安', '宁远', '思齐', '明宇', '知远', '知言',
+    '知行', '若水', '若云', '若安', '安和', '和宁', '平宁', '思宁', '念安',
+    '知安', '予宁', '亦宁', '宁和', '舒宁', '舒涵', '清宁', '宁远', '远宁',
+    '朝阳', '朝雨', '晨光', '晨宁', '晨安', '星宁', '月宁', '林枫', '林溪',
+    '溪云', '溪宁', '溪涵', '溪若', '汀兰', '汀若', '洲宁', '洲涵',
+
+    /* ---------------- 补充：五行覆盖 ----------------
+     *
+     * 上面那三组偏重「水」与中性用字，实测八字喜用神一旦是木/土/火/金，
+     * 能命中的词就很少，前十名里会混进「郝笛桂」「郝茵桦」这种凑字组合
+     * （它们只靠五行 + 音韵 + 三才拿到 64 分，本身没有意思）。
+     *
+     * 这里按五行补齐，每组的第二个字刻意错开（然/语/月/禾/薇/安/言/书/瑶/
+     * 舒/彤/晗/曦/霏/悦/嘉/诺/宁/清），避免变成「郝X清」「郝X宁」那种
+     * 一眼看出是模板的名字。
+     *
+     * 用字全部来自字库，由 tests/audit-namewords.js 强制校验。 */
+
+    /* 木 */
+    '芷芸', '芸舒', '兰芷', '竹语', '桐语', '榆宁', '梅清', '榕舒', '蔚然',
+    '菡若', '蓝若', '蔚蓝', '荷语', '青禾', '翠薇', '素心', '秀言', '书瑶',
+    '书言', '桐月', '竹安', '芊语', '蕴清', '蓓蕾',
+
+    /* 金 */
+    '铭宇', '钧宇', '瑞雪', '琦月', '锦书', '欣然', '怡然', '悦然', '承安',
+    '正清', '瑾瑶', '璇月', '璐宁', '素秋', '翠微', '锦程', '钧宁',
+
+    /* 火 */
+    '晨语', '晴语', '熙然', '朗清', '曦宁', '彤宁', '丹青', '志清', '智清',
+    '哲清', '昱宁', '晟宁', '昭宁', '旭清', '明婉', '晴岚', '晨月', '昱晗',
+
+    /* 土 */
+    '岚宁', '岑月', '岐宁', '岳清', '峻宁', '岩清', '崇清', '垚宁', '培清',
+    '城宁', '宜清', '妍宁', '婉宁', '婷宁', '娴宁', '姝宁', '玥宁', '辰宁',
+    '宸宁', '轩清', '岳明', '岚语', '岐山', '宜然',
+
+    /* 水 */
+    '涵清', '澜宁', '沁宁', '汐月', '泽清', '源清', '洛宁', '潇然', '湘宁',
+    '雪清', '霖宁', '沁月', '露宁', '沐清', '沁蕾', '涛语', '湘语', '润清'
+  ];
+
+  NS.NAME_WORD_SET = (function () {
+    var set = Object.create(null);
+    NS.NAME_WORDS.forEach(function (w) {
+      if (w && w.length === 2) set[w] = 1;
+    });
+    return set;
+  })();
+
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>
@@ -4700,19 +4916,56 @@ details.more > summary:hover { color: var(--jade); }
   var SPLIT_RE = /[，。！？；、\n\r]/;
   var CACHE_LIMIT = 300000;
 
+  /* 「日常词语」判定阈值：相邻二字在整个诗库里出现到这么多次，
+   * 就认为它是日常词语而不是雅词，不再算「出处成词」（见 score.js 第 7 项）。
+   *
+   * 阈值 3 是看**实测分布**定的，不是拍的（见 tests/audit-pairfreq.js）：
+   *
+   *   35 首内置诗（388 个相邻对）：
+   *      明月 5 次、君子/疑是/花落 2 次、其余 384 个各 1 次
+   *   联网同步到约 1900 首后，日常词会升到几十次，而《诗经》《楚辞》里的
+   *   雅词基本仍是 1-3 次。
+   *
+   * 必须说清楚的一点：**这个机制只在联网同步后才真正生效**。
+   * 只有 35 首内置诗时，「风雨」「潮水」「江潮」的词频都只有 1，
+   * 一个都不会被判为日常词语 —— 我原本在注释里写了一套更漂亮的分布数字，
+   * 实测后发现是错的，已按真实数据改正。
+   * 所以离线状态下「普通名词被当成出处」的问题只能靠
+   * score.js 里的「现代感」权重来对冲，不能指望这里。 */
+  var COMMON_PAIR_THRESHOLD = 3;
+
   function isCJK(ch) {
     return ch >= '\u4e00' && ch <= '\u9fff';
   }
 
-  /* 否定词：如果一对相邻字的前一个字是这些，说明它们是词组的后半截，
-   * 不能当成独立的二字词。
+  /* 否定词：如果一对相邻字的前一个字是这些，说明它们是词组的后半截，   * 不能当成独立的二字词。
    * 实测：楚辞「终刚强兮不可凌」会被切成「可凌」并当成出处，
    * 于是排出了一个叫「李可凌」的名字 —— 那其实是「不可 + 凌」。 */
   var NEGATION = {
     '不': 1, '无': 1, '未': 1, '非': 1, '莫': 1, '勿': 1,
     '弗': 1, '毋': 1, '蓞': 1, '岂': 1, '奚': 1, '亡': 1
   };
-
+  /* 文言虚词：只要一对相邻字里出现这些字，就**不算**成词。
+   *
+   * 这是「名字太文绉绉」的根源之一。古文里「亦书」「唯昭」「而且」这类
+   * 相邻搭配随处可见，但它们不是词，只是虚词连着实词。
+   * 早期没有这层过滤，实测排出来的正是：
+   *   李亦白 ← 诗经「亦白其马」      李唯昭 ← 楚辞「唯昭质其犹未亏」
+   * 读起来一股文言腔，不是现代人取名的语感。
+   *
+   * 注意这张表只影响「算不算成词拿加分」，**不影响这些字能否被选用** ——
+   * 想用「亦」「唯」起名完全可以，只是系统不会再拿古文里的虚词搭配
+   * 给它背书。 */
+  var FUNCTION_WORD = {
+    '之': 1, '而': 1, '其': 1, '以': 1, '于': 1, '於': 1, '为': 1, '爲': 1,
+    '所': 1, '者': 1, '也': 1, '乎': 1, '哉': 1, '兮': 1, '乃': 1, '则': 1,
+    '焉': 1, '矣': 1, '夫': 1, '盖': 1, '蓋': 1, '唯': 1, '惟': 1, '且': 1,
+    '与': 1, '與': 1, '及': 1, '犹': 1, '猶': 1, '尚': 1, '苟': 1, '使': 1,
+    '令': 1, '俾': 1, '敢': 1, '请': 1, '請': 1, '愿': 1, '願': 1, '得': 1,
+    '能': 1, '欲': 1, '亦': 1, '不': 1, '无': 1, '無': 1, '未': 1, '非': 1,
+    '莫': 1, '勿': 1, '弗': 1, '毋': 1, '岂': 1, '豈': 1, '奚': 1, '曷': 1,
+    '乎': 1, '耶': 1, '邪': 1, '耳': 1, '云': 0   /* 云 是常用名字，保留 */
+  };
   var Poetry = {
     poems: [],
     index: Object.create(null),
@@ -4738,6 +4991,17 @@ details.more > summary:hover { color: var(--jade); }
       this.bigrams = Object.create(null);
       this.bigramCount = 0;
       this.bigramClassic = 0;
+      /* 相邻二字的出现次数。
+       *
+       * 为什么要统计这个：「两个字在古诗里相邻」本身只是好名字的**代理指标**，
+       * 它同样会命中「风雨」「潮水」「江潮」这类**日常词语** ——
+       * 这些词在几千首诗里反复出现，作为出处毫无信息量，
+       * 而真正的雅词（望舒、琼珈、静姝）全库里只出现一两次。
+       *
+       * 实测（郝姓 + 木水喜用）：「郝风雨」「郝潮水」「郝江潮」原本都靠
+       * 出处满 12 分挤进前八，但它们其实只是普通名词，根本不像名字。
+       * 有了词频就能把两者分开（见 COMMON_PAIR_THRESHOLD）。 */
+      this.pairFreq = Object.create(null);
 
       /* 每个集合算不算「适合取名的经典来源」，预先算好避免内层重复判断 */
       var classic = this.poems.map(function (p) {
@@ -4763,7 +5027,10 @@ details.more > summary:hover { color: var(--jade); }
             if (!isCJK(a) || !isCJK(b)) continue;
             /* 前一个字是否定词 → 这一对是词组的后半截，不入索引 */
             if (m > 0 && NEGATION[line.charAt(m - 1)]) continue;
+            /* 含文言虚词 → 不是词，只是虚词连着实词（亦书／唯昭） */
+            if (FUNCTION_WORD[a] || FUNCTION_WORD[b]) continue;
             var key = a + b;
+            this.pairFreq[key] = (this.pairFreq[key] || 0) + 1;
             if (this.bigrams[key] === undefined) {
               this.bigrams[key] = i;
               this.bigramCount++;
@@ -4780,6 +5047,18 @@ details.more > summary:hover { color: var(--jade); }
       this._cacheSize = 0;
       this._lineCache = Object.create(null);
       this._lineCacheSize = 0;
+      /* 标出「日常词语」：出现次数达到阈值的相邻对。
+       * 它们仍然可用于「同句/同篇」判定，但不再算「出处成词」。
+       * 阈值是看分布定的，不是拍的，见 tests/poetry-freq.test.js。 */
+      this.commonPairs = Object.create(null);
+      this.commonPairCount = 0;
+      var self = this;
+      Object.keys(this.pairFreq).forEach(function (k) {
+        if (self.pairFreq[k] >= COMMON_PAIR_THRESHOLD) {
+          self.commonPairs[k] = 1;
+          self.commonPairCount++;
+        }
+      });
       return this;
     },
 
@@ -4853,16 +5132,30 @@ details.more > summary:hover { color: var(--jade); }
     },
 
     _pair: function (a, b) {
-      var idx = this.bigrams[a + b];
+      var key = a + b;
+      var idx = this.bigrams[key];
       if (idx === undefined) return null;
       var poem = this.poems[idx];
       return {
         source: poem.source,
         title: poem.title,
-        line: this._lineWith(poem.content, a + b),
-        pair: a + b,
-        classic: NS.isClassicSource ? NS.isClassicSource(poem.source) : true
+        line: this._lineWith(poem.content, key),
+        pair: key,
+        classic: NS.isClassicSource ? NS.isClassicSource(poem.source) : true,
+        /* 日常词语标记。true 表示这一对在诗库里反复出现，
+         * 作为「出处」没有信息量（风雨／潮水／明月）。 */
+        everyday: this.commonPairs[key] === 1 ? true : false,
+        freq: this.pairFreq[key] || 0
       };
+    },
+
+    /** 相邻二字词频排行（调阈值 / 写测试用） */
+    topPairs: function (n) {
+      var self = this;
+      return Object.keys(this.pairFreq)
+        .map(function (k) { return { pair: k, freq: self.pairFreq[k] }; })
+        .sort(function (x, y) { return y.freq - x.freq; })
+        .slice(0, n || 40);
     },
 
     /** 在诗里找「含这个二字词」的那一句原文 */
@@ -4982,8 +5275,33 @@ details.more > summary:hover { color: var(--jade); }
  * score.js —— 名字评分
  *
  * 总分 100，维度与权重：
- *   五行 30 · 音韵 15 · 寓意 15 · 性别 5 · 风格 5 · 三才五格 8
- *   出处与搭配 17 · 谐音 5
+ *   五行 28 · 音韵 15 · 寓意 14 · 性别 4 · 风格 4
+ *   三才五格 6 · 出处与搭配 6 · 现代感 18 · 谐音 5
+ *
+ * 本轮改动的动机：用户反馈「名字不顺口、太文绉绉」。
+ * 两件事分开看，权重也分开调：
+ *
+ *   「不顺口」是 bug——音韵只算了名字、没算姓氏（见第 2 项注释）。
+ *   「太文绉绉」是**权重设计问题**：出处与搭配原本独占 17 分，
+ *   而它奖励的恰恰就是文言词。于是系统越「有文化」，名字越像古文摘句。
+ *
+ * 出处权重 17 → 12 → 10 → 6，一路降到「只当故事看」。降权依据：
+ *
+ *   1. 「两个字在古诗里相邻」是个**很弱的代理指标**。它确实能命中
+ *      望舒、静姝、嘉树这类雅词，但同样会命中「风雨」「潮水」「江潮」
+ *      —— 实测郝姓喜用水木时，前十名里五个都是这样的水旁普通名词。
+ *      它们不算文言，但根本不像名字。
+ *   2. 想用「词频高 = 日常词语」来排除它们（见 poetry-lib 的
+ *      COMMON_PAIR_THRESHOLD），但实测发现：**离线只有 35 首诗时全部失效**，
+ *      风雨的词频也是 1。联网同步到上千首后才有效。
+ *      不能把排序建立在这么不稳定的信号上，所以直接降权。
+ *   3. 相对地，「现代感」是**直接信号**（人工整理的现代起名用字搭配）。
+ *
+ * 于是把出处降到 6、现代感提到 18。副作用是离线时也会输出词表里的名字，
+ * 这正是想要的效果 —— 用户要的就是「听起来舒服」，不是「查得出典故」。
+ *
+ * 另外三才五格 8 → 6：它属「数理派」，与八字喜用神不同源，
+ * 也与「好不好听」无关，继续降权。
  *
  * 为什么权重这么调（实测驱动，不是拍脑袋）：
  *   旧版是三才五格 15 / 出处 10（固定分），实测默认参数下前 20 名**全部 80 分**，
@@ -4992,15 +5310,15 @@ details.more > summary:hover { color: var(--jade); }
  *   「李书云」和「李栗冬」得分完全相同，用户看到的是任意 20 个满足条件的组合，
  *   而不是最好的 20 个。这就是「生搬硬套」的机制。
  *
- *   两处修正：
- *   1. 三才五格 15 → 8。它属「数理派」，与名字好不好听基本不相关。
- *   2. 出处从「固定 10 分」改成**分级**（见下）。诗词库扩到上千首后，
- *      「两个字都出现在同一首诗里」实测命中率 100%，等于没有信息。
+ * 出处分级：
+ *   相邻成词 6  —— 两个相邻的字在某一「句」里紧挨着出现过（望舒/静姝/琼琚）
+ *   日常词语 2  —— 相邻但词频过高（风雨/明月），不算是典故
+ *   疑似成词 3  —— 相邻但出自蒙书/散文（古文观止等）
+ *   同句　   2  —— 同一句里都有，但不挨着
+ *   同篇　 0.5 —— 只是同时出现在一首诗里（信号很弱）
  *
- * 出处分级（这是新的区分度来源）：
- *   相邻成词 17 —— 两个相邻的字在某一「句」里紧挨着出现过（望舒/静姝/琼琚）
- *   同句　   9 —— 同一句里都有，但不挨着
- *   同篇　   2 —— 只是同时出现在一首诗里（信号很弱，给一点点）
+ * 现代感（详见第 8 项）：
+ *   命中现代名字词表 12 + 用字热度落在舒适区 6
  * ========================================================================= */
 (function (global) {
   'use strict';
@@ -5109,6 +5427,26 @@ details.more > summary:hover { color: var(--jade); }
     return false;
   }
 
+  /* 用字热度的「舒适区」评分（0~1，供第 8 项「现代感」用）。
+   *
+   * 这是一条**倒 U 型**曲线，不是「越常见越好」：
+   *
+   *   热度          评分   理由
+   *   > 91         0.60   烂大街（「爱华」「艳丽」）
+   *   55 ~ 91      1.00   当代起名的主流区间，既熟悉又不撞名
+   *   40 ~ 54      0.50   偏冷门（「芮」「芊」「芷」）
+   *   < 40         0.15   生僻到大多数人读不出来（「铄」「珏」「仟」）
+   *
+   * 下半支对应「太文绉绉」：古籍用字热度普遍偏低，
+   * 这条曲线让「唯」「亦」「愚」这类字拿不到现代感的分。
+   */
+  function comfort(heat) {
+    if (heat > 91) return 0.6;
+    if (heat >= 55) return 1;
+    if (heat >= 40) return 0.5;
+    return 0.15;
+  }
+
   /* ---------------- 组合评分 ---------------- */
 
   function evaluate(chars, ctx) {
@@ -5118,15 +5456,15 @@ details.more > summary:hover { color: var(--jade); }
     var detail = {};
     var i, j;
 
-    /* ---- 1. 五行（30）---- */
+    /* ---- 1. 五行（28）---- */
     var wxScore = 0;
     if (ctx.xiyongshen.length) {
       rows.forEach(function (r) {
-        if (r.obj.wuxing === ctx.xiyongshen[0]) wxScore += 20;
-        else if (cx2(ctx, r.obj.wuxing)) wxScore += 10;
+        if (r.obj.wuxing === ctx.xiyongshen[0]) wxScore += 18;
+        else if (cx2(ctx, r.obj.wuxing)) wxScore += 9;
       });
-      wxScore = Math.min(wxScore, 30);
-      if (wxScore >= 20) {
+      wxScore = Math.min(wxScore, 28);
+      if (wxScore >= 18) {
         reasons.push('五行补' + ctx.xiyongshen[0]);
       } else if (wxScore > 0) {
         reasons.push('五行得助');
@@ -5135,73 +5473,117 @@ details.more > summary:hover { color: var(--jade); }
       /* 无生辰：按名字内部五行搭配评价 */
       var wxs = rows.map(function (r) { return r.obj.wuxing; });
       var distinct = wxs.filter(function (w, k) { return wxs.indexOf(w) === k; });
-      wxScore += Math.min(distinct.length * 10, 20);
+      wxScore += Math.min(distinct.length * 9, 18);
       for (i = 1; i < wxs.length; i++) {
         var a = wxs[i - 1], b = wxs[i];
-        if (NS.SHENG[a] === b || NS.SHENG[b] === a) wxScore += 10;
+        if (NS.SHENG[a] === b || NS.SHENG[b] === a) wxScore += 9;
         else if (a === b) wxScore += 4;
       }
-      wxScore = Math.min(wxScore, 30);
+      wxScore = Math.min(wxScore, 28);
       if (distinct.length === wxs.length) reasons.push('五行搭配不重复');
     }
     score += wxScore;
 
-    /* ---- 2. 音韵（15）---- */
-    var tones = rows.map(function (r) { return r.obj.tone; });
-    var sms = rows.map(function (r) {
-      return NS.Pinyin.splitSyllable(r.obj.pinyin).initial;
+    /* ---- 2. 音韵（15）----
+     *
+     * 关键：**必须把姓氏算进来**。
+     * 早期版本只检查名字内部（rows），于是「郝澜瑞」l-án-ruì 的
+     * 声母 l 与姓氏「郝」并不冲突……但「李澜瑞」lǐ-lán 是 l-l 相撞，
+     * 念起来是「李兰瑞」，非常拗口，旧算法却给了满分。
+     * 同类的还有「李凌初」（l-l）、「林洛林」（l-l-l）。
+     * 单姓只有姓氏与首字这一对相邻，但这一对恰恰最关键 ——
+     * 名字是连姓一起念的。
+     *
+     * 判定方式也从「全名内两两互不相同」改成**相邻比较**：
+     * 拗口与否取决于相邻音节，隔着一个字同声母（如「郝明兰」）并不别扭。
+     */
+    var full = ctx.surnameSyllables.concat(rows.map(function (r) {
+      return { char: r.char, pinyin: r.obj.pinyin, tone: r.obj.tone };
+    }));
+    var tones = full.map(function (s) { return s.tone; });
+    var sms = full.map(function (s) {
+      return NS.Pinyin.splitSyllable(s.pinyin || '').initial;
     });
-    var yms = rows.map(function (r) {
-      return NS.Pinyin.splitSyllable(r.obj.pinyin).final;
+    var yms = full.map(function (s) {
+      return NS.Pinyin.splitSyllable(s.pinyin || '').final;
     });
-    if (uniq(tones) === tones.length) {
-      score += 6; reasons.push('声调错落');
-    } else if (uniq(tones) >= 2) {
-      score += 3;
+
+    /* 相邻声母相同 → 连读发懒音（李澜→李兰、郝涵→郝安），最难听 */
+    var sameInitial = [];
+    for (i = 1; i < sms.length; i++) {
+      if (sms[i] && sms[i] === sms[i - 1]) sameInitial.push(full[i - 1].char + full[i].char);
     }
-    if (uniq(sms) === sms.length) score += 3;
-    if (uniq(yms) === yms.length) score += 3;
+    if (!sameInitial.length) score += 4;
+    else if (sameInitial.length === 1 && sms.length > 2) score += 2;
+
+    /* 相邻韵母相同 → 叠韵，两个字的音糊在一起 */
+    var sameFinal = [];
+    for (i = 1; i < yms.length; i++) {
+      if (yms[i] && yms[i] === yms[i - 1]) sameFinal.push(full[i - 1].char + full[i].char);
+    }
+    if (!sameFinal.length) score += 3;
+    else if (sameFinal.length === 1 && yms.length > 2) score += 1.5;
+
+    /* 相邻声调相同 → 声调单调 */
+    var sameTone = 0;
+    for (i = 1; i < tones.length; i++) {
+      if (tones[i] === tones[i - 1]) sameTone++;
+    }
+    if (sameTone === 0) {
+      score += 4; reasons.push('声调错落');
+    } else if (sameTone < tones.length - 1) {
+      score += 2;
+    }
 
     /* 平仄相间：汉语读起来顺口的根本。
      * 声调 1、2 为平，3、4 为仄（轻声按仄处理）。
      * 「思远」= 平仄、「静姝」= 仄平，都是好搭配；
-     * 「书云」= 平平、「栗冬」= 仄平…平平的名字读着偏平。 */
+     * 「书云」= 平平，读着偏平。 */
     var pingze = tones.map(function (t) { return t === 1 || t === 2; });
     var alternated = 0;
     for (i = 1; i < pingze.length; i++) {
       if (pingze[i] !== pingze[i - 1]) alternated++;
     }
     if (alternated === pingze.length - 1) {
-      score += 3;
+      score += 4;
       reasons.push('平仄相间');
     } else if (alternated > 0) {
-      score += 1.5;
+      score += 2;
     }
 
-    /* ---- 3. 寓意 / 关键词（15）---- */
+    /* 上声（三声）连读要变调，是最费力的组合：「郝雨语」得上声→阳平→上声 */
+    var thirdRun = false;
+    for (i = 1; i < tones.length; i++) {
+      if (tones[i] === 3 && tones[i - 1] === 3) thirdRun = true;
+    }
+    if (thirdRun) score -= 2;
+
+    detail.phonetic = { sameInitial: sameInitial, sameFinal: sameFinal };
+
+    /* ---- 3. 寓意 / 关键词（14）---- */
     var kwTotal = rows.reduce(function (a, r) { return a + r.kwScore; }, 0);
-    kwTotal = Math.min(kwTotal, 15);
+    kwTotal = Math.min(kwTotal, 14);
     score += kwTotal;
     var hitWords = [];
     rows.forEach(function (r) { hitWords = hitWords.concat(r.kwHits); });
     if (hitWords.length) reasons.push('含关键词「' + hitWords.join('、') + '」');
 
-    /* ---- 4. 性别（5）---- */
+    /* ---- 4. 性别（4）---- */
     score += Math.min(rows.reduce(function (a, r) {
       return a + r.genderScore;
-    }, 0), 5);
+    }, 0), 4);
 
-    /* ---- 5. 风格（5）---- */
+    /* ---- 5. 风格（4）---- */
     var styleTotal = Math.min(rows.reduce(function (a, r) {
       return a + r.styleScore;
-    }, 0), 5);
+    }, 0), 4);
     score += styleTotal;
-    if (styleTotal >= 2.5 && ctx.style) reasons.push(ctx.style + '风格');
+    if (styleTotal >= 2 && ctx.style) reasons.push(ctx.style + '风格');
 
-    /* ---- 6. 三才五格（8）----
-     * 旧版给 15，实测它把「五行/音韵/寓意」这些真需求盖过去了。
+    /* ---- 6. 三才五格（6）----
+     * 旧版给 15，上一版降到 8，这一版降到 6。
      * 它属于「数理派」，与八字喜用神不同源，也不是「好不好听」的指标，
-     * 因此降权到 8，只作为参考。 */
+     * 继续保留只是为了不让它干扰真正影响观感的维度。 */
     var givenStrokes = rows.map(function (r) { return r.obj.strokes; });
     var wk = ctx.surnameStrokes.join(',') + '|' + givenStrokes.join(',');
     var wuge = ctx.wugeCache[wk];
@@ -5211,14 +5593,14 @@ details.more > summary:hover { color: var(--jade); }
     }
     detail.wuge = wuge;
     if (wuge.三才吉凶 === '大吉') {
-      score += 8; reasons.push('三才' + wuge.三才 + '大吉');
+      score += 6; reasons.push('三才' + wuge.三才 + '大吉');
     } else if (wuge.三才吉凶 === '中吉') {
-      score += 5;
+      score += 4;
     } else {
       score += 2;
     }
 
-    /* ---- 7. 出处与搭配（17）---- */
+    /* ---- 7. 出处与搭配（6）---- */
     var charsKey = rows.map(function (r) { return r.char; }).join('');
     var given = charsKey.split('');
     var adj, sameLine, samePoem;
@@ -5236,30 +5618,78 @@ details.more > summary:hover { color: var(--jade); }
     }
 
     if (adj) {
-      /* 经典来源（诗经/楚辞/唐诗/宋词/千家诗…）才算满分的「出处成词」；
-       * 蒙书与散文里凑出来的词只给一半 —— 实测「亦书」来自古文观止、
-       * 「念一」来自「每一念」，都不是词。见 NON_CLASSIC_SOURCES。 */
-      var full = adj.classic !== false;
-      score += full ? 17 : 9;
-      detail.poetry = adj;
-      detail.pairKind = full ? 'classic' : 'weak';
-      reasons.push(full
-        ? '出处成词「' + adj.pair + '」'
-        : '疑似成词「' + adj.pair + '」（非诗词类出处）');
+      /* 日常词语（风雨/明月）不算典故，只给很少的分。
+       * 这个标记由 poetry-lib 按词频给，离线时基本不会触发（那里有说明）。 */
+      if (adj.everyday) {
+        score += 2;
+        detail.poetry = adj;
+        detail.pairKind = 'everyday';
+        reasons.push('「' + adj.pair + '」是常见词语，不算典故');
+      } else {
+        /* 经典来源（诗经/楚辞/唐诗/宋词/千家诗…）才算「出处成词」；
+         * 蒙书与散文里凑出来的词只给一半 —— 实测「亦书」来自古文观止、
+         * 「念一」来自「每一念」，都不是词。见 NON_CLASSIC_SOURCES。 */
+        var full = adj.classic !== false;
+        score += full ? 6 : 3;
+        detail.poetry = adj;
+        detail.pairKind = full ? 'classic' : 'weak';
+        reasons.push(full
+          ? '出处成词「' + adj.pair + '」'
+          : '疑似成词「' + adj.pair + '」（非诗词类出处）');
+      }
     } else if (sameLine) {
-      score += 5;
+      score += 2;
       detail.poetry = sameLine;
       detail.pairKind = 'line';
       reasons.push('出自《' + sameLine.source + '》同句');
     } else if (samePoem) {
-      score += 1;
+      score += 0.5;
       detail.poetry = samePoem;
       detail.pairKind = 'poem';
       reasons.push('出自《' + samePoem.source + '》');
     }
 
-    /* ---- 8. 谐音（5）---- */
-    var syllables = ctx.surnameSyllables.concat(rows.map(function (r) {
+    /* ---- 8. 现代感（18）----
+     * 这是整个评分里**唯一一个直接信号**（其余都是代理指标：
+     * 五行代理命理、出处代理文化、热度代理流行度）。
+     *
+     * 它解决的问题：「出处成词」奖励的是文言词，也是普通名词，
+     * 两者都不能保证名字好听。而这一项直接对着目标 ——
+     * 「这个名字现代人念出来顺不顺、听起来舒不舒服」。
+     *
+     * 两个分量：
+     *   1. 命中现代名字词表（data/namewords.js，195 个词）→ +12
+     *      词表收录的是当代起名用字的搭配习惯：予安、知微、云舒、若溪、
+     *      星辰、景明、瑾瑜……两个字说得通、念得顺，不用冷僻字和文言虚词。
+     *   2. 用字热度落在「舒适区」→ 最多 +6（倒 U 型，见 comfort）
+     *      两头都不好：太冷门（<40）读起来生僻难认，
+     *      太烂大街（>91）则重名率高。中间段（55-91）最适合起名。
+     *      这一步同时解决「文绉绉」：古籍用字热度普遍偏低。
+     */
+    var mnChars = rows.map(function (r) { return r.char; });
+    var mnScore = 0;
+    var hitWord = null;
+    for (i = 0; i + 1 < mnChars.length; i++) {
+      var pair = mnChars[i] + mnChars[i + 1];
+      if (NS.NAME_WORD_SET && NS.NAME_WORD_SET[pair]) { hitWord = pair; break; }
+    }
+    if (hitWord) {
+      mnScore += 12;
+      reasons.push('现代常用搭配「' + hitWord + '」');
+    }
+    var comfortSum = 0;
+    mnChars.forEach(function (c) {
+      var h = NS.HEAT[c] !== undefined ? NS.HEAT[c] : NS.DEFAULT_HEAT;
+      comfortSum += comfort(h);
+    });
+    mnScore += comfortSum / mnChars.length * 6;
+    detail.modern = {
+      word: hitWord,
+      heat: NS.HEAT[mnChars[0]] !== undefined ? NS.HEAT[mnChars[0]] : NS.DEFAULT_HEAT
+    };
+    score += mnScore;
+
+    /* ---- 9. 谐音（5）---- */    var syllables = ctx.surnameSyllables.concat(rows.map(function (r) {
       return { char: r.char, pinyin: r.obj.pinyin, tone: r.obj.tone };
     }));
     var homo = NS.Pinyin.checkHomophone(syllables);
@@ -9751,12 +10181,17 @@ details.more > summary:hover { color: var(--jade); }
       var KIND_LABEL = {
         classic: '出处成词',
         weak: '疑似成词',
+        everyday: '常见词语（不算典故）',
         line: '同句出处',
         poem: '同篇出处'
       };
       var kind = item.pairKind || 'poem';
-      var po = el('div', 'nc-poetry' + (kind === 'poem' ? ' weak' : ''));
-      var head = el('span', 'nc-poetry-kind' + (kind === 'classic' ? ' good' : ''),
+      var dim = (kind === 'poem' || kind === 'everyday');
+      var po = el('div', 'nc-poetry' + (dim ? ' weak' : ''));
+      var kindCls = 'nc-poetry-kind'
+        + (kind === 'classic' ? ' good' : '')
+        + (kind === 'everyday' ? ' warn' : '');
+      var head = el('span', kindCls,
         KIND_LABEL[kind] || '出处');
       if (kind === 'classic' && item.poetry.pair) {
         head.textContent = KIND_LABEL.classic + '「' + item.poetry.pair + '」';
@@ -10386,6 +10821,18 @@ details.more > summary:hover { color: var(--jade); }
         setTimeout(function () { $('form').dispatchEvent(new Event('submit')); }, 60);
       }
     } catch (e) { /* 忽略 */ }
+
+    /* 脚注里的字库规模改成运行时填。
+     * 原来写死了「412 字」，结果每次加字都要手工改两处，漏改就变成假信息
+     * —— 和之前偏旁表漏收「梓」是同一类问题：**数据会变，文案不该硬编码**。 */
+    try {
+      var total = (NS.CHAR_LIB_STATS && NS.CHAR_LIB_STATS.total)
+        || Object.keys(NS.CHAR_DB).length;
+      Array.prototype.forEach.call(
+        document.querySelectorAll('.lib-count'), function (el) {
+          el.textContent = String(total);
+        });
+    } catch (e2) { /* 忽略 */ }
   }
 
   if (document.readyState === 'loading') {

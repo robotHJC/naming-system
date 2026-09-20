@@ -929,12 +929,17 @@
       var KIND_LABEL = {
         classic: '出处成词',
         weak: '疑似成词',
+        everyday: '常见词语（不算典故）',
         line: '同句出处',
         poem: '同篇出处'
       };
       var kind = item.pairKind || 'poem';
-      var po = el('div', 'nc-poetry' + (kind === 'poem' ? ' weak' : ''));
-      var head = el('span', 'nc-poetry-kind' + (kind === 'classic' ? ' good' : ''),
+      var dim = (kind === 'poem' || kind === 'everyday');
+      var po = el('div', 'nc-poetry' + (dim ? ' weak' : ''));
+      var kindCls = 'nc-poetry-kind'
+        + (kind === 'classic' ? ' good' : '')
+        + (kind === 'everyday' ? ' warn' : '');
+      var head = el('span', kindCls,
         KIND_LABEL[kind] || '出处');
       if (kind === 'classic' && item.poetry.pair) {
         head.textContent = KIND_LABEL.classic + '「' + item.poetry.pair + '」';
@@ -1564,6 +1569,18 @@
         setTimeout(function () { $('form').dispatchEvent(new Event('submit')); }, 60);
       }
     } catch (e) { /* 忽略 */ }
+
+    /* 脚注里的字库规模改成运行时填。
+     * 原来写死了「412 字」，结果每次加字都要手工改两处，漏改就变成假信息
+     * —— 和之前偏旁表漏收「梓」是同一类问题：**数据会变，文案不该硬编码**。 */
+    try {
+      var total = (NS.CHAR_LIB_STATS && NS.CHAR_LIB_STATS.total)
+        || Object.keys(NS.CHAR_DB).length;
+      Array.prototype.forEach.call(
+        document.querySelectorAll('.lib-count'), function (el) {
+          el.textContent = String(total);
+        });
+    } catch (e2) { /* 忽略 */ }
   }
 
   if (document.readyState === 'loading') {
