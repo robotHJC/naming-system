@@ -78,6 +78,9 @@
     var xiyongshen = (opts.bazi && opts.bazi.xiyongshen) || [];
     var ctx = NS.Score.buildContext({
       surname: surname,
+      /* 传原始整名：评估的名字可能含字库外的字，
+       * 靠 score.js 从 rows 拼会拼错，导致「整名成词」检查失效 */
+      given: given,
       xiyongshen: xiyongshen,
       taboo: opts.taboo || []
     });
@@ -143,6 +146,13 @@
     if (bazi) {
       var l1 = [];
       l1.push('四柱：' + bazi.baziStr);
+      /* 时辰未知是个**必须前置说明**的前提：同一个日期换个时辰，
+       * 整张盘的五行强弱就可能翻转，不能让人以为这是完整四柱。 */
+      if (bazi.noHour) {
+        l1.push('**时辰未填** —— 时柱无法确定，上面的五行力量与十神' +
+          '都没有计入时柱，喜用神是按年、月、日三柱推的。' +
+          '这只代表大概方向；若能问到出生时辰，填上后结果会准很多。');
+      }
       l1.push('日主 ' + bazi.dayGan + '（' + bazi.dayWx + '），' +
         bazi.strength + '（同党 ' + (bazi.ratio * 100).toFixed(0) + '%）');
       var cnt = NS.WUXING.map(function (w) {

@@ -38,6 +38,8 @@
     /* 主表单 */
     surname: 1, strokes: 1, birth: 1, longitude: 1, useTST: 1, city: 1,
     style: 1, top: 1, keywords: 1, taboo: 1, mustInclude: 1, useSC: 1,
+    /* 「只知日期、不知时辰」开关 */
+    birthNoHour: 1,
     /* 状态（不在 input 里，单独存） */
     gender: 1, givenLength: 1, xiManual: 1, radPicked: 1, radCustom: 1,
     radMode: 1,

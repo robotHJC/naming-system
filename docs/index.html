@@ -454,6 +454,20 @@ input::placeholder { color: #b6b0a4; }
   letter-spacing: .02em;
 }
 
+/* 时辰未知的那一柱：虚线边框 + 问号，一眼看出这格没算出来，
+ * 而不是以为界面漏渲染了 */
+.pillar.unknown {
+  border-style: dashed;
+  background: repeating-linear-gradient(45deg, #fbfaf6, #fbfaf6 6px,
+    #f4f1ea 6px, #f4f1ea 12px);
+}
+
+.pillar.unknown .gz.nz {
+  color: var(--ink-3);
+  opacity: .55;
+  letter-spacing: .12em;
+}
+
 .pillar .cg span { cursor: help; }
 
 /* ---------------- 十神汇总 ---------------- */
@@ -2200,6 +2214,10 @@ details.more > summary:hover { color: var(--jade); }
       <div class="field">
         <label for="birth">出生时间 <span class="sub">选填，用于补五行</span></label>
         <input type="datetime-local" id="birth">
+        <label class="check" style="margin-top:8px">
+          <input type="checkbox" id="birthNoHour">
+          <span>只知道日期，不知道几点出生</span>
+        </label>
         <p class="hint" id="baziHint" style="margin:6px 0 0"></p>
       </div>
 
@@ -2443,6 +2461,31 @@ details.more > summary:hover { color: var(--jade); }
        但 26、27、30、38、40、51、55、58、71、73、75、77、78 有的本子标「凶」、
        有的标「半吉」，本表取了较通行的一种并标为「半吉」。
        既然各家不一致，就不宜给它更多权重 —— 所以<b>八十一数理只作展示，不参与评分</b>。</p>
+    <p><b>关于「整名是个日常词」</b>　走查时实测出来的真问题：统计 6 个姓氏 × 3 性别的前 20 名，
+       360 个里有 9 个是<b>日常词</b>，而且位置很靠前 ——
+       「郝博士」第 3 名、「李博士」第 3 名、「王博士」第 6 名、「郝斯文」第 10 名……，
+       <b>「博士」几乎对每个姓氏都进前 3-8 名。</b>
+       根因不是没查谐音，而是<b>出处机制在反向奖励它</b>：「博士」是唐代真实官职
+       （国子博士、太学博士），在《唐诗三百首》里确实相邻出现过，
+       于是被判为「出处成词」加分 —— <b>专门用来找典故的机制，把「博士」当成了典故。</b>
+       单看每个字都没问题（博 89 热度、士 70 热度、五行水金、声调错落、三才大吉），
+       <b>逐字判据全过，问题只出在整名上。</b>
+       所以新增了一道<b>按整名</b>查的降权（收录 311 个词：称谓职务、现代器物、
+       抽象名词、食物、动物、贬义词），命中扣 16 分并在理由里说明。
+       判断标准不是「是不是词」，而是<b>「作为名字会不会让人出戏」</b> ——
+       所以「清和」「若水」「嘉树」「云舒」这些<b>雅词刻意不收</b>，
+       它们也是常用词，但用它们取名是传统做法。
+       和「名字显老」一样：<b>是降权不是禁用</b>。修复后
+       「博士」「斯文」在 10 个姓氏×性别组合里全部跌出前 200 名。</p>
+    <p><b>关于时辰未知</b>　很多人只记得住出生日期、记不住几点出生。
+       以前这种情况只能弃填生辰，于是完全拿不到八字、退化成「用字」层。
+       现在勾上「只知道日期，不知道几点出生」即可：
+       <b>时柱会标成「？？」</b>，五行力量与十神<b>都不计入时柱</b>，
+       喜用神按年、月、日三柱推出来，并在报告里写清这个前提。
+       为什么<b>不能随便填一个时辰</b>：一个日期换个时辰，整张盘的五行强弱就可能翻转，
+       算出来的喜用神是假的 —— <b>比不算更糟。</b>
+       真太阳时在勾选后会自动禁用，因为它算的正是时柱，
+       硬算只会把一个未知的东西变成一个看起来确定的值。</p>
     <p><b>关于姓名卦</b>　<b>这是民俗做法，不是《周易》原书的用法。</b>
        原书以蓍草起卦问事，「用姓名笔画起卦」是后人（主要是梅花易数与姓名学）
        的推演，而且各家取卦法并不一致。本系统采用一套并写明：
@@ -4298,6 +4341,145 @@ details.more > summary:hover { color: var(--jade); }
 </script>
 <script>
 /* =========================================================================
+ * nameblock.js —— 「整名是个常用词」的降权表
+ *
+ * 为什么需要它
+ * ---------------------------------------------------------------
+ * 实测出来的真问题（走查 6 个姓氏 × 3 性别、统计前 20 名）：
+ *   360 个前 20 名里有 9 个是**日常词**，而且位置很靠前 ——
+ *     郝博士 第3名　李博士 第3名　王博士 第6名　陈博士 第6名
+ *     张博士 第8名　刘博士 第20名　郝斯文 第10名　陈斯文 第14名
+ *     「博士」几乎对每个姓氏都进前 3-8 名。
+ *
+ * 根因不是「没查谐音」，而是**出处机制在反向奖励它**：
+ * 「博士」是唐代真实官职（国子博士、太学博士），在《唐诗三百首》里
+ * 确实相邻出现过，于是被判为「出处成词」+6 分 ——
+ * 专门用来找典故的机制，把「博士」当成了典故。
+ *
+ * 单看每个字都没问题：博（热度 89，舒适区）、士（热度 70，舒适区）、
+ * 五行水金、声调错落、三才土土土大吉。**逐字判据全过，问题出在整名上。**
+ *
+ * 所以这里按**整名**查，与 data/era-chars.js 同一套思路：
+ * 人工判断表 + 写清依据 + 是降权不是禁用。
+ *
+ * 收录标准（这条线很重要，别放宽）
+ * ---------------------------------------------------------------
+ * 只收**读起来像"词"而不像"名"**的：
+ *   称谓/职务、现代器物、现代抽象名词、食物、动物、身体部位、贬义词
+ *
+ * **刻意不收**的（它们也是常用词，但作为名字是好的）：
+ *   安然 安宁 清和 若水 明月 清风 秋月 嘉树 云舒 知微 景明 星河 山水
+ *   —— 这些是**雅词/意象**，用它们取名是传统做法；
+ *   而那些被收进来的，问题不在于"是个词"，而在于那个词**指称的是
+ *   某个具体身份、物品或概念**，套在人名上就变成了笑话或误会。
+ * 换句话说：**判断标准不是"是不是词"，而是"作为名字会不会让人出戏"。**
+ *
+ * 这只是抽样覆盖，不是穷举 —— 现代汉语常用词有几万个，
+ * 穷举需要一份权威词表（且要人工逐条判断适不适合当名字）。
+ * 现在的表覆盖的是实测中真正出现过、以及最容易被自动拼出来的那些。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+  var NS = (global.NS = global.NS || {});
+
+  /* 扣分力度（放在「现代感」这个 18 分的项里）。
+   *
+   * 定 16 的依据：实测「郝博士」是 69 分、第 3 名。
+   * 扣 16 → 53 分，按当时的分数分布会落到 60 名开外，
+   * 既把它从显眼位置赶走，又不至于连"想找它"都找不到。
+   * 比 era-chars 的 −6/字 重得多，因为「整名是个职务」比
+   * 「某个字显老」严重得多 —— 后者只是不时髦，前者是闹笑话。 */
+  NS.NAMEBLOCK_PENALTY = 16;
+
+  NS.NAMEBLOCK_WORDS = [
+    /* ---- 学位 / 职务 / 职称 ---- */
+    '博士', '硕士', '学士', '院士', '教授', '讲师', '助教', '导师',
+    '校长', '院长', '主任', '部长', '局长', '处长', '科长',
+    '县长', '市长', '省长', '主席', '总理', '首相', '总统',
+    '医生', '医师', '护士', '药师', '律师', '法官', '警察', '警官',
+    '会计', '出纳', '经理', '老板', '总裁', '董事', '主管', '总监',
+    '班长', '组长', '队长', '排长', '连长', '营长', '团长', '师长',
+    '司令', '政委', '将军', '元帅',
+
+    /* ---- 称谓 ---- */
+    '老师', '教师', '学生', '同学', '先生', '女士', '小姐', '太太',
+    '夫人', '同志', '师傅', '徒弟', '秘书', '助理', '顾问', '专员',
+
+    /* ---- 职业 / 身份 ---- */
+    '记者', '编辑', '主持', '演员', '明星', '歌星', '影星', '球星',
+    '作家', '诗人', '画家', '歌手', '琴师', '厨师', '司机', '机长',
+    '空姐', '导游', '保安', '快递', '外卖', '保洁', '电工', '木工',
+    '工人', '农民', '商人', '军人', '战士', '士兵',
+    '皇帝', '大王', '国王', '王子', '公主', '太子',
+    '丞相', '宰相', '县令', '知府', '书生', '秀才', '状元', '榜眼', '探花',
+
+    /* ---- 现代器物 / 科技 ---- */
+    '手机', '电脑', '汽车', '火车', '飞机', '轮船', '电视', '冰箱',
+    '空调', '相机', '眼镜', '手表', '书包', '铅笔', '橡皮',
+    '桌子', '椅子', '沙发', '被子', '枕头', '杯子', '筷子', '盘子',
+    '钥匙', '钱包', '雨伞', '帽子', '袜子', '鞋子', '裤子', '衣服',
+    '裙子', '毛巾', '牙刷', '镜子', '梳子', '电灯', '门窗',
+    '屏幕', '键盘', '鼠标', '耳机', '音响', '电池', '电线', '开关', '网络',
+
+    /* ---- 现代抽象名词 ---- */
+    '问题', '办法', '事情', '东西', '时间', '地方', '结果', '原因',
+    '条件', '环境', '社会', '世界', '国家', '政府', '法律', '规矩',
+    '制度', '经济', '金融', '银行', '公司', '企业', '工厂',
+    '学校', '医院', '商店', '市场', '交通', '电话', '信息', '数据',
+    '知识', '科学', '技术', '文化', '艺术', '历史', '地理', '数学',
+    '语文', '英语', '物理', '化学', '生物', '体育', '音乐', '美术',
+    '政治', '思想', '道德', '品质', '性格', '脾气', '感情', '爱情',
+    '友情', '亲情', '心情', '精神', '力量', '能力', '水平',
+    '质量', '数量', '重量', '速度', '温度', '高度', '长度', '面积', '体积',
+
+    /* ---- 形容人的日常词 ----
+     * 「斯文」是实测样本：「郝斯文」原本排第 10 名。
+     * 它确实是个褒义词，但作为名字读出来就是那个词本身，
+     * 不是在夸人 —— 和「博士」同一个毛病。 */
+    '斯文', '文雅', '温柔', '聪明', '老实', '大方', '体面', '和气',
+    '小气', '吝啬', '骄傲', '谦虚', '勤快', '懒惰', '漂亮', '帅气',
+
+    /* ---- 食物 ---- */
+    '苹果', '香蕉', '橘子', '西瓜', '葡萄', '桃子', '梨子', '柿子',
+    '米饭', '面条', '包子', '饺子', '馒头', '白菜', '萝卜', '土豆',
+    '番茄', '黄瓜', '茄子', '辣椒', '豆腐', '鸡蛋', '牛肉', '猪肉',
+    '羊肉', '鸡肉', '牛奶', '豆浆', '咖啡', '茶叶',
+
+    /* ---- 动物 / 植物（口语化的那种，不含文学意象） ---- */
+    '老虎', '狮子', '大象', '猴子', '兔子', '老鼠', '骆驼', '熊猫',
+    '鸡鸭', '鹅毛', '鱼虾', '螃蟹', '蜜蜂', '蝴蝶', '蚊子', '苍蝇',
+
+    /* ---- 身体 ---- */
+    '头发', '眼睛', '鼻子', '嘴巴', '耳朵', '眉毛', '舌头', '牙齿',
+    '手指', '脚趾', '肩膀', '脖子', '胳膊', '肚子', '膝盖',
+
+    /* ---- 贬义 / 不顺 ---- */
+    '傻子', '笨蛋', '糊涂', '麻烦', '糟糕', '倒霉', '贫穷',
+    '疾病', '毛病', '缺点', '错误', '失败', '死亡', '危险',
+    '困难', '痛苦', '悲哀', '忧愁', '烦恼', '生气', '发火'
+  ];
+
+  /* 集合，O(1) 查询 */
+  NS.NAMEBLOCK_SET = (function () {
+    var m = Object.create(null);
+    NS.NAMEBLOCK_WORDS.forEach(function (w) { m[w] = 1; });
+    return m;
+  })();
+
+  /**
+   * 这个名字是不是一个「日常词」
+   * @param {string} given 名（不含姓）
+   * @returns {string|null} 命中的词，没命中返回 null
+   */
+  NS.nameBlockHit = function (given) {
+    if (!given) return null;
+    return NS.NAMEBLOCK_SET[given] ? given : null;
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
  * fanti.js —— 繁体 → 简体 归一化表
  *
  * 为什么需要：
@@ -5768,6 +5950,11 @@ details.more > summary:hover { color: var(--jade); }
     var useTST = opts.trueSolarTime !== false && typeof opts.longitude === 'number'
       && isFinite(opts.longitude);
     var ziShiNewDay = opts.ziShiNewDay !== false;
+    /* 时辰未知：只给日期、不知道几点出生。
+     * 这时**不能随便填一个时辰** —— 时柱变了整个五行力量就变了，
+     * 算出来的喜用神是假的，比不算更糟。所以时柱直接置空、
+     * 五行力量与十神都不计它，并在界面上明确标出来。 */
+    var noHour = opts.noHour === true;
 
     /* 北京时间（用于年柱/月柱的节气边界比较） */
     var jdBeijing = C.gregorianToJD(year, month, day, hour, minute);
@@ -5807,17 +5994,21 @@ details.more > summary:hover { color: var(--jade); }
     var dayZhi = ((dn + 1) % 12 + 12) % 12;
 
     /* ---------- 时柱 ---------- */
-    var hourZhi = Math.floor((((tstHour + 1) % 24) + 24) % 24 / 2);
-    var hourGan = ((dayGan % 5) * 2 + hourZhi) % 10;
+    var hourZhi = null, hourGan = null;
+    if (!noHour) {
+      hourZhi = Math.floor((((tstHour + 1) % 24) + 24) % 24 / 2);
+      hourGan = ((dayGan % 5) * 2 + hourZhi) % 10;
+    }
 
     return {
       年: [yearGan, yearZhi],
       月: [monthGan, monthZhi],
       日: [dayGan, dayZhi],
-      时: [hourGan, hourZhi],
+      时: noHour ? null : [hourGan, hourZhi],
       meta: {
         sui: sui,
         trueSolarTime: useTST,
+        noHour: noHour,
         tst: { y: ts.y, m: ts.m, d: ts.d, h: tstHour, mi: tstMinute },
         deltaMin: ts.deltaMin || 0,
         jieqi: loc.current.name,
@@ -5834,6 +6025,9 @@ details.more > summary:hover { color: var(--jade); }
    */
   function baziString(bz) {
     return ['年', '月', '日', '时'].map(function (k) {
+      /* 时柱未知时报「--」而不是漏掉或拿年月日凑 ——
+       * 少一柱一目了然，填空值反而容易被当成算过了 */
+      if (!bz[k]) return '--';
       return NS.TIANGAN[bz[k][0]] + NS.DIZHI[bz[k][1]];
     }).join(' ');
   }
@@ -5847,6 +6041,7 @@ details.more > summary:hover { color: var(--jade); }
     var pillars = ['年', '月', '日', '时'];
 
     pillars.forEach(function (k) {
+      if (!bz[k]) return;                          /* 时柱未知则不计 */
       s[NS.TIANGAN_WUXING[bz[k][0]]] += 1.0;              /* 天干 */
       var cg = NS.DIZHI_CANGGAN[bz[k][1]];
       for (var i = 0; i < cg.length; i++) {
@@ -5866,6 +6061,7 @@ details.more > summary:hover { color: var(--jade); }
   function wuxingCount(bz) {
     var c = { 金: 0, 木: 0, 水: 0, 火: 0, 土: 0 };
     ['年', '月', '日', '时'].forEach(function (k) {
+      if (!bz[k]) return;                          /* 时柱未知则不计 */
       c[NS.TIANGAN_WUXING[bz[k][0]]] += 1;
       c[NS.DIZHI_WUXING[bz[k][1]]] += 1;
     });
@@ -5885,6 +6081,7 @@ details.more > summary:hover { color: var(--jade); }
     var dayGan = bz.日[0];
     var s = Object.create(null);
     ['年', '月', '日', '时'].forEach(function (k) {
+      if (!bz[k]) return;                          /* 时柱未知则不计 */
       if (k !== '日') {
         var g = NS.shishen(dayGan, bz[k][0]);
         if (g) s[g] = (s[g] || 0) + 1.0;
@@ -5963,8 +6160,17 @@ details.more > summary:hover { color: var(--jade); }
       bazi: bz,
       baziStr: baziString(bz),
       pillars: ['年', '月', '日', '时'].map(function (k) {
+        /* 时柱未知：给出一个占位对象，界面据此显示「时辰未知」，
+         * 而不是少一格让人以为算过了 */
+        if (!bz[k]) {
+          return {
+            label: k, unknown: true, gan: '--', zhi: '--',
+            ganWx: '', zhiWx: '', ganShishen: '', ganYinYang: '', cangGan: []
+          };
+        }
         return {
           label: k,
+          unknown: false,
           gan: NS.TIANGAN[bz[k][0]],
           zhi: NS.DIZHI[bz[k][1]],
           ganWx: NS.TIANGAN_WUXING[bz[k][0]],
@@ -5991,6 +6197,8 @@ details.more > summary:hover { color: var(--jade); }
       dayGan: NS.TIANGAN[dayGan],
       dayWx: dayWx,
       dayYinYang: NS.ganYinYang(dayGan),
+      /* 时辰未知标志。界面据此把时柱标成「--」并提示喜用神是按三柱推的 */
+      noHour: !!bz.meta.noHour,
       strength: strength,
       xiyongshen: candidates,
       missing: missing,
@@ -6815,6 +7023,12 @@ details.more > summary:hover { color: var(--jade); }
 
     var ctx = {
       surname: surname,
+      /* 调用方给的**原始整名**（不含姓）。
+       * 取名流程里它就是候选名，评估流程里是用户输入的任意名字 ——
+       * 后者可能含字库外的字，这时靠 rows 拼是拼不出原名的
+       * （比如「傻子」里的「傻」不在字库，rows 只剩「子」），
+       * 导致「整名成词」检查静默失效。所以优先用这个字段。 */
+      given: opts.given || '',
       surnameStrokes: surnameStrokes,
       surnameSyllables: surnameSyllables,
       gender: opts.gender || '中性',
@@ -7170,9 +7384,32 @@ details.more > summary:hover { color: var(--jade); }
       reasons.push('「' + eraHits.join('、') + '」偏上一代的取名用字');
     }
 
+    /* 整名是个常用词（见 data/nameblock.js）。
+     *
+     * 这是走查时实测出来的真问题：「郝博士」排第 3 名，而且
+     * 「博士」几乎对每个姓氏都进前 3-8 名。根因是**出处机制在反向奖励它** ——
+     * 「博士」是唐代真实官职，在《唐诗三百首》里相邻出现过，
+     * 于是被判为「出处成词」+6 分，专门找典故的机制把它当成了典故。
+     *
+     * 逐字判据全是好的（博 89 舒适区、士 70 舒适区、五行水金、声调错落、
+     * 三才大吉），问题只出在整名上 —— 所以这里必须按**整名**查。
+     *
+     * 注意这里查的是**整名**，不是逐个 pair。
+     * 优先用 ctx.given（调用方给的原始名）—— 评估含字库外字的名字时，
+     * rows 里只剩认得的字，拼出来的不是原名，检查会静默失效。
+     * 取名流程里 ctx.given 为空，则回退到 rows 拼。
+     * 单名不会命中，这是对的：单字成不了词。 */
+    var givenName = ctx.given || mnChars.join('');
+    var blockWord = NS.nameBlockHit ? NS.nameBlockHit(givenName) : null;
+    if (blockWord) {
+      mnScore -= (NS.NAMEBLOCK_PENALTY || 16);
+      reasons.push('「' + blockWord + '」是个日常词，用作名字容易闹误会');
+    }
+
     detail.modern = {
       word: hitWord,
       era: eraHits,
+      block: blockWord,
       heat: NS.HEAT[mnChars[0]] !== undefined ? NS.HEAT[mnChars[0]] : NS.DEFAULT_HEAT
     };
     score += mnScore;
@@ -10659,6 +10896,9 @@ details.more > summary:hover { color: var(--jade); }
     var xiyongshen = (opts.bazi && opts.bazi.xiyongshen) || [];
     var ctx = NS.Score.buildContext({
       surname: surname,
+      /* 传原始整名：评估的名字可能含字库外的字，
+       * 靠 score.js 从 rows 拼会拼错，导致「整名成词」检查失效 */
+      given: given,
       xiyongshen: xiyongshen,
       taboo: opts.taboo || []
     });
@@ -10724,6 +10964,13 @@ details.more > summary:hover { color: var(--jade); }
     if (bazi) {
       var l1 = [];
       l1.push('四柱：' + bazi.baziStr);
+      /* 时辰未知是个**必须前置说明**的前提：同一个日期换个时辰，
+       * 整张盘的五行强弱就可能翻转，不能让人以为这是完整四柱。 */
+      if (bazi.noHour) {
+        l1.push('**时辰未填** —— 时柱无法确定，上面的五行力量与十神' +
+          '都没有计入时柱，喜用神是按年、月、日三柱推的。' +
+          '这只代表大概方向；若能问到出生时辰，填上后结果会准很多。');
+      }
       l1.push('日主 ' + bazi.dayGan + '（' + bazi.dayWx + '），' +
         bazi.strength + '（同党 ' + (bazi.ratio * 100).toFixed(0) + '%）');
       var cnt = NS.WUXING.map(function (w) {
@@ -11251,6 +11498,8 @@ details.more > summary:hover { color: var(--jade); }
     /* 主表单 */
     surname: 1, strokes: 1, birth: 1, longitude: 1, useTST: 1, city: 1,
     style: 1, top: 1, keywords: 1, taboo: 1, mustInclude: 1, useSC: 1,
+    /* 「只知日期、不知时辰」开关 */
+    birthNoHour: 1,
     /* 状态（不在 input 里，单独存） */
     gender: 1, givenLength: 1, xiManual: 1, radPicked: 1, radCustom: 1,
     radMode: 1,
@@ -13571,7 +13820,7 @@ details.more > summary:hover { color: var(--jade); }
 
   /* 要缓存的表单控件，key 就是元素 id */
   var PREF_IDS = ['surname', 'strokes', 'birth', 'longitude', 'useTST', 'city',
-    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC'];
+    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC', 'birthNoHour'];
 
   /** 收集当前表单状态（含不在 input 里的那些 state） */
   function collectPrefs() {
@@ -13822,7 +14071,7 @@ details.more > summary:hover { color: var(--jade); }
   function recommendByXi() {
     var xi = currentXi();
     if (!xi || !xi.length) {
-      var dt = parseLocal($('birth').value);
+      var dt = parseLocal($('birth').value, birthNoHour());
       if (dt) xi = computeBazi(dt).xiyongshen;
     }
     if (!xi || !xi.length) {
@@ -13856,7 +14105,7 @@ details.more > summary:hover { color: var(--jade); }
 
   /** 按生肖推荐部首。民俗说法，必须用户主动点，且界面上标明性质 */
   function recommendByZodiac() {
-    var dt = parseLocal($('birth').value);
+    var dt = parseLocal($('birth').value, birthNoHour());
     if (!dt) {
       alert('按生肖推荐需要出生日期。请先填出生时间。');
       return;
@@ -14045,40 +14294,87 @@ details.more > summary:hover { color: var(--jade); }
       return;
     }
 
-    var dt = parseLocal(v);
+    var dt = parseLocal(v, birthNoHour());
     if (!dt) { hint.textContent = ''; return; }
     var info = computeBazi(dt);
     if (!info) { hint.textContent = ''; return; }
+
+    var hourNote = info.noHour
+      ? '　<span style="color:#a9782c">时辰未知 → 时柱未计入</span>'
+      : '';
 
     hint.innerHTML = '八字 <b>' + esc(info.baziStr) + '</b>　日主 <b>' +
       esc(info.dayGan + info.dayWx) + '</b>　' + esc(info.strength) +
       '　喜用神 <b style="color:#2f5d50">' + esc(info.xiyongshen.join('、')) +
       '</b>' + (info.missing.length
         ? '　缺 <b style="color:#a63a2e">' + esc(info.missing.join('、')) + '</b>'
-        : '');
+        : '') + hourNote;
   }
 
-  function parseLocal(v) {
+  /**
+   * 切换「时辰未知」。
+   *
+   * 保留 datetime-local 不换类型：在手机上它会直接调出系统日期时间选择器，
+   * 比自制的「日期 + 时辰下拉」好用；而且换类型会丢掉已填的日期、
+   * 或者得默默填一个假时间进去。不知道时辰时，直接忽略时间部分就行。
+   */
+  function syncBirthMode() {
+    var noHour = birthNoHour();
+    /* 时辰未知时真太阳时没有意义 —— 它算的正是时柱，
+     * 硬算只会把一个未知的东西变成一个看起来确定的值。 */
+    var tst = $('useTST');
+    if (tst) {
+      tst.disabled = noHour;
+      var tstRow = tst.closest('label');
+      if (tstRow) tstRow.style.opacity = noHour ? '.5' : '';
+    }
+    var b = $('birth');
+    if (b) b.disabled = false;
+    updateBaziHint();
+  }
+
+  function parseLocal(v, forceNoHour) {
     if (!v) return null;
     var m = v.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-    if (!m) return null;
+    /* 只到日期（不带 T 时间）也接受，同样按「时辰未知」处理 */
+    var dm = m ? null : v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m && !dm) return null;
+    var g = m || dm;
+    /* 时辰未知时**强行忽略时间部分**，而不是把时柱瞎填成 00:00 ——
+     * 时柱变了整个五行力量就变了，算出来的喜用神是假的，比不算更糟。
+     * 这里不切换输入框类型：datetime-local 在手机上会直接调出
+     * 系统选择器，比自制「日期 + 时辰下拉」好用，而且这样切来切去
+     * 会丢掉已填的日期或者默默填入一个假时间。 */
     return {
-      y: +m[1], m: +m[2], d: +m[3], h: +m[4], mi: +m[5]
+      y: +g[1], m: +g[2], d: +g[3],
+      h: m ? +m[4] : 0,
+      mi: m ? +m[5] : 0,
+      noHour: !!(forceNoHour || !m)
     };
   }
 
-  function baziOptions() {
+  /** 输入框当前是否处于「时辰未知」模式 */
+  function birthNoHour() {
+    var cb = $('birthNoHour');
+    return !!(cb && cb.checked);
+  }
+
+  function baziOptions(noHour) {
     var lon = parseFloat($('longitude').value);
-    var useTST = $('useTST').checked && isFinite(lon);
+    /* 时辰未知时真太阳时没有意义 —— 它算的正是时柱，
+     * 硬算只会把一个未知的东西变成一个看起来确定的值。 */
+    var useTST = !noHour && $('useTST').checked && isFinite(lon);
     return {
       trueSolarTime: useTST,
+      noHour: !!noHour,
       longitude: isFinite(lon) ? lon : undefined
     };
   }
 
   function computeBazi(dt) {
     try {
-      return NS.Bazi.analyzeBazi(dt.y, dt.m, dt.d, dt.h, dt.mi, baziOptions());
+      return NS.Bazi.analyzeBazi(dt.y, dt.m, dt.d, dt.h, dt.mi,
+        baziOptions(dt.noHour));
     } catch (e) {
       console.error(e);
       return null;
@@ -14101,7 +14397,7 @@ details.more > summary:hover { color: var(--jade); }
      * 因此复姓时优先使用内置数据，未收录则提示。 */
     if (surname.length > 1 && info && info.known) strokes = info.strokes;
 
-    var dt = parseLocal($('birth').value);
+    var dt = parseLocal($('birth').value, birthNoHour());
     var baziInfo = dt ? computeBazi(dt) : null;
 
     var xi = currentXi();
@@ -14253,8 +14549,19 @@ details.more > summary:hover { color: var(--jade); }
     /* 四柱 */
     var grid = el('div', 'pillar-grid');
     info.pillars.forEach(function (p) {
-      var cell = el('div', 'pillar');
+      var cell = el('div', 'pillar' + (p.unknown ? ' unknown' : ''));
       cell.appendChild(el('div', 'lbl', p.label + '柱'));
+      /* 时辰未知：明确写出来，不能留空 ——
+       * 空格子容易被当成「算过了但没显示」。 */
+      if (p.unknown) {
+        cell.appendChild(el('div', 'ss', '未知'));
+        cell.appendChild(el('div', 'gz nz', '？？'));
+        cell.appendChild(el('div', 'cg', '时辰未填'));
+        cell.title = '不知道出生时辰 → 时柱无法确定。\n' +
+          '五行力量与十神均未计入时柱，喜用神是按年、月、日三柱推的。';
+        grid.appendChild(cell);
+        return;
+      }
       /* 十神按传统排盘放在干支**上方** —— 先看十神再看字，
        * 这也是所有八字软件的习惯位置，换位置反而要重新适应。 */
       var ss = el('div', 'ss' + (p.ganShishen === '日主' ? ' self' : ''),
@@ -14315,7 +14622,24 @@ details.more > summary:hover { color: var(--jade); }
       fact('五行', '齐全');
     }
     fact('当前节气', '<b>' + esc(info.meta.jieqi) + '</b>');
+    /* 时辰未知是**必须**说清楚的前提：同样一个日期，
+     * 换个时辰整张盘的五行力量就变了 —— 不能让人以为这是完整四柱。 */
+    if (info.noHour) {
+      fact('时柱', '<span class="fact-miss">时辰未填</span>');
+    }
     panel.appendChild(facts);
+
+    if (info.noHour) {
+      var nhNote = el('p', 'more-note');
+      nhNote.innerHTML = '<b>你选了「只知道日期，不知道几点出生」</b> —— ' +
+        '时柱（也就是出生的时辰）无法确定，因此上面的五行力量与十神' +
+        '<b>都没有计入时柱</b>，喜用神是按年、月、日三柱推出来的。' +
+        '一个日期换个时辰，整张盘的五行强弱就可能翻转，所以' +
+        '<b>这个喜用神只是个大概方向</b>。' +
+        '若能问到出生时辰（出生证、接生记录、家人回忆「上午还是下午」都有帮助），' +
+        '填上后结果会准很多。';
+      panel.appendChild(nhNote);
+    }
 
     /* 十神。放在五行之后、结论之前 ——
      * 它是「五行力量的另一种说法」：五行说的是能量的属性，
@@ -15308,6 +15632,9 @@ details.more > summary:hover { color: var(--jade); }
     }
     $('birth').addEventListener('change', updateBaziHint);
     $('birth').addEventListener('input', updateBaziHint);
+    if ($('birthNoHour')) {
+      $('birthNoHour').addEventListener('change', syncBirthMode);
+    }
     $('longitude').addEventListener('input', updateBaziHint);
     $('useTST').addEventListener('change', updateBaziHint);
     $('form').addEventListener('submit', onSubmit);
@@ -15340,6 +15667,9 @@ details.more > summary:hover { color: var(--jade); }
     NS.Prefs.load().then(function (p) {
       var restored = applyPrefs(p);
       updateSurname();
+      /* 恢复完记录要让「时辰未知」模式跟上 ——
+       * 勾选状态恢复回来后，真太阳时需要相应禁用。 */
+      syncBirthMode();
       updateBaziHint();
       renderPrefHint(restored, p && p.savedAt);
       applyUrlParams();

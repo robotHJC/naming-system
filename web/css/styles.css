@@ -447,6 +447,20 @@ input::placeholder { color: #b6b0a4; }
   letter-spacing: .02em;
 }
 
+/* 时辰未知的那一柱：虚线边框 + 问号，一眼看出这格没算出来，
+ * 而不是以为界面漏渲染了 */
+.pillar.unknown {
+  border-style: dashed;
+  background: repeating-linear-gradient(45deg, #fbfaf6, #fbfaf6 6px,
+    #f4f1ea 6px, #f4f1ea 12px);
+}
+
+.pillar.unknown .gz.nz {
+  color: var(--ink-3);
+  opacity: .55;
+  letter-spacing: .12em;
+}
+
 .pillar .cg span { cursor: help; }
 
 /* ---------------- 十神汇总 ---------------- */

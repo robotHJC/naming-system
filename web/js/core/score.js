@@ -74,6 +74,12 @@
 
     var ctx = {
       surname: surname,
+      /* 调用方给的**原始整名**（不含姓）。
+       * 取名流程里它就是候选名，评估流程里是用户输入的任意名字 ——
+       * 后者可能含字库外的字，这时靠 rows 拼是拼不出原名的
+       * （比如「傻子」里的「傻」不在字库，rows 只剩「子」），
+       * 导致「整名成词」检查静默失效。所以优先用这个字段。 */
+      given: opts.given || '',
       surnameStrokes: surnameStrokes,
       surnameSyllables: surnameSyllables,
       gender: opts.gender || '中性',
@@ -429,9 +435,32 @@
       reasons.push('「' + eraHits.join('、') + '」偏上一代的取名用字');
     }
 
+    /* 整名是个常用词（见 data/nameblock.js）。
+     *
+     * 这是走查时实测出来的真问题：「郝博士」排第 3 名，而且
+     * 「博士」几乎对每个姓氏都进前 3-8 名。根因是**出处机制在反向奖励它** ——
+     * 「博士」是唐代真实官职，在《唐诗三百首》里相邻出现过，
+     * 于是被判为「出处成词」+6 分，专门找典故的机制把它当成了典故。
+     *
+     * 逐字判据全是好的（博 89 舒适区、士 70 舒适区、五行水金、声调错落、
+     * 三才大吉），问题只出在整名上 —— 所以这里必须按**整名**查。
+     *
+     * 注意这里查的是**整名**，不是逐个 pair。
+     * 优先用 ctx.given（调用方给的原始名）—— 评估含字库外字的名字时，
+     * rows 里只剩认得的字，拼出来的不是原名，检查会静默失效。
+     * 取名流程里 ctx.given 为空，则回退到 rows 拼。
+     * 单名不会命中，这是对的：单字成不了词。 */
+    var givenName = ctx.given || mnChars.join('');
+    var blockWord = NS.nameBlockHit ? NS.nameBlockHit(givenName) : null;
+    if (blockWord) {
+      mnScore -= (NS.NAMEBLOCK_PENALTY || 16);
+      reasons.push('「' + blockWord + '」是个日常词，用作名字容易闹误会');
+    }
+
     detail.modern = {
       word: hitWord,
       era: eraHits,
+      block: blockWord,
       heat: NS.HEAT[mnChars[0]] !== undefined ? NS.HEAT[mnChars[0]] : NS.DEFAULT_HEAT
     };
     score += mnScore;

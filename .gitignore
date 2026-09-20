@@ -17,6 +17,7 @@ Thumbs.db
 *.log
 tools/_msg.txt
 tools/_msg2.txt
+tools/_msg3.txt
 
 # 数据生成工具的临时产物与下载缓存。
 # 缓存里有新华字典 word.json（27MB）和 OpenCC 繁简表，
@@ -24,5 +25,6 @@ tools/_msg2.txt
 tools/_gen-cache/
 tools/_*-out.txt
 tools/_preview.txt
+tools/_dbg.txt
 tests/*-out.txt
 

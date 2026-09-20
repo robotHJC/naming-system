@@ -44,6 +44,11 @@
     var useTST = opts.trueSolarTime !== false && typeof opts.longitude === 'number'
       && isFinite(opts.longitude);
     var ziShiNewDay = opts.ziShiNewDay !== false;
+    /* 时辰未知：只给日期、不知道几点出生。
+     * 这时**不能随便填一个时辰** —— 时柱变了整个五行力量就变了，
+     * 算出来的喜用神是假的，比不算更糟。所以时柱直接置空、
+     * 五行力量与十神都不计它，并在界面上明确标出来。 */
+    var noHour = opts.noHour === true;
 
     /* 北京时间（用于年柱/月柱的节气边界比较） */
     var jdBeijing = C.gregorianToJD(year, month, day, hour, minute);
@@ -83,17 +88,21 @@
     var dayZhi = ((dn + 1) % 12 + 12) % 12;
 
     /* ---------- 时柱 ---------- */
-    var hourZhi = Math.floor((((tstHour + 1) % 24) + 24) % 24 / 2);
-    var hourGan = ((dayGan % 5) * 2 + hourZhi) % 10;
+    var hourZhi = null, hourGan = null;
+    if (!noHour) {
+      hourZhi = Math.floor((((tstHour + 1) % 24) + 24) % 24 / 2);
+      hourGan = ((dayGan % 5) * 2 + hourZhi) % 10;
+    }
 
     return {
       年: [yearGan, yearZhi],
       月: [monthGan, monthZhi],
       日: [dayGan, dayZhi],
-      时: [hourGan, hourZhi],
+      时: noHour ? null : [hourGan, hourZhi],
       meta: {
         sui: sui,
         trueSolarTime: useTST,
+        noHour: noHour,
         tst: { y: ts.y, m: ts.m, d: ts.d, h: tstHour, mi: tstMinute },
         deltaMin: ts.deltaMin || 0,
         jieqi: loc.current.name,
@@ -110,6 +119,9 @@
    */
   function baziString(bz) {
     return ['年', '月', '日', '时'].map(function (k) {
+      /* 时柱未知时报「--」而不是漏掉或拿年月日凑 ——
+       * 少一柱一目了然，填空值反而容易被当成算过了 */
+      if (!bz[k]) return '--';
       return NS.TIANGAN[bz[k][0]] + NS.DIZHI[bz[k][1]];
     }).join(' ');
   }
@@ -123,6 +135,7 @@
     var pillars = ['年', '月', '日', '时'];
 
     pillars.forEach(function (k) {
+      if (!bz[k]) return;                          /* 时柱未知则不计 */
       s[NS.TIANGAN_WUXING[bz[k][0]]] += 1.0;              /* 天干 */
       var cg = NS.DIZHI_CANGGAN[bz[k][1]];
       for (var i = 0; i < cg.length; i++) {
@@ -142,6 +155,7 @@
   function wuxingCount(bz) {
     var c = { 金: 0, 木: 0, 水: 0, 火: 0, 土: 0 };
     ['年', '月', '日', '时'].forEach(function (k) {
+      if (!bz[k]) return;                          /* 时柱未知则不计 */
       c[NS.TIANGAN_WUXING[bz[k][0]]] += 1;
       c[NS.DIZHI_WUXING[bz[k][1]]] += 1;
     });
@@ -161,6 +175,7 @@
     var dayGan = bz.日[0];
     var s = Object.create(null);
     ['年', '月', '日', '时'].forEach(function (k) {
+      if (!bz[k]) return;                          /* 时柱未知则不计 */
       if (k !== '日') {
         var g = NS.shishen(dayGan, bz[k][0]);
         if (g) s[g] = (s[g] || 0) + 1.0;
@@ -239,8 +254,17 @@
       bazi: bz,
       baziStr: baziString(bz),
       pillars: ['年', '月', '日', '时'].map(function (k) {
+        /* 时柱未知：给出一个占位对象，界面据此显示「时辰未知」，
+         * 而不是少一格让人以为算过了 */
+        if (!bz[k]) {
+          return {
+            label: k, unknown: true, gan: '--', zhi: '--',
+            ganWx: '', zhiWx: '', ganShishen: '', ganYinYang: '', cangGan: []
+          };
+        }
         return {
           label: k,
+          unknown: false,
           gan: NS.TIANGAN[bz[k][0]],
           zhi: NS.DIZHI[bz[k][1]],
           ganWx: NS.TIANGAN_WUXING[bz[k][0]],
@@ -267,6 +291,8 @@
       dayGan: NS.TIANGAN[dayGan],
       dayWx: dayWx,
       dayYinYang: NS.ganYinYang(dayGan),
+      /* 时辰未知标志。界面据此把时柱标成「--」并提示喜用神是按三柱推的 */
+      noHour: !!bz.meta.noHour,
       strength: strength,
       xiyongshen: candidates,
       missing: missing,

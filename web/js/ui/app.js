@@ -192,7 +192,7 @@
 
   /* 要缓存的表单控件，key 就是元素 id */
   var PREF_IDS = ['surname', 'strokes', 'birth', 'longitude', 'useTST', 'city',
-    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC'];
+    'style', 'top', 'keywords', 'taboo', 'mustInclude', 'useSC', 'birthNoHour'];
 
   /** 收集当前表单状态（含不在 input 里的那些 state） */
   function collectPrefs() {
@@ -443,7 +443,7 @@
   function recommendByXi() {
     var xi = currentXi();
     if (!xi || !xi.length) {
-      var dt = parseLocal($('birth').value);
+      var dt = parseLocal($('birth').value, birthNoHour());
       if (dt) xi = computeBazi(dt).xiyongshen;
     }
     if (!xi || !xi.length) {
@@ -477,7 +477,7 @@
 
   /** 按生肖推荐部首。民俗说法，必须用户主动点，且界面上标明性质 */
   function recommendByZodiac() {
-    var dt = parseLocal($('birth').value);
+    var dt = parseLocal($('birth').value, birthNoHour());
     if (!dt) {
       alert('按生肖推荐需要出生日期。请先填出生时间。');
       return;
@@ -666,40 +666,87 @@
       return;
     }
 
-    var dt = parseLocal(v);
+    var dt = parseLocal(v, birthNoHour());
     if (!dt) { hint.textContent = ''; return; }
     var info = computeBazi(dt);
     if (!info) { hint.textContent = ''; return; }
+
+    var hourNote = info.noHour
+      ? '　<span style="color:#a9782c">时辰未知 → 时柱未计入</span>'
+      : '';
 
     hint.innerHTML = '八字 <b>' + esc(info.baziStr) + '</b>　日主 <b>' +
       esc(info.dayGan + info.dayWx) + '</b>　' + esc(info.strength) +
       '　喜用神 <b style="color:#2f5d50">' + esc(info.xiyongshen.join('、')) +
       '</b>' + (info.missing.length
         ? '　缺 <b style="color:#a63a2e">' + esc(info.missing.join('、')) + '</b>'
-        : '');
+        : '') + hourNote;
   }
 
-  function parseLocal(v) {
+  /**
+   * 切换「时辰未知」。
+   *
+   * 保留 datetime-local 不换类型：在手机上它会直接调出系统日期时间选择器，
+   * 比自制的「日期 + 时辰下拉」好用；而且换类型会丢掉已填的日期、
+   * 或者得默默填一个假时间进去。不知道时辰时，直接忽略时间部分就行。
+   */
+  function syncBirthMode() {
+    var noHour = birthNoHour();
+    /* 时辰未知时真太阳时没有意义 —— 它算的正是时柱，
+     * 硬算只会把一个未知的东西变成一个看起来确定的值。 */
+    var tst = $('useTST');
+    if (tst) {
+      tst.disabled = noHour;
+      var tstRow = tst.closest('label');
+      if (tstRow) tstRow.style.opacity = noHour ? '.5' : '';
+    }
+    var b = $('birth');
+    if (b) b.disabled = false;
+    updateBaziHint();
+  }
+
+  function parseLocal(v, forceNoHour) {
     if (!v) return null;
     var m = v.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-    if (!m) return null;
+    /* 只到日期（不带 T 时间）也接受，同样按「时辰未知」处理 */
+    var dm = m ? null : v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m && !dm) return null;
+    var g = m || dm;
+    /* 时辰未知时**强行忽略时间部分**，而不是把时柱瞎填成 00:00 ——
+     * 时柱变了整个五行力量就变了，算出来的喜用神是假的，比不算更糟。
+     * 这里不切换输入框类型：datetime-local 在手机上会直接调出
+     * 系统选择器，比自制「日期 + 时辰下拉」好用，而且这样切来切去
+     * 会丢掉已填的日期或者默默填入一个假时间。 */
     return {
-      y: +m[1], m: +m[2], d: +m[3], h: +m[4], mi: +m[5]
+      y: +g[1], m: +g[2], d: +g[3],
+      h: m ? +m[4] : 0,
+      mi: m ? +m[5] : 0,
+      noHour: !!(forceNoHour || !m)
     };
   }
 
-  function baziOptions() {
+  /** 输入框当前是否处于「时辰未知」模式 */
+  function birthNoHour() {
+    var cb = $('birthNoHour');
+    return !!(cb && cb.checked);
+  }
+
+  function baziOptions(noHour) {
     var lon = parseFloat($('longitude').value);
-    var useTST = $('useTST').checked && isFinite(lon);
+    /* 时辰未知时真太阳时没有意义 —— 它算的正是时柱，
+     * 硬算只会把一个未知的东西变成一个看起来确定的值。 */
+    var useTST = !noHour && $('useTST').checked && isFinite(lon);
     return {
       trueSolarTime: useTST,
+      noHour: !!noHour,
       longitude: isFinite(lon) ? lon : undefined
     };
   }
 
   function computeBazi(dt) {
     try {
-      return NS.Bazi.analyzeBazi(dt.y, dt.m, dt.d, dt.h, dt.mi, baziOptions());
+      return NS.Bazi.analyzeBazi(dt.y, dt.m, dt.d, dt.h, dt.mi,
+        baziOptions(dt.noHour));
     } catch (e) {
       console.error(e);
       return null;
@@ -722,7 +769,7 @@
      * 因此复姓时优先使用内置数据，未收录则提示。 */
     if (surname.length > 1 && info && info.known) strokes = info.strokes;
 
-    var dt = parseLocal($('birth').value);
+    var dt = parseLocal($('birth').value, birthNoHour());
     var baziInfo = dt ? computeBazi(dt) : null;
 
     var xi = currentXi();
@@ -874,8 +921,19 @@
     /* 四柱 */
     var grid = el('div', 'pillar-grid');
     info.pillars.forEach(function (p) {
-      var cell = el('div', 'pillar');
+      var cell = el('div', 'pillar' + (p.unknown ? ' unknown' : ''));
       cell.appendChild(el('div', 'lbl', p.label + '柱'));
+      /* 时辰未知：明确写出来，不能留空 ——
+       * 空格子容易被当成「算过了但没显示」。 */
+      if (p.unknown) {
+        cell.appendChild(el('div', 'ss', '未知'));
+        cell.appendChild(el('div', 'gz nz', '？？'));
+        cell.appendChild(el('div', 'cg', '时辰未填'));
+        cell.title = '不知道出生时辰 → 时柱无法确定。\n' +
+          '五行力量与十神均未计入时柱，喜用神是按年、月、日三柱推的。';
+        grid.appendChild(cell);
+        return;
+      }
       /* 十神按传统排盘放在干支**上方** —— 先看十神再看字，
        * 这也是所有八字软件的习惯位置，换位置反而要重新适应。 */
       var ss = el('div', 'ss' + (p.ganShishen === '日主' ? ' self' : ''),
@@ -936,7 +994,24 @@
       fact('五行', '齐全');
     }
     fact('当前节气', '<b>' + esc(info.meta.jieqi) + '</b>');
+    /* 时辰未知是**必须**说清楚的前提：同样一个日期，
+     * 换个时辰整张盘的五行力量就变了 —— 不能让人以为这是完整四柱。 */
+    if (info.noHour) {
+      fact('时柱', '<span class="fact-miss">时辰未填</span>');
+    }
     panel.appendChild(facts);
+
+    if (info.noHour) {
+      var nhNote = el('p', 'more-note');
+      nhNote.innerHTML = '<b>你选了「只知道日期，不知道几点出生」</b> —— ' +
+        '时柱（也就是出生的时辰）无法确定，因此上面的五行力量与十神' +
+        '<b>都没有计入时柱</b>，喜用神是按年、月、日三柱推出来的。' +
+        '一个日期换个时辰，整张盘的五行强弱就可能翻转，所以' +
+        '<b>这个喜用神只是个大概方向</b>。' +
+        '若能问到出生时辰（出生证、接生记录、家人回忆「上午还是下午」都有帮助），' +
+        '填上后结果会准很多。';
+      panel.appendChild(nhNote);
+    }
 
     /* 十神。放在五行之后、结论之前 ——
      * 它是「五行力量的另一种说法」：五行说的是能量的属性，
@@ -1929,6 +2004,9 @@
     }
     $('birth').addEventListener('change', updateBaziHint);
     $('birth').addEventListener('input', updateBaziHint);
+    if ($('birthNoHour')) {
+      $('birthNoHour').addEventListener('change', syncBirthMode);
+    }
     $('longitude').addEventListener('input', updateBaziHint);
     $('useTST').addEventListener('change', updateBaziHint);
     $('form').addEventListener('submit', onSubmit);
@@ -1961,6 +2039,9 @@
     NS.Prefs.load().then(function (p) {
       var restored = applyPrefs(p);
       updateSurname();
+      /* 恢复完记录要让「时辰未知」模式跟上 ——
+       * 勾选状态恢复回来后，真太阳时需要相应禁用。 */
+      syncBirthMode();
       updateBaziHint();
       renderPrefHint(restored, p && p.savedAt);
       applyUrlParams();

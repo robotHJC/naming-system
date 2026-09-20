@@ -10,7 +10,7 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
-  'data/nayin.js', 'data/shuli81.js',
+  'data/nayin.js', 'data/shuli81.js', 'data/nameblock.js',
   'core/wuxing.js', 'core/calendar.js', 'core/tiaohou.js', 'core/bazi.js',
   'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
@@ -974,6 +974,117 @@ section('19. 八十一数理');
   /* 数理派必须说明它不加分，否则会被当成和五行同权重的依据 */
   ok('数理块说明了它不参与评分',
     !!shu && shu.lines.join('').indexOf('不参与评分') >= 0);
+}
+
+/* ---------------- 20. 整名成词（日常词降权） ---------------- */
+section('20. 整名成词');
+{
+  /* 这是走查实测出来的真问题：「郝博士」排第 3 名，而且「博士」
+   * 几乎对每个姓氏都进前 3-8 名。根因是出处机制在**反向奖励**它 ——
+   * 「博士」是唐代官职，在《唐诗三百首》里相邻出现过，
+   * 于是被判为「出处成词」加分。逐字判据全是好的，问题只在整名上。 */
+  ok('词表已加载', NS.NAMEBLOCK_WORDS.length > 200,
+    String(NS.NAMEBLOCK_WORDS.length));
+  eq('词表无重复项',
+    Object.keys(NS.NAMEBLOCK_SET).length, NS.NAMEBLOCK_WORDS.length);
+
+  /* 判定函数本身 */
+  eq('博士 命中', NS.nameBlockHit('博士'), '博士');
+  eq('教授 命中', NS.nameBlockHit('教授'), '教授');
+  eq('傻子 命中', NS.nameBlockHit('傻子'), '傻子');
+  eq('清和（雅词）不命中', NS.nameBlockHit('清和'), null);
+  eq('若水（雅词）不命中', NS.nameBlockHit('若水'), null);
+  eq('空输入返回 null', NS.nameBlockHit(''), null);
+
+  /* 扣分必须真的发生，而且要在理由里说出来 —— 不能默默扣 */
+  const b = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  const rep = NS.Report.evaluate('郝', '博士', { bazi: b });
+  ok('郝博士 命中整名成词',
+    !!(rep.score.detail.modern && rep.score.detail.modern.block === '博士'),
+    JSON.stringify(rep.score.detail.modern));
+  ok('理由里说明了「是个日常词」',
+    rep.reasons.some(x => String(x).indexOf('日常词') >= 0),
+    rep.reasons.join(' / '));
+  console.log(`  郝博士 → ${rep.total} 分（降权前实测 69 分、第 3 名）`);
+
+  /* 雅词绝不能被误伤 —— 这道检查的边界就在这儿：
+   * 放宽了会误伤传统好名，收窄了挡不住「博士」 */
+  ['清和', '若水', '嘉树', '云舒', '知微', '沐涵', '林溪', '清可']
+    .forEach(w => {
+      const r2 = NS.Report.evaluate('郝', w, { bazi: b });
+      const hit = r2 && r2.score.detail.modern ? r2.score.detail.modern.block : null;
+      ok('雅词「' + w + '」不被误伤', !hit, hit || '');
+    });
+
+  /* 单名不会命中：单字成不了词 */
+  const one = NS.Report.evaluate('郝', '博', { bazi: b });
+  ok('单名不触发整名成词',
+    !(one.score.detail.modern && one.score.detail.modern.block));
+
+  /* 关键回归：博士/斯文 必须跌出前 20 —— 这是这次修复的目的 */
+  ['郝', '李', '王'].forEach(sn => {
+    const p = NS.Generator.plan({
+      surname: sn, length: 2, birth: '2026-05-20T10:00', top: 20
+    });
+    const r = NS.Generator.runSync(p, {
+      surname: sn, length: 2, birth: '2026-05-20T10:00', top: 20
+    });
+    const top = r.slice(0, 20).map(x => x.given);
+    ok(sn + ' 前 20 名里没有日常词',
+      top.every(g => !NS.nameBlockHit(g)),
+      top.filter(g => NS.nameBlockHit(g)).join(','));
+  });
+}
+
+/* ---------------- 21. 时辰未知 ---------------- */
+section('21. 时辰未知（只知日期）');
+{
+  const full = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  const noH = NS.Bazi.analyzeBazi(2026, 5, 20, 0, 0, { noHour: true });
+
+  ok('完整盘没有 noHour 标志', !full.noHour);
+  ok('未知时辰盘带 noHour 标志', noH.noHour === true);
+  /* 年月日三柱必须与完整盘一致 —— 缺时柱不该影响前三柱 */
+  eq('年月日三柱不受影响', noH.baziStr.split(' ').slice(0, 3).join(' '),
+    full.baziStr.split(' ').slice(0, 3).join(' '));
+  eq('四柱串里时柱显示为 --', noH.baziStr.split(' ')[3], '--');
+  eq('时柱对象标记为 unknown', noH.pillars[3].unknown, true);
+  eq('时柱藏干为空', noH.pillars[3].cangGan.length, 0);
+  ok('前三柱不受影响且未标记 unknown',
+    noH.pillars.slice(0, 3).every(p => !p.unknown));
+
+  /* 五行力量必须真的少算一柱，而不是把空的当 0 混过去 */
+  const sumFull = NS.WUXING.reduce((a, w) => a + full.power[w], 0);
+  const sumNoH = NS.WUXING.reduce((a, w) => a + noH.power[w], 0);
+  ok('五行总力量小于完整盘', sumNoH < sumFull,
+    sumNoH.toFixed(2) + ' vs ' + sumFull.toFixed(2));
+  /* 个数统计也要少两个（时干 + 时支本气）*/
+  const cntFull = NS.WUXING.reduce((a, w) => a + full.count[w], 0);
+  const cntNoH = NS.WUXING.reduce((a, w) => a + noH.count[w], 0);
+  eq('五行个数少 2 个（时干与时支本气）', cntFull - cntNoH, 2);
+
+  /* 十神同样不计时柱 */
+  const ssFull = Object.keys(full.shishen.power)
+    .reduce((a, k) => a + full.shishen.power[k], 0);
+  const ssNoH = Object.keys(noH.shishen.power)
+    .reduce((a, k) => a + noH.shishen.power[k], 0);
+  ok('十神总力量小于完整盘', ssNoH < ssFull,
+    ssNoH.toFixed(2) + ' vs ' + ssFull.toFixed(2));
+
+  ok('仍能给出喜用神', noH.xiyongshen.length > 0, noH.xiyongshen.join('、'));
+
+  /* 报告里必须把「时辰未知」这个前提说清楚 */
+  const rep = NS.Report.evaluate('郝', '清和', { bazi: noH });
+  const blk = rep.blocks.filter(x => x.title === '八字排盘')[0];
+  ok('报告里点明了时辰未填', !!blk &&
+    blk.lines.join('').indexOf('时辰未填') >= 0,
+    blk ? blk.lines.join(' | ').slice(0, 90) : '(没有八字块)');
+
+  /* 不能悄悄把时柱当成 00:00 —— 那会算出一个假的确定值 */
+  const zero = NS.Bazi.analyzeBazi(2026, 5, 20, 0, 0);
+  ok('未知时辰 ≠ 子时（不能瞎填 00:00）',
+    noH.baziStr !== zero.baziStr,
+    noH.baziStr + ' ／ ' + zero.baziStr);
 }
 
 console.log(`\n${'='.repeat(52)}`);
