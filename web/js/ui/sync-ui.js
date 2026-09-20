@@ -83,9 +83,71 @@
             '当前环境无法持久化，请用「导出数据文件」保存成果。</span>';
         }
       }
+
+      /* 本地占用：用户反馈「不要每次打开网页或者更新版本都给我把手机
+       * 内存占满了」—— 那就得让他能**看见**占了多少、大头是什么，
+       * 而不是只能猜，或者反复点清空。 */
+      this.renderUsage();
+
+      /* 版本不兼容时清过数据，要把原因说清楚，否则用户会觉得「我的词库
+       * 怎么莫名其妙没了」。 */
+      var notice = $('lexSchemaNotice');
+      if (notice) {
+        if (st.discardNotice) {
+          var n = st.discardNotice;
+          var why = n.state === 'future'
+            ? '本地数据来自更新版本的程序，当前程序不认识它的格式'
+            : '本地数据是很早的版本留下的，数据格式已经变了';
+          notice.innerHTML = '<b>本地的联网词库已自动清理</b>　' + why +
+            '，为避免读出错误结果已丢弃（版本 ' + n.saved +
+            ' → ' + n.current + '）。' +
+            (n.keptCustomChars
+              ? '你在「按部首找字」里手工加入的 <b>' + n.keptCustomChars +
+                '</b> 个字已保留。' : '') +
+            '　重新点「开始更新」同步一次即可恢复。';
+          notice.style.display = '';
+        } else {
+          notice.style.display = 'none';
+        }
+      }
+
       this.renderCustomChars();
       /* 通知主界面更新「词库管理」按钮上的小圆点 */
       if (NS.refreshLexDot) NS.refreshLexDot(st);
+    },
+
+    /**
+     * 渲染本地存储占用。
+     *
+     * 分类列出，因为大头永远是字典（20MB 级）—— 用户看到「字典 21MB」
+     * 就能理解为什么手机存储会紧张，也能判断要不要清掉重来。
+     */
+    renderUsage: function () {
+      var box = $('lexUsage');
+      if (!box) return;
+      box.innerHTML = '<span class="hint">正在统计本地占用…</span>';
+
+      NS.Lexicon.usage().then(function (u) {
+        if (!u) return;
+        var names = {
+          dict: '字典', poems: '诗词', pinyinMap: '拼音表',
+          fantiMap: '繁简表', shupinMap: '蜀拼表',
+          dialectWords: '方言词', customChars: '自建字', meta: '其他'
+        };
+        /* 按占用从大到小，只列非零项 */
+        var parts = Object.keys(u.byKey)
+          .map(function (k) { return { k: k, v: u.byKey[k] }; })
+          .filter(function (x) { return x.v > 0; })
+          .sort(function (a, b) { return b.v - a.v; });
+        var detail = parts.map(function (x) {
+          return esc(names[x.k] || x.k) + ' ' + esc(fmtSize(x.v));
+        }).join('　');
+
+        box.innerHTML = '本地占用：<b>' + esc(fmtSize(u.totalBytes)) + '</b>' +
+          (detail ? '<br><span class="lex-usage-detail">' + detail + '</span>' : '');
+      }).catch(function () {
+        box.innerHTML = '<span class="hint">占用统计不可用</span>';
+      });
     },
 
     /* ---------------- 主面板 ---------------- */
@@ -110,6 +172,17 @@
       var storage = el('p', 'more-note');
       storage.id = 'lexStorage';
       root.appendChild(storage);
+
+      /* 本地占用（分类明细由 renderUsage 异步填） */
+      var usage = el('p', 'more-note');
+      usage.id = 'lexUsage';
+      root.appendChild(usage);
+
+      /* 版本不兼容而清空过数据时的说明（平时隐藏） */
+      var schemaNotice = el('p', 'lex-schema-notice');
+      schemaNotice.id = 'lexSchemaNotice';
+      schemaNotice.style.display = 'none';
+      root.appendChild(schemaNotice);
 
       /* 数据源 */
       var srcTitle = el('div', 'lex-sub', '选择要下载的数据源');
@@ -286,14 +359,35 @@
       bReset.type = 'button';
       bReset.style.color = '#a63a2e';
       bReset.addEventListener('click', function () {
-        if (!global.confirm('确定清空所有联网数据吗？\n' +
-          '（会删除联网加入的字与诗篇，内置字库不受影响）')) return;
-        NS.Lexicon.reset().then(function () {
-          SyncUI.refreshStatus();
-          SyncUI.log('已清空联网数据，回到内置字库状态。', 'warn');
+        /* 把「会释放多少空间」写进确认框 —— 用户点这个按钮的动机
+         * 通常就是「手机存储紧张」，告诉他能腾出多少最有说服力。
+         *
+         * 文案必须与实际行为一致：reset() 是**全部清掉**，连
+         * 「按部首找字」手工加进字库的字也会删。这一点和
+         * 版本不兼容时的自动清理（discardIncompatible）不同 ——
+         * 后者会保留手工加的字。区别是有意的：
+         *   自动清理是用户没要求的，不能销毁他的劳动成果；
+         *   手动清空是他自己点的，就该给个干净的初始状态。 */
+        NS.Lexicon.usage().then(function (u) {
+          var size = u ? fmtSize(u.totalBytes) : '全部';
+          if (!global.confirm('确定清空联网词库吗？\n\n' +
+            '会释放约 ' + size + ' 本地存储。\n' +
+            '联网加入的字、字典、诗篇都会删除，且**不可恢复**；\n' +
+            '通过「按部首找字」手工加进字库的字也会一并删除。\n' +
+            '内置字库不受影响，清空后可随时重新同步。')) return;
+          NS.Lexicon.reset().then(function () {
+            SyncUI.refreshStatus();
+            SyncUI.log('已清空联网词库，释放 ' + size + '，回到内置字库状态。', 'warn');
+          });
         });
       });
       io.appendChild(bReset);
+
+      /* 顺手说明「为什么有时候感觉占了很多」 */
+      var usageHint = el('p', 'hint');
+      usageHint.innerHTML = '如果手机存储紧张，通常是<b>新华字典</b>（约 20MB）占的；' +
+        '同步时可以取消勾选它，只留拼音表与诗词库，占用会小很多。';
+      root.appendChild(usageHint);
       root.appendChild(io);
     },
 

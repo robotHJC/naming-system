@@ -870,6 +870,55 @@ details.more > summary:hover { color: var(--jade); }
   margin: 0 4px;
 }
 
+/* 小名候选列表：一组不同构词法，横向排列可换行。
+ * 用户反馈「小名也不一定是叠词」，所以这里一次给多个构词法。 */
+.nc-nick .nc-nick-head {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: .06em;
+  color: #6b8b80;
+  vertical-align: 2px;
+}
+
+.nc-nick .nc-nick-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+
+.nc-nick .nc-nick-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid rgba(107, 139, 128, .22);
+}
+
+/* 第一个（分数最高的）突出一点 */
+.nc-nick .nc-nick-item.top {
+  background: var(--jade);
+  border-color: var(--jade);
+}
+.nc-nick .nc-nick-item.top b,
+.nc-nick .nc-nick-item.top i { color: #fff; }
+
+.nc-nick .nc-nick-item b {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.nc-nick .nc-nick-item i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: #6b8b80;
+  letter-spacing: .04em;
+}
+
 .nc-nick .nc-nick-meta {
   font-size: 11.5px;
   color: #6b8b80;
@@ -1098,6 +1147,27 @@ details.more > summary:hover { color: var(--jade); }
 }
 
 .lex-stat span { font-size: 11.5px; color: var(--ink-3); }
+
+/* 本地占用明细：分类列出（大头永远是字典） */
+.lex-usage-detail {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.9;
+}
+
+/* 数据格式不兼容、本地词库被自动清理时的说明 */
+.lex-schema-notice {
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  background: var(--gold-pale);
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #6b5a30;
+}
 
 /* 数据源分组 */
 .lex-group {

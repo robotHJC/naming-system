@@ -410,13 +410,34 @@
       comfortSum += comfort(h);
     });
     mnScore += comfortSum / mnChars.length * 6;
+
+    /* 时代感扣分（见 data/era-chars.js）。
+     *
+     * 上面的「热度舒适区」有个结构性缺陷：热度表衡量的是
+     * 「这个字在**人口**里有多常见」，而不是「在**当代起名**里有多时髦」。
+     * 于是「伟 86 / 刚 86 / 军 86 / 丽 86 / 艳 86」这批 50-90 年代的
+     * 主流取名用字全部落在舒适区，拿到满分 —— 用户实测反馈
+     * 「有的名字太老气了，比如伟、刚、钢、茂」就是这个原因。
+     *
+     * 这张表按**字**查，与字库来源无关，所以对联网加入的字同样生效。 */
+    var eraHits = [];
+    mnChars.forEach(function (c) {
+      if (NS.ERA_CHARS && NS.ERA_CHARS[c] === 1) eraHits.push(c);
+    });
+    if (eraHits.length) {
+      mnScore -= eraHits.length * (NS.ERA_PENALTY || 6);
+      reasons.push('「' + eraHits.join('、') + '」偏上一代的取名用字');
+    }
+
     detail.modern = {
       word: hitWord,
+      era: eraHits,
       heat: NS.HEAT[mnChars[0]] !== undefined ? NS.HEAT[mnChars[0]] : NS.DEFAULT_HEAT
     };
     score += mnScore;
 
-    /* ---- 9. 谐音（5）---- */    var syllables = ctx.surnameSyllables.concat(rows.map(function (r) {
+    /* ---- 9. 谐音（5）---- */
+    var syllables = ctx.surnameSyllables.concat(rows.map(function (r) {
       return { char: r.char, pinyin: r.obj.pinyin, tone: r.obj.tone };
     }));
     var homo = NS.Pinyin.checkHomophone(syllables);

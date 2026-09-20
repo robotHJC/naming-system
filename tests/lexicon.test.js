@@ -21,7 +21,7 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/homophone.js',
   'data/popularity.js', 'data/fanti.js', 'data/sources.js',
   'data/cities.js', 'data/sichuan.js', 'data/nickname.js', 'data/radicals.js',
-  'data/radical-hints.js', 'data/namewords.js',
+  'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/net.js', 'core/infer.js', 'core/dialect.js',
@@ -512,42 +512,81 @@ const SHUPIN_FIXTURE = [
 section('6d. 小名建议（从大名用字衍生）');
 {
   const two = [NS.CHAR_DB['沐'], NS.CHAR_DB['涵']];
-  const n1 = NS.Nickname.suggest(two, '李', {});
-  ok('两个字的名字能给出小名', !!n1, JSON.stringify(n1 && n1.name));
-  ok('小名用字来自大名', n1 && n1.name.indexOf('沐') >= 0 || n1.name.indexOf('涵') >= 0,
-    n1 && n1.name);
-  ok('叠字被优先考虑（最常见）', n1 && n1.pattern === 'repeat',
-    n1 && (n1.pattern + ' / ' + n1.reasons.join('、')));
-  ok('小名带拼音标注', !!(n1 && n1.pinyin), n1 && n1.pinyin);
-  if (n1) console.log('  李沐涵 → 小名「' + n1.name + '」' + n1.pinyin +
-    '（' + n1.patternLabel + '，' + n1.score + '分）');
+  const list = NS.Nickname.suggest(two, '李', {});
+  ok('两个字的名字能给出小名', Array.isArray(list) && list.length > 0,
+    JSON.stringify(list.map(x => x.name)));
+  ok('小名用字来自大名',
+    list.every(x => x.name.indexOf('沐') >= 0 || x.name.indexOf('涵') >= 0 ||
+      x.name === '沐涵' || x.name === '小沐涵'),
+    list.map(x => x.name).join('/'));
+  ok('叠字被优先考虑（最常见）', list[0] && list[0].pattern === 'repeat',
+    list[0] && (list[0].pattern + ' / ' + list[0].reasons.join('、')));
+  ok('小名带拼音标注', !!(list[0] && list[0].pinyin), list[0] && list[0].pinyin);
+  console.log('  李沐涵 → 小名：' + list.map(x =>
+    x.name + '（' + x.patternLabel + '）').join('　'));
+
+  /* ---- 多样化（用户反馈：小名也不一定是叠词）----
+   * 旧版只返回分数最高的一个，而叠字权重最高 → 永远只给叠词。
+   * 现在要求：至少 3 个候选，且构词法互不重复。 */
+  ok('返回多个候选（≥3）', list.length >= 3, String(list.length));
+  const pats = list.map(x => x.pattern);
+  ok('构词法互不重复', new Set(pats).size === pats.length, pats.join(','));
+  ok('不只是叠词', pats.filter(p => p !== 'repeat').length >= 2, pats.join(','));
+  ok('包含「直接叫大名」这种说法',
+    pats.indexOf('full') >= 0, pats.join(','));
+  console.log('  构词法：' + list.map(x => x.patternLabel).join('　'));
+
+  /* 不能 5 个候选全来自同一个字 —— 那样构词法再多样也等于没多样 */
+  const bases = list.map(x => x.baseChar);
+  ok('两个用字都被覆盖', new Set(bases).size >= 2, bases.join(','));
+  console.log('  取字：' + list.map(x => x.baseChar).join('　'));
+
+  /* ---- 性别倾向：不该给女孩推「X仔」，反之亦然 ---- */
+  const girl = NS.Nickname.suggest([NS.CHAR_DB['若'], NS.CHAR_DB['雪']], '李', {});
+  const boy = NS.Nickname.suggest([NS.CHAR_DB['浩'], NS.CHAR_DB['轩']], '李', {});
+  const girlPats = girl.map(x => x.pattern);
+  const boyPats = boy.map(x => x.pattern);
+  ok('女名不会出现「X仔/X哥」',
+    girlPats.indexOf('zai') < 0 && girlPats.indexOf('ge') < 0, girlPats.join(','));
+  ok('男名不会出现「X妹/X妞」',
+    boyPats.indexOf('mei') < 0 && boyPats.indexOf('niu') < 0, boyPats.join(','));
+  ok('女名会给出「X妹」类南方叫法', girlPats.indexOf('mei') >= 0 ||
+    girlPats.indexOf('er') >= 0 || girlPats.indexOf('zi') >= 0, girlPats.join(','));
+  console.log('  若雪（女）：' + girl.map(x => x.name).join('　') +
+    '　／　浩轩（男）：' + boy.map(x => x.name).join('　'));
 
   /* 亲切字应优于生硬字：涵 vs 铁 */
   const friendly = NS.Nickname.suggest([NS.CHAR_DB['涵']], '李', {});
   const harsh = NS.Nickname.suggest([NS.CHAR_DB['铁']], '李', {});
   ok('亲切字的小名得分高于生硬字',
-    friendly && harsh && friendly.score > harsh.score,
-    (friendly && friendly.score) + ' vs ' + (harsh && harsh.score));
+    friendly.length && harsh.length && friendly[0].score > harsh[0].score,
+    (friendly[0] && friendly[0].score) + ' vs ' + (harsh[0] && harsh[0].score));
 
   /* 有谐音风险的候选不能被当成首选 */
-  const all = NS.Nickname.suggest(two, '李', {});
-  ok('返回的小名自身谐音检查通过（或已标记风险）',
-    !all || all.homophone.pass || all.risky === true,
-    all && JSON.stringify({ pass: all.homophone.pass, risky: all.risky }));
+  ok('返回的候选谐音检查通过（或已标记风险）',
+    list.every(x => x.homophone.pass || x.risky === true),
+    JSON.stringify(list.map(x => ({ n: x.name, pass: x.homophone.pass, r: x.risky }))));
 
   /* 姓氏连读也要查 */
   ok('会检查与姓氏连读的谐音',
-    !!all && all.homophoneWithSurname !== null);
+    list.every(x => x.homophoneWithSurname !== null));
+
+  /* limit 可调 */
+  const short = NS.Nickname.suggest(two, '李', { limit: 2 });
+  eq('limit 参数生效', short.length, 2);
 
   /* 批量附加到结果上 */
   const items = [{ chars: ['沐', '涵'] }, { chars: ['若', '水'] }];
   const n = NS.Nickname.attach(items, { surname: '李', surnameSyllables: [] });
   eq('批量附加小名到每个结果', n, 2);
-  ok('结果对象上确实挂上了小名', items.every(it => !!it.nickname));
+  ok('结果对象上挂的是一组小名',
+    items.every(it => Array.isArray(it.nicknames) && it.nicknames.length > 0));
+  ok('同时保留首个小名（兼容旧调用方）',
+    items.every(it => it.nickname && it.nickname === it.nicknames[0]));
 
   /* 空输入不应崩 */
-  eq('空输入返回 null', NS.Nickname.suggest([], '李', {}), null);
-  eq('未定义输入返回 null', NS.Nickname.suggest(null, '李', {}), null);
+  eq('空输入返回空数组', NS.Nickname.suggest([], '李', {}).length, 0);
+  eq('未定义输入返回空数组', NS.Nickname.suggest(null, '李', {}).length, 0);
 }
 
 /* ---------------- 6e. 偏旁重复 ---------------- */
@@ -1040,6 +1079,90 @@ section('7. 打包固化的预置数据（模拟新电脑首次打开）');
   ok('清空后字库里不再有固化字', !NS.CHAR_DB['昶']);
   eq('清空后繁简表回到内置状态（保护字未残留）',
     NS.toSimplified('乾坤'), '乾坤');
+
+  /* ---------------- 8. 数据版本管理 ----------------
+   *
+   * 用户反馈：「如果我有多个版本更新，上一个版本下载的联网词库
+   * 要么保留合并，要么就给清理掉；不要每次打开网页或者更新版本
+   * 都给我把手机内存占满了。」
+   *
+   * 在这之前完全没有版本概念 —— restore() 无条件读入本地数据，
+   * 不管它是哪个版本的程序写的。改了格式后旧数据照读会出怪结果，
+   * 而且旧数据永远占着空间没人清。
+   * ------------------------------------------------ */
+  section('8. 数据版本管理');
+
+  ok('存储层暴露了数据格式版本',
+    typeof NS.Store.DATA_SCHEMA === 'number' &&
+    typeof NS.Store.MIN_COMPAT_SCHEMA === 'number',
+    `DATA_SCHEMA=${NS.Store.DATA_SCHEMA} MIN_COMPAT=${NS.Store.MIN_COMPAT_SCHEMA}`);
+  ok('兼容下限不高于当前版本',
+    NS.Store.MIN_COMPAT_SCHEMA <= NS.Store.DATA_SCHEMA,
+    `${NS.Store.MIN_COMPAT_SCHEMA} <= ${NS.Store.DATA_SCHEMA}`);
+
+  /* 没有版本号的老数据必须被判为「兼容」而不是「作废」。
+   * 这是最要紧的一条：升级后不该让用户白白重下 20MB 字典。 */
+  eq('无 schema 字段的老数据视为兼容',
+    NS.Store.schemaState(undefined).state, 'ok');
+  eq('无 schema 字段（显式 null）也视为兼容',
+    NS.Store.schemaState(null).state, 'ok');
+  eq('同版本数据兼容', NS.Store.schemaState(NS.Store.DATA_SCHEMA).state, 'ok');
+
+  /* 比程序还新的数据（用户回退了程序版本）不能读 —— 读进不认识的
+   * 格式只会产生难以排查的怪异结果。 */
+  eq('比程序新的数据被标记为 future',
+    NS.Store.schemaState(NS.Store.DATA_SCHEMA + 1).state, 'future');
+
+  /* schemaState 的 'stale' 分支在当前常量下触发不了（因为这一版
+   * 没有改格式，MIN_COMPAT === 1）。所以直接测 discardIncompatible
+   * 这个真正干活的方法 —— 将来改了格式，走的就是它。 */
+  console.log('  （当前 DATA_SCHEMA=' + NS.Store.DATA_SCHEMA +
+    '，本版未改格式，stale 分支用下面这个方法直接测）');
+
+  /* 造一份「联网数据 + 用户自定义字」，然后模拟版本不兼容 */
+  await NS.Store.set('dict', { '测': [8, '讠', 'cè', '测试用字'] });
+  await NS.Store.set('pinyinMap', { '测': { pinyin: 'ce', tone: 4 } });
+  await NS.Store.set('poems', [{ source: '唐诗', title: '测试', content: '测试诗' }]);
+  await NS.Store.set('customChars', [{ char: '昶', wuxing: '火', strokes: 9 }]);
+  ok('测试数据已写入',
+    !!(await NS.Store.get('dict')) &&
+    !!(await NS.Store.get('customChars')));
+
+  await NS.Lexicon.discardIncompatible({ state: 'stale', saved: 0, current: 2 });
+
+  eq('不兼容时联网字典被清掉', await NS.Store.get('dict'), null);
+  eq('不兼容时联网拼音表被清掉', await NS.Store.get('pinyinMap'), null);
+  eq('不兼容时联机诗词被清掉', await NS.Store.get('poems'), null);
+
+  const keptCC = await NS.Store.get('customChars');
+  ok('不兼容时**保留**用户自定义字（那是手工挑的，丢了是真损失）',
+    Array.isArray(keptCC) && keptCC.length === 1 && keptCC[0].char === '昶',
+    JSON.stringify(keptCC));
+
+  ok('留下了可展示给用户的提示', !!NS.Lexicon.discardNotice,
+    JSON.stringify(NS.Lexicon.discardNotice));
+  eq('提示里记下了保留的自定义字数',
+    NS.Lexicon.discardNotice.keptCustomChars, 1);
+  console.log('  丢弃提示：' + JSON.stringify(NS.Lexicon.discardNotice));
+
+  /* 占用统计：要能让用户看出大头是谁 */
+  await NS.Store.set('dict', { '测': [8, '讠', 'cè', '测试'] });
+  const u = await NS.Store.usage();
+  ok('能统计本地占用', u.totalBytes > 0 && typeof u.byKey === 'object',
+    JSON.stringify({ total: u.totalBytes, dict: u.byKey.dict }));
+  ok('按分类给出占用（能看出大头是字典）',
+    u.byKey.dict > 0 && u.totalBytes >= u.byKey.dict,
+    JSON.stringify(u.byKey));
+  console.log('  占用统计：' + JSON.stringify(u.byKey));
+
+  /* reset 之后必须把 schema 戳写回去。
+   * 不写的话，下次启动会看到「有 meta 但版本缺失」，
+   * 被判成旧数据走一遍清理流程，弹出一条莫名其妙的「数据已清空」提示。 */
+  await NS.Lexicon.reset();
+  const metaAfterReset = await NS.Store.get('meta');
+  eq('reset 后写回当前 schema',
+    metaAfterReset && metaAfterReset.schema, NS.Store.DATA_SCHEMA);
+  eq('reset 后不再残留丢弃提示', NS.Lexicon.discardNotice, null);
 
   console.log('\n' + '='.repeat(52));
   console.log(`通过 ${pass} 项，失败 ${fail} 项`);

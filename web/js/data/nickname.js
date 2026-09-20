@@ -39,19 +39,67 @@
     return m;
   })();
 
-  /* 构词模板：{c} 代表用字，{cc} 代表叠字 */
+  /* 构词模板。
+   *
+   * build(char, fullName) 里 {c} 是用字、{cc} 是叠字、{full} 是大名两字。
+   *
+   * 为什么要加这么多：用户反馈「小名也可以多样化，也不一定是叠词」。
+   * 旧版只有 5 种（叠字/小X/阿X/X儿/单字），而且**只返回分数最高的一个**，
+   * 叠字权重又最高（1.0），所以永远只给出叠词 —— 那不是「最合适」，
+   * 是评分把其他构词法全压住了。
+   *
+   * 现在改两处：
+   *   1. 构词法扩到 15 种，覆盖北方（X妞/X哥）、南方（X妹/X仔）、
+   *      通用（X宝/X子）、以及「直接叫大名」（清和 / 小清和）
+   *   2. 返回**一组**候选，且强制构词法不重复（见 core/nickname.js）
+   *
+   * suffix 字段是给后缀字的读音用的（这些字不在字库里，要自带拼音）。 */
   NS.NICKNAME_PATTERNS = [
-    { id: 'repeat', label: '叠字', build: function (c) { return c + c; }, weight: 1.0 },
-    { id: 'xiao', label: '小+字', build: function (c) { return '小' + c; }, weight: 0.85 },
-    { id: 'a', label: '阿+字', build: function (c) { return '阿' + c; }, weight: 0.7 },
-    { id: 'er', label: '字+儿', build: function (c) { return c + '儿'; }, weight: 0.6 },
-    { id: 'single', label: '单字', build: function (c) { return c; }, weight: 0.5 }
+    /* ---- 单字衍生 ---- */
+    { id: 'repeat', label: '叠字', suffix: null, weight: 1.00, gender: null,
+      build: function (c) { return c + c; } },
+    { id: 'xiao', label: '小+字', suffix: null, weight: 0.86, gender: null,
+      build: function (c) { return '小' + c; } },
+    { id: 'bao', label: '字+宝', suffix: '宝', weight: 0.78, gender: null,
+      build: function (c) { return c + '宝'; } },
+    { id: 'a', label: '阿+字', suffix: null, weight: 0.72, gender: null,
+      build: function (c) { return '阿' + c; } },
+    { id: 'er', label: '字+儿', suffix: '儿', weight: 0.66, gender: null,
+      build: function (c) { return c + '儿'; } },
+    { id: 'zi', label: '字+子', suffix: '子', weight: 0.58, gender: null,
+      build: function (c) { return c + '子'; } },
+    { id: 'mei', label: '字+妹', suffix: '妹', weight: 0.54, gender: '女',
+      build: function (c) { return c + '妹'; } },
+    { id: 'zai', label: '字+仔', suffix: '仔', weight: 0.52, gender: '男',
+      build: function (c) { return c + '仔'; } },
+    { id: 'single', label: '单字', suffix: null, weight: 0.50, gender: null,
+      build: function (c) { return c; } },
+    { id: 'niu', label: '字+妞', suffix: '妞', weight: 0.46, gender: '女',
+      build: function (c) { return c + '妞'; } },
+    { id: 'ge', label: '字+哥', suffix: '哥', weight: 0.44, gender: '男',
+      build: function (c) { return c + '哥'; } },
+    { id: 'xiaoDie', label: '小+叠字', suffix: null, weight: 0.48, gender: null,
+      build: function (c) { return '小' + c + c; } },
+
+    /* ---- 双字（用整个大名）---- */
+    { id: 'full', label: '直接叫', suffix: null, weight: 0.92, gender: null,
+      needFull: true,
+      build: function (c, full) { return full; } },
+    { id: 'xiaofull', label: '小+两字', suffix: null, weight: 0.56, gender: null,
+      needFull: true,
+      build: function (c, full) { return '小' + full; } }
   ];
 
   /* 前缀/后缀字的读音，用于谐音检测（这些字不在字库里，需要自带读音） */
   NS.NICKNAME_AFFIX_PINYIN = {
     '小': { pinyin: 'xiao', tone: 3 },
     '阿': { pinyin: 'a', tone: 1 },
-    '儿': { pinyin: 'er', tone: 2 }
+    '儿': { pinyin: 'er', tone: 2 },
+    '宝': { pinyin: 'bao', tone: 3 },
+    '子': { pinyin: 'zi', tone: 3 },
+    '妹': { pinyin: 'mei', tone: 4 },
+    '仔': { pinyin: 'zai', tone: 3 },
+    '妞': { pinyin: 'niu', tone: 1 },
+    '哥': { pinyin: 'ge', tone: 1 }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

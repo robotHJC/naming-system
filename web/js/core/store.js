@@ -19,6 +19,67 @@
   var STORE = 'kv';
   var LS_PREFIX = 'ns:';
 
+  /* =========================================================================
+   * 应用层「数据格式版本」
+   *
+   * 用户反馈：「如果我有多个版本更新，上一个版本下载的联网词库要么保留合并，
+   * 要么就给清理掉；不要每次打开网页或者更新版本都给我把手机内存占满了。」
+   *
+   * 在这之前**完全没有版本概念** —— restore() 无条件读入本地数据，
+   * 不管它是哪个版本的程序写的。改了数据格式后旧数据照读，
+   * 结果是难以排查的诡异行为，而且旧数据永远占着空间没人清。
+   *
+   * 凡改了下列结构就要把 DATA_SCHEMA +1：
+   *   · 诗词条目的字段与解析方式（poems）
+   *   · 字典条目 [简体笔画, 部首, 带调拼音, 释义] 的数组顺序（dict）
+   *   · 拼音表 / 繁简表 / 蜀拼表的形状（pinyinMap / fantiMap / shupinMap）
+   *   · 自定义字条目的字段（customChars）
+   *
+   * 注意与 DB_VERSION 的区别：DB_VERSION 管的是 **IndexedDB 的库结构**
+   * （有几个 object store），DATA_SCHEMA 管的是**存进去的数据长什么样**。
+   * 两者独立变化。
+   * ========================================================================= */
+  var DATA_SCHEMA = 1;
+
+  /* 能直接沿用的最低版本。
+   *
+   * 当前 DATA_SCHEMA = MIN_COMPAT_SCHEMA = 1，含义是：
+   *   **这一版没有改数据格式**，所以本地已有数据一律沿用，不打扰用户。
+   * 我特意没有把 DATA_SCHEMA 填成一个好看的大数字（比如 2）去「装作
+   * 升级过格式」—— 那是不诚实的，而且会让用户在毫无必要的情况下
+   * 白白重新下载 20MB 字典。
+   *
+   * 将来真改了格式（比如诗词字段变了）：
+   *   1. 把 DATA_SCHEMA 和 MIN_COMPAT_SCHEMA 一起提到新值（如都改成 2）；
+   *   2. 那么 schema < 2 的本地数据会被自动清掉，并要求重新同步；
+   *   3. 没有 schema 字段的更老数据（按 1 处理）同样会被清掉。
+   * 「保留合并」还是「清理掉」就由这两个常量决定，是**明确开关**。
+   *
+   * 另外：完全没有本地数据（全新环境）时不走这套判断 ——
+   * 没有东西需要作废，不该弹「数据已清空」的提示。 */
+  var MIN_COMPAT_SCHEMA = 1;
+
+  /* 导出数据文件（「保存为数据文件」/ 打包固化）的格式版本。
+   * 与 DATA_SCHEMA 分开是因为两者变化时机不同：
+   * 导出文件格式可能长期不变，而内部存储格式会调整。 */
+  var EXPORT_FORMAT_VERSION = 1;
+
+  /**
+   * 判断本地数据与当前程序是否兼容
+   * @param {number|undefined} saved 本地 meta.schema
+   * @returns {{state:string, saved:number, current:number}}
+   *   'ok'    可以直接沿用
+   *   'stale' 太旧，格式可能已变 → 清掉并重新同步
+   *   'future' 比程序还新（用户回退了程序版本）→ 同样不用，避免误读
+   */
+  function schemaState(saved) {
+    var v = saved || 1;
+    var state = 'ok';
+    if (v > DATA_SCHEMA) state = 'future';
+    else if (v < MIN_COMPAT_SCHEMA) state = 'stale';
+    return { state: state, saved: v, current: DATA_SCHEMA };
+  }
+
   var backend = 'none';       /* 'idb' | 'ls' | 'memory' */
   var db = null;
   var mem = Object.create(null);
@@ -202,7 +263,7 @@
       return Promise.all(keys.map(function (k) {
         return get(k).then(function (v) { return [k, v]; });
       })).then(function (pairs) {
-        var out = { version: 1, exportedAt: new Date().toISOString() };
+        var out = { version: EXPORT_FORMAT_VERSION, exportedAt: new Date().toISOString() };
         pairs.forEach(function (p) { out[p[0]] = p[1]; });
         return out;
       });
@@ -214,6 +275,16 @@
     if (!data || typeof data !== 'object') {
       return Promise.reject(new Error('数据格式不正确'));
     }
+    /* 校验数据文件自身的版本。
+     * 导出文件里的 version 字段一直写着，但从来没人检查 —— 结果
+     * 导入一个老版本导出的数据文件会静默产生错格式的数据。
+     * 这里至少要把「比程序新」的文件挡下来。 */
+    var fv = data.version;
+    if (typeof fv === 'number' && fv > EXPORT_FORMAT_VERSION) {
+      return Promise.reject(new Error(
+        '这个数据文件来自更新的版本（格式 v' + fv + '，当前支持 v' +
+        EXPORT_FORMAT_VERSION + '），请先升级程序再导入'));
+    }
     var keys = ['meta', 'pinyinMap', 'dict', 'poems', 'customChars',
       'fantiMap', 'shupinMap', 'dialectWords'];
     return ready.then(function () {
@@ -224,6 +295,39 @@
         });
       }, Promise.resolve());
     }).then(function () { return true; });
+  }
+
+  /**
+   * 估算本地数据占用（字节）。
+   *
+   * 用 JSON 序列化后的长度近似 —— IndexedDB 实际存储会更紧凑一些，
+   * 但量级正确，足够回答用户那个问题：「是不是快把手机内存占满了」。
+   * 分开返回各键的大小，好看出大头是谁（通常是 dict，字典约 20MB+）。
+   */
+  function usage() {
+    var keys = ['dict', 'poems', 'pinyinMap', 'fantiMap', 'shupinMap',
+      'dialectWords', 'customChars', 'meta'];
+    return ready.then(function () {
+      return Promise.all(keys.map(function (k) {
+        return get(k).then(function (v) {
+          var n = 0;
+          if (v !== null && v !== undefined) {
+            try { n = JSON.stringify(v).length; } catch (e) { n = 0; }
+          }
+          return [k, n];
+        });
+      }));
+    }).then(function (pairs) {
+      var total = 0;
+      var byKey = Object.create(null);
+      pairs.forEach(function (p) { byKey[p[0]] = p[1]; total += p[1]; });
+      return {
+        totalBytes: total,
+        byKey: byKey,
+        backend: backend,
+        schema: schemaState(null).current
+      };
+    });
   }
 
   /* ---------------- 不依赖 ready 的底层读写 ----------------
@@ -310,7 +414,12 @@
     del: del,
     clear: clear,
     exportAll: exportAll,
-    importAll: importAll
+    importAll: importAll,
+    usage: usage,
+    /* 数据格式版本：lexicon 启动时用它判断本地数据能不能沿用 */
+    DATA_SCHEMA: DATA_SCHEMA,
+    MIN_COMPAT_SCHEMA: MIN_COMPAT_SCHEMA,
+    schemaState: schemaState
   };
   NS.Store.init();
 })(typeof window !== 'undefined' ? window : globalThis);

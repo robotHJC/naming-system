@@ -877,6 +877,55 @@ details.more > summary:hover { color: var(--jade); }
   margin: 0 4px;
 }
 
+/* 小名候选列表：一组不同构词法，横向排列可换行。
+ * 用户反馈「小名也不一定是叠词」，所以这里一次给多个构词法。 */
+.nc-nick .nc-nick-head {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: .06em;
+  color: #6b8b80;
+  vertical-align: 2px;
+}
+
+.nc-nick .nc-nick-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+
+.nc-nick .nc-nick-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid rgba(107, 139, 128, .22);
+}
+
+/* 第一个（分数最高的）突出一点 */
+.nc-nick .nc-nick-item.top {
+  background: var(--jade);
+  border-color: var(--jade);
+}
+.nc-nick .nc-nick-item.top b,
+.nc-nick .nc-nick-item.top i { color: #fff; }
+
+.nc-nick .nc-nick-item b {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.nc-nick .nc-nick-item i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: #6b8b80;
+  letter-spacing: .04em;
+}
+
 .nc-nick .nc-nick-meta {
   font-size: 11.5px;
   color: #6b8b80;
@@ -1105,6 +1154,27 @@ details.more > summary:hover { color: var(--jade); }
 }
 
 .lex-stat span { font-size: 11.5px; color: var(--ink-3); }
+
+/* 本地占用明细：分类列出（大头永远是字典） */
+.lex-usage-detail {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.9;
+}
+
+/* 数据格式不兼容、本地词库被自动清理时的说明 */
+.lex-schema-notice {
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  background: var(--gold-pale);
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #6b5a30;
+}
 
 /* 数据源分组 */
 .lex-group {
@@ -1724,9 +1794,29 @@ details.more > summary:hover { color: var(--jade); }
        而「范彤」「李思琪」「杨威」不会被误判。「无语」「沉默」这类轻度负面谐音只提示、不淘汰。</p>
     <p><b>关于重名热度</b>　<b>不是真实重名率数据</b>，而是基于近年常见新生儿用字整理的本地参考值，
        仅用于判断名字偏冷门还是偏热门。真实重名率需调用官方接口，浏览器端无法直连。</p>
-    <p><b>关于小名</b>　小名不重新生成，而是从选中的大名里衍生
-       （叠字 / 小X / 阿X / X儿 / 单字）。评价时会查普通话谐音（有则淘汰）、
-       与姓氏连读谐音（扣分）、四川话撞词（扣分）、用字是否偏硬。</p>
+    <p><b>关于小名</b>　小名不重新生成，而是从选中的大名里衍生，一次给一组（默认 5 个），
+       覆盖多种叫法：<b>叠字</b>（涵涵）、<b>直接叫大名</b>（沐涵）、<b>小+字</b>（小涵）、
+       <b>字+宝</b>（涵宝）、<b>阿+字</b>（阿涵）、<b>字+儿</b>、<b>字+子</b>、
+       以及地域叫法 <b>字+妹 / 字+仔 / 字+妞 / 字+哥</b>。
+       挑选时会保证<b>构词法互不重复、两个用字都覆盖到</b> ——
+       否则会出现「和和 / 清和 / 小和 / 和宝」这种四种说法但全是同一个字的情况。
+       地域及性别叫法只在名字性别明确时出现（不会给女孩推「X仔」）。
+       评价时会查普通话谐音（有则淘汰）、与姓氏连读谐音（扣分）、
+       四川话撞词（扣分）、用字是否偏硬。</p>
+    <p><b>关于「名字显老」</b>　系统内置一张<b>上代用字表</b>（伟 刚 军 强 国 建 华 志 平
+       丽 艳 敏 静 娟 燕 芳 秀 英…），命中会扣分。原因：热度表衡量的是
+       「这个字在<b>人口</b>里有多常见」，不是「在<b>当代起名</b>里有多时髦」——
+       「伟」「刚」热度 86 全落在舒适区，可它们的常见来自 50-90 年代出生的人。
+       <b>是降权不是禁用</b>：这些字仍可选用，只是拿不到「现代感」的分。
+       所以「志强」「静娟」会被压下去，而「志远」「静姝」因为命中现代名字词表
+       （+12 足以抵掉扣分）仍然排得上来 —— 机制会自己纠正。
+       <b>说明：这张表是人工审美判断，不是数据</b>，「哪个字显老」没有权威公开数据集。</p>
+    <p><b>关于本地存储与版本</b>　联网下载的词库缓存在浏览器本地（字典约 20MB，
+       是占用大头）。「词库管理」里会显示<b>分类占用明细</b>，存储紧张时可以：
+       同步时取消勾选字典，或点「清空联网词库」（会告诉你释放多少空间）。
+       程序升级时，如果数据格式变了，本地的旧词库会<b>自动清理</b>并提示重新同步 ——
+       但<b>会保留你手工加进字库的字</b>，因为那是你的劳动成果。
+       反之，你自己点「清空」是彻底清除，两者行为不同是有意的。</p>
     <p><b>关于四川话检测</b>　用蜀拼字表把名字转成四川话读音再比对负面词。
        四川话有系统性读音归并（金=京、心=星、林=凌），会在普通话里不存在的谐音，
        所以普通话没问题不等于四川话没问题。
@@ -3034,6 +3124,130 @@ details.more > summary:hover { color: var(--jade); }
 </script>
 <script>
 /* =========================================================================
+ * era-chars.js —— 上代用字表（时代感扣分）
+ *
+ * 为什么需要这个文件
+ * ---------------------------------------------------------------
+ * 用户反馈「功能里面有的名字太老气了，比如伟、刚、钢、茂、超」。
+ * 查下来是**评分设计上的一个真实缺陷**：
+ *
+ *   popularity.js 的热度表衡量的是「这个字在**人口**里有多常见」，
+ *   而我把它当成了「这个字在**当代起名**里有多时髦」来用。
+ *   结果这批字全部落在「现代感」的舒适区（热度 55-91）拿满分：
+ *
+ *     伟 86 · 刚 86 · 军 86 · 强 86 · 国 85 · 建 85 · 丽 86 ·
+ *     艳 86 · 敏 86 · 静 86 · 娟 86 · 燕 86 · 芳 86
+ *
+ *   但它们的「常见」来自 1950-1990 年代出生的人。
+ *   今天给新生儿取名「郝建军」「郝伟刚」，读起来是上一代的语感。
+ *   热度表区分不了「谁在用」，所以必须单独补一层「时代感」。
+ *
+ * 必须说清楚的两件事
+ * ---------------------------------------------------------------
+ * 1. **这是一张人工判断的表，不是数据。**
+ *    「哪个字显老」本质上是审美判断，没有权威公开数据集。
+ *    我不打算把它包装成数据驱动 —— 那就是我在编数字。
+ *    能做的只有：把判断标准写清楚、让扣分规则透明、用测试锁住行为。
+ *
+ * 2. **是「降权」不是「禁用」。**
+ *    这些字仍然可以被选用、仍然参与五行与音韵评分，只是拿不到
+ *    「现代感」的分。理由：
+ *      · 有的字并非纯粹老气（「静」在《诗经》「静女其姝」里是好字，
+ *        「志」在「志远」里也成立），一刀切禁掉会误伤；
+ *      · 长辈可能有自己的偏好，系统不该替他做绝对判断；
+ *      · 更实际的原因：如果某个八字的喜用神恰好只对应这类字，
+ *        硬禁用会让候选池空掉。
+ *
+ *    实际效果（因为「现代名字词表」命中会给 +12，足以抵掉扣分）：
+ *      志强 = 志(-6) 强(-6) 无词表分 = -12  → 沉到后面
+ *      志远 = 志(-6) 远( 0) 词表 +12   =  +6  → 仍能排前
+ *      静娟 = 静(-6) 娟(-6) 无词表分 = -12  → 沉到后面
+ *      静姝 = 静(-6) 姝( 0) 词表 +12   =  +6  → 仍能排前
+ *    也就是说：**机制会自己纠正**——单纯堆老气字会被压下去，
+ *    但用这些字组成的真正好搭配不受影响。
+ *
+ * 这张表按**字**查，与字库来源无关，所以对联网加入的字同样生效：
+ * 像「超」「英」「玲」「进」这些内置字库里没有的字，
+ * 一旦通过联网扩充进来，一样会被扣分。
+ *
+ * 收录标准（尽量保守，宁可漏收也不要误伤）
+ * ---------------------------------------------------------------
+ * 只有同时满足下面两条才收：
+ *   (a) 在 1950-1990 年代是取名主流用字；
+ *   (b) 今天放进新生儿名字里，大多数人会觉得「这是长辈的名字」。
+ * 边界不清的一律不收，理由逐条写在文件末尾的「边界字」注释里。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var NS = (global.NS = global.NS || {});
+
+  /* 每个命中字的扣分。定 6 是有依据的：
+   *   · 必须明显大于「热度舒适区」最多给到的 6 分（否则字被扣了还是一样高）
+   *   · 必须小于「现代名字词表」给的 12 分（否则好搭配会被误杀）
+   * 于是形成上面对照里那种「单堆老气字 ↓ / 好搭配 ↑」的分野。 */
+  NS.ERA_PENALTY = 6;
+
+  NS.ERA_CHARS = (function () {
+    var m = Object.create(null);
+
+    /* ---- 男名：革命 / 建设 / 强壮 那一代的语感 ---- */
+    ('军 建 国 民 兴 伟 刚 强 勇 亮 富 贵 荣 发 财 钢 茂 超 学 华 永 德 ' +
+      '志 平 兵 武 龙 虎 铁 银 宝 旺 隆 昌 胜 雄 勋 卫 东 红 进 前 立 新'
+    ).split(/\s+/).forEach(function (c) { if (c.length === 1) m[c] = 1; });
+
+    /* ---- 女名：同年代主流，今天用显陈旧 ---- */
+    ('芳 芬 秀 英 梅 桂 艳 娟 燕 珍 惠 淑 丽 玉 玲 菊 娥 妹 敏 静 萍 ' +
+      '凤 霞 珠 翠 红 香 贞 娣 娇 贤 巧'
+    ).split(/\s+/).forEach(function (c) { if (c.length === 1) m[c] = 1; });
+
+    return m;
+  })();
+
+  /* =========================================================================
+   * 边界字：看着像上代用字，但**故意没收**，理由如下。
+   * 把理由写在这里而不是只留在脑子里，是因为「哪个字显老」是判断，
+   * 判断就该能被审视 —— 谁不同意，可以直接对着这段说。
+   *
+   *   兰 —— 兰花古今通用，且「兰芷」「兰若」「若兰」都是好搭配。
+   *         收了它会把女名测试里的第 1 名一起打下去，属于误伤。
+   *   明 —— 「明轩」「明远」「明哲」当代仍在大量使用，不是年代感。
+   *   文 —— 书卷气而非年代感：「文轩」很现代，「学文」才老，
+   *         而「学」已经单独收录了。
+   *   静 —— **收进来了**，这里单独说明原因，因为它最容易引起争议。
+   *         它出自《诗经》「静女其姝」，看着像雅字；
+   *         但实测「静」是老气组合的常客（静娟 / 静芬 / 静兰 / 静茹），
+   *         而当代真正在用的「静姝」「静宜」有词表 +12 兜着，
+   *         收了不会误杀。判据是「实际搭配」而不是「字本身雅不雅」。
+   *   秋 冬 —— 季节意象，无年代属性（「栗冬」是当代审美）。
+   *   云 月 雪 雨 风 花 春 —— 同上，自然意象。
+   *         我第一版把这些字全收进来了，是想当然，
+   *         实测会把大量好名字误伤，已全部撤掉。
+   *         （「花」在女名那行末尾漏删过一次，被测试抓出来了 ——
+   *          这条断言现在还在，就是为了拦住同类漏网。）
+   *   秀 — 边界字，最终保留：「郝秀兰」「郝秀英」是典型的老气组合；
+   *         而「秀言」有词表 +12 兜着，不会被误杀。
+   *   玉 — 同「秀」，保留（「郝玉芬」读起来明显是上一代）。
+   *   珍 — 同「秀」，保留。
+   *   平 — 同「秀」，保留（「建平」「小平」的年代感太典型）。
+   * ========================================================================= */
+
+  /** 用字是否偏上一代风格 */
+  NS.isEraChar = function (ch) {
+    return NS.ERA_CHARS[ch] === 1;
+  };
+
+  /** 一组用字里有多少个上代用字 */
+  NS.eraHitCount = function (chars) {
+    var n = 0;
+    (chars || []).forEach(function (c) { if (NS.ERA_CHARS[c] === 1) n++; });
+    return n;
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
  * fanti.js —— 繁体 → 简体 归一化表
  *
  * 为什么需要：
@@ -3753,20 +3967,68 @@ details.more > summary:hover { color: var(--jade); }
     return m;
   })();
 
-  /* 构词模板：{c} 代表用字，{cc} 代表叠字 */
+  /* 构词模板。
+   *
+   * build(char, fullName) 里 {c} 是用字、{cc} 是叠字、{full} 是大名两字。
+   *
+   * 为什么要加这么多：用户反馈「小名也可以多样化，也不一定是叠词」。
+   * 旧版只有 5 种（叠字/小X/阿X/X儿/单字），而且**只返回分数最高的一个**，
+   * 叠字权重又最高（1.0），所以永远只给出叠词 —— 那不是「最合适」，
+   * 是评分把其他构词法全压住了。
+   *
+   * 现在改两处：
+   *   1. 构词法扩到 15 种，覆盖北方（X妞/X哥）、南方（X妹/X仔）、
+   *      通用（X宝/X子）、以及「直接叫大名」（清和 / 小清和）
+   *   2. 返回**一组**候选，且强制构词法不重复（见 core/nickname.js）
+   *
+   * suffix 字段是给后缀字的读音用的（这些字不在字库里，要自带拼音）。 */
   NS.NICKNAME_PATTERNS = [
-    { id: 'repeat', label: '叠字', build: function (c) { return c + c; }, weight: 1.0 },
-    { id: 'xiao', label: '小+字', build: function (c) { return '小' + c; }, weight: 0.85 },
-    { id: 'a', label: '阿+字', build: function (c) { return '阿' + c; }, weight: 0.7 },
-    { id: 'er', label: '字+儿', build: function (c) { return c + '儿'; }, weight: 0.6 },
-    { id: 'single', label: '单字', build: function (c) { return c; }, weight: 0.5 }
+    /* ---- 单字衍生 ---- */
+    { id: 'repeat', label: '叠字', suffix: null, weight: 1.00, gender: null,
+      build: function (c) { return c + c; } },
+    { id: 'xiao', label: '小+字', suffix: null, weight: 0.86, gender: null,
+      build: function (c) { return '小' + c; } },
+    { id: 'bao', label: '字+宝', suffix: '宝', weight: 0.78, gender: null,
+      build: function (c) { return c + '宝'; } },
+    { id: 'a', label: '阿+字', suffix: null, weight: 0.72, gender: null,
+      build: function (c) { return '阿' + c; } },
+    { id: 'er', label: '字+儿', suffix: '儿', weight: 0.66, gender: null,
+      build: function (c) { return c + '儿'; } },
+    { id: 'zi', label: '字+子', suffix: '子', weight: 0.58, gender: null,
+      build: function (c) { return c + '子'; } },
+    { id: 'mei', label: '字+妹', suffix: '妹', weight: 0.54, gender: '女',
+      build: function (c) { return c + '妹'; } },
+    { id: 'zai', label: '字+仔', suffix: '仔', weight: 0.52, gender: '男',
+      build: function (c) { return c + '仔'; } },
+    { id: 'single', label: '单字', suffix: null, weight: 0.50, gender: null,
+      build: function (c) { return c; } },
+    { id: 'niu', label: '字+妞', suffix: '妞', weight: 0.46, gender: '女',
+      build: function (c) { return c + '妞'; } },
+    { id: 'ge', label: '字+哥', suffix: '哥', weight: 0.44, gender: '男',
+      build: function (c) { return c + '哥'; } },
+    { id: 'xiaoDie', label: '小+叠字', suffix: null, weight: 0.48, gender: null,
+      build: function (c) { return '小' + c + c; } },
+
+    /* ---- 双字（用整个大名）---- */
+    { id: 'full', label: '直接叫', suffix: null, weight: 0.92, gender: null,
+      needFull: true,
+      build: function (c, full) { return full; } },
+    { id: 'xiaofull', label: '小+两字', suffix: null, weight: 0.56, gender: null,
+      needFull: true,
+      build: function (c, full) { return '小' + full; } }
   ];
 
   /* 前缀/后缀字的读音，用于谐音检测（这些字不在字库里，需要自带读音） */
   NS.NICKNAME_AFFIX_PINYIN = {
     '小': { pinyin: 'xiao', tone: 3 },
     '阿': { pinyin: 'a', tone: 1 },
-    '儿': { pinyin: 'er', tone: 2 }
+    '儿': { pinyin: 'er', tone: 2 },
+    '宝': { pinyin: 'bao', tone: 3 },
+    '子': { pinyin: 'zi', tone: 3 },
+    '妹': { pinyin: 'mei', tone: 4 },
+    '仔': { pinyin: 'zai', tone: 3 },
+    '妞': { pinyin: 'niu', tone: 1 },
+    '哥': { pinyin: 'ge', tone: 1 }
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -5683,13 +5945,34 @@ details.more > summary:hover { color: var(--jade); }
       comfortSum += comfort(h);
     });
     mnScore += comfortSum / mnChars.length * 6;
+
+    /* 时代感扣分（见 data/era-chars.js）。
+     *
+     * 上面的「热度舒适区」有个结构性缺陷：热度表衡量的是
+     * 「这个字在**人口**里有多常见」，而不是「在**当代起名**里有多时髦」。
+     * 于是「伟 86 / 刚 86 / 军 86 / 丽 86 / 艳 86」这批 50-90 年代的
+     * 主流取名用字全部落在舒适区，拿到满分 —— 用户实测反馈
+     * 「有的名字太老气了，比如伟、刚、钢、茂」就是这个原因。
+     *
+     * 这张表按**字**查，与字库来源无关，所以对联网加入的字同样生效。 */
+    var eraHits = [];
+    mnChars.forEach(function (c) {
+      if (NS.ERA_CHARS && NS.ERA_CHARS[c] === 1) eraHits.push(c);
+    });
+    if (eraHits.length) {
+      mnScore -= eraHits.length * (NS.ERA_PENALTY || 6);
+      reasons.push('「' + eraHits.join('、') + '」偏上一代的取名用字');
+    }
+
     detail.modern = {
       word: hitWord,
+      era: eraHits,
       heat: NS.HEAT[mnChars[0]] !== undefined ? NS.HEAT[mnChars[0]] : NS.DEFAULT_HEAT
     };
     score += mnScore;
 
-    /* ---- 9. 谐音（5）---- */    var syllables = ctx.surnameSyllables.concat(rows.map(function (r) {
+    /* ---- 9. 谐音（5）---- */
+    var syllables = ctx.surnameSyllables.concat(rows.map(function (r) {
       return { char: r.char, pinyin: r.obj.pinyin, tone: r.obj.tone };
     }));
     var homo = NS.Pinyin.checkHomophone(syllables);
@@ -6317,6 +6600,67 @@ details.more > summary:hover { color: var(--jade); }
   var STORE = 'kv';
   var LS_PREFIX = 'ns:';
 
+  /* =========================================================================
+   * 应用层「数据格式版本」
+   *
+   * 用户反馈：「如果我有多个版本更新，上一个版本下载的联网词库要么保留合并，
+   * 要么就给清理掉；不要每次打开网页或者更新版本都给我把手机内存占满了。」
+   *
+   * 在这之前**完全没有版本概念** —— restore() 无条件读入本地数据，
+   * 不管它是哪个版本的程序写的。改了数据格式后旧数据照读，
+   * 结果是难以排查的诡异行为，而且旧数据永远占着空间没人清。
+   *
+   * 凡改了下列结构就要把 DATA_SCHEMA +1：
+   *   · 诗词条目的字段与解析方式（poems）
+   *   · 字典条目 [简体笔画, 部首, 带调拼音, 释义] 的数组顺序（dict）
+   *   · 拼音表 / 繁简表 / 蜀拼表的形状（pinyinMap / fantiMap / shupinMap）
+   *   · 自定义字条目的字段（customChars）
+   *
+   * 注意与 DB_VERSION 的区别：DB_VERSION 管的是 **IndexedDB 的库结构**
+   * （有几个 object store），DATA_SCHEMA 管的是**存进去的数据长什么样**。
+   * 两者独立变化。
+   * ========================================================================= */
+  var DATA_SCHEMA = 1;
+
+  /* 能直接沿用的最低版本。
+   *
+   * 当前 DATA_SCHEMA = MIN_COMPAT_SCHEMA = 1，含义是：
+   *   **这一版没有改数据格式**，所以本地已有数据一律沿用，不打扰用户。
+   * 我特意没有把 DATA_SCHEMA 填成一个好看的大数字（比如 2）去「装作
+   * 升级过格式」—— 那是不诚实的，而且会让用户在毫无必要的情况下
+   * 白白重新下载 20MB 字典。
+   *
+   * 将来真改了格式（比如诗词字段变了）：
+   *   1. 把 DATA_SCHEMA 和 MIN_COMPAT_SCHEMA 一起提到新值（如都改成 2）；
+   *   2. 那么 schema < 2 的本地数据会被自动清掉，并要求重新同步；
+   *   3. 没有 schema 字段的更老数据（按 1 处理）同样会被清掉。
+   * 「保留合并」还是「清理掉」就由这两个常量决定，是**明确开关**。
+   *
+   * 另外：完全没有本地数据（全新环境）时不走这套判断 ——
+   * 没有东西需要作废，不该弹「数据已清空」的提示。 */
+  var MIN_COMPAT_SCHEMA = 1;
+
+  /* 导出数据文件（「保存为数据文件」/ 打包固化）的格式版本。
+   * 与 DATA_SCHEMA 分开是因为两者变化时机不同：
+   * 导出文件格式可能长期不变，而内部存储格式会调整。 */
+  var EXPORT_FORMAT_VERSION = 1;
+
+  /**
+   * 判断本地数据与当前程序是否兼容
+   * @param {number|undefined} saved 本地 meta.schema
+   * @returns {{state:string, saved:number, current:number}}
+   *   'ok'    可以直接沿用
+   *   'stale' 太旧，格式可能已变 → 清掉并重新同步
+   *   'future' 比程序还新（用户回退了程序版本）→ 同样不用，避免误读
+   */
+  function schemaState(saved) {
+    var v = saved || 1;
+    var state = 'ok';
+    if (v > DATA_SCHEMA) state = 'future';
+    else if (v < MIN_COMPAT_SCHEMA) state = 'stale';
+    return { state: state, saved: v, current: DATA_SCHEMA };
+  }
+
   var backend = 'none';       /* 'idb' | 'ls' | 'memory' */
   var db = null;
   var mem = Object.create(null);
@@ -6500,7 +6844,7 @@ details.more > summary:hover { color: var(--jade); }
       return Promise.all(keys.map(function (k) {
         return get(k).then(function (v) { return [k, v]; });
       })).then(function (pairs) {
-        var out = { version: 1, exportedAt: new Date().toISOString() };
+        var out = { version: EXPORT_FORMAT_VERSION, exportedAt: new Date().toISOString() };
         pairs.forEach(function (p) { out[p[0]] = p[1]; });
         return out;
       });
@@ -6512,6 +6856,16 @@ details.more > summary:hover { color: var(--jade); }
     if (!data || typeof data !== 'object') {
       return Promise.reject(new Error('数据格式不正确'));
     }
+    /* 校验数据文件自身的版本。
+     * 导出文件里的 version 字段一直写着，但从来没人检查 —— 结果
+     * 导入一个老版本导出的数据文件会静默产生错格式的数据。
+     * 这里至少要把「比程序新」的文件挡下来。 */
+    var fv = data.version;
+    if (typeof fv === 'number' && fv > EXPORT_FORMAT_VERSION) {
+      return Promise.reject(new Error(
+        '这个数据文件来自更新的版本（格式 v' + fv + '，当前支持 v' +
+        EXPORT_FORMAT_VERSION + '），请先升级程序再导入'));
+    }
     var keys = ['meta', 'pinyinMap', 'dict', 'poems', 'customChars',
       'fantiMap', 'shupinMap', 'dialectWords'];
     return ready.then(function () {
@@ -6522,6 +6876,39 @@ details.more > summary:hover { color: var(--jade); }
         });
       }, Promise.resolve());
     }).then(function () { return true; });
+  }
+
+  /**
+   * 估算本地数据占用（字节）。
+   *
+   * 用 JSON 序列化后的长度近似 —— IndexedDB 实际存储会更紧凑一些，
+   * 但量级正确，足够回答用户那个问题：「是不是快把手机内存占满了」。
+   * 分开返回各键的大小，好看出大头是谁（通常是 dict，字典约 20MB+）。
+   */
+  function usage() {
+    var keys = ['dict', 'poems', 'pinyinMap', 'fantiMap', 'shupinMap',
+      'dialectWords', 'customChars', 'meta'];
+    return ready.then(function () {
+      return Promise.all(keys.map(function (k) {
+        return get(k).then(function (v) {
+          var n = 0;
+          if (v !== null && v !== undefined) {
+            try { n = JSON.stringify(v).length; } catch (e) { n = 0; }
+          }
+          return [k, n];
+        });
+      }));
+    }).then(function (pairs) {
+      var total = 0;
+      var byKey = Object.create(null);
+      pairs.forEach(function (p) { byKey[p[0]] = p[1]; total += p[1]; });
+      return {
+        totalBytes: total,
+        byKey: byKey,
+        backend: backend,
+        schema: schemaState(null).current
+      };
+    });
   }
 
   /* ---------------- 不依赖 ready 的底层读写 ----------------
@@ -6608,7 +6995,12 @@ details.more > summary:hover { color: var(--jade); }
     del: del,
     clear: clear,
     exportAll: exportAll,
-    importAll: importAll
+    importAll: importAll,
+    usage: usage,
+    /* 数据格式版本：lexicon 启动时用它判断本地数据能不能沿用 */
+    DATA_SCHEMA: DATA_SCHEMA,
+    MIN_COMPAT_SCHEMA: MIN_COMPAT_SCHEMA,
+    schemaState: schemaState
   };
   NS.Store.init();
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -7166,7 +7558,9 @@ details.more > summary:hover { color: var(--jade); }
      * 靠它判断缓存是否失效，不必在每次取用时重算一遍。 */
     dataVersion: 0,
     fantiMap: null,       /* 联网的 OpenCC 繁→简对照 */
-    meta: null,           /* { lastSync, sources: {id: {...}} } */
+    meta: null,           /* { lastSync, schema, sources: {id: {...}} } */
+    /* 上一次启动时丢弃了不兼容的本地数据（用于界面提示），null 表示没发生 */
+    discardNotice: null,
 
     /* ---------------- 解析 ---------------- */
 
@@ -7497,6 +7891,29 @@ details.more > summary:hover { color: var(--jade); }
 
     restore: function () {
       return NS.Store.ready.then(function () {
+        /* 先查本地数据的格式版本。
+         *
+         * 用户反馈：「如果我有多个版本更新，上一个版本下载的联网词库
+         * 要么保留合并，要么就给清理掉；不要每次打开网页或者更新版本
+         * 都给我把手机内存占满了。」
+         *
+         * 在这之前没有任何版本判断，restore() 无条件读入本地数据 ——
+         * 旧格式数据会被直接当成有效数据用，既可能产生怪结果，
+         * 又永远占着空间没人清。
+         *
+         * 现在的规则（见 store.js 的 DATA_SCHEMA / MIN_COMPAT_SCHEMA）：
+         *   兼容 → 原样沿用，只把版本号补上
+         *   不兼容 → 清掉联网数据，保留用户自定义字，并留一条提示 */
+        return NS.Store.get('meta').then(function (meta) {
+          /* 完全没有本地数据（全新环境）→ 没有东西需要作废，直接跳过。
+           * persist() 永远是把 meta 和其余数据一起写的，所以
+           * meta 为空就等价于「本地没有任何可保留的数据」。 */
+          if (!meta) return null;
+          var st = NS.Store.schemaState(meta.schema);
+          if (st.state === 'ok') return null;
+          return Lexicon.discardIncompatible(st);
+        });
+      }).then(function () {
         return Promise.all([
           NS.Store.get('pinyinMap'), NS.Store.get('dict'),
           NS.Store.get('poems'), NS.Store.get('customChars'),
@@ -7527,6 +7944,39 @@ details.more > summary:hover { color: var(--jade); }
       });
     },
 
+    /**
+     * 本地数据格式与当前程序不兼容：清掉**联网数据**，但保留用户自定义字。
+     *
+     * 为什么单独保留 customChars：那是用户在「按部首找字」里一个个手工挑进
+     * 字库的，丢了是真实的损失；而联网数据（字典/诗词/拼音表）随时能重新同步，
+     * 清掉只是麻烦一次。这个取舍对用户最有利。
+     *
+     * @param {Object} st schemaState() 的返回
+     */
+    discardIncompatible: function (st) {
+      var keep = [];
+      return NS.Store.get('customChars').then(function (cc) {
+        keep = cc || [];
+        return NS.Store.clear();
+      }).then(function () {
+        /* clear 会把所有键删光，把自定义字放回去 */
+        return keep.length ? NS.Store.set('customChars', keep) : null;
+      }).then(function () {
+        Lexicon.discardNotice = {
+          state: st.state,             /* 'stale' | 'future' */
+          saved: st.saved,
+          current: st.current,
+          keptCustomChars: keep.length
+        };
+        return null;
+      });
+    },
+
+    /** 本地存储占用（字节），用于界面提示与判断是否需要清理 */
+    usage: function () {
+      return NS.Store.usage();
+    },
+
     status: function () {
       return {
         poems: NS.Poetry.poems.length,
@@ -7539,7 +7989,13 @@ details.more > summary:hover { color: var(--jade); }
         dialectWords: NS.Dialect.status().dialectWords,
         dialectReady: NS.Dialect.status().available,
         lastSync: (Lexicon.meta && Lexicon.meta.lastSync) || null,
-        backend: NS.Store.getBackend()
+        backend: NS.Store.getBackend(),
+        /* 数据格式版本，界面用来解释「为什么本地数据被清了」 */
+        schema: {
+          saved: (Lexicon.meta && Lexicon.meta.schema) || null,
+          current: NS.Store.DATA_SCHEMA
+        },
+        discardNotice: Lexicon.discardNotice
       };
     },
 
@@ -7556,6 +8012,7 @@ details.more > summary:hover { color: var(--jade); }
         Lexicon.fantiMap = Object.create(null);
         NS.Dialect.reset();
         Lexicon.meta = {};
+        Lexicon.discardNotice = null;
         Lexicon.dataVersion++;
         /* 繁简表还原成内置版本 */
         NS.FAN_JIAN = Object.create(null);
@@ -7565,6 +8022,12 @@ details.more > summary:hover { color: var(--jade); }
         /* 诗词回到内置篇目 */
         NS.RAW_POEMS.length = NS.Poetry.builtinCount;
         NS.Poetry.rebuild();
+        /* 写回一个带当前 schema 的空 meta。
+         * 不写的话下次启动会看到「有 meta 但版本缺失」，被判成旧数据走一遍
+         * 清理流程 —— 虽然清的是空数据，但会给用户弹一条莫名其妙的
+         * 「本地数据已清空，请重新同步」提示。 */
+        return NS.Store.set('meta', { schema: NS.Store.DATA_SCHEMA });
+      }).then(function () {
         return Lexicon.status();
       });
     }
@@ -7590,7 +8053,11 @@ details.more > summary:hover { color: var(--jade); }
         .map(function (p) {
           return { source: p[0], title: p[1], content: p[2] };
         })),
-      NS.Store.set('meta', Lexicon.meta || {})
+      /* 盖上数据格式版本戳。下次启动靠它判断本地数据能不能沿用；
+       * 不写这个字段的话，将来改了格式就只能靠容错去猜。 */
+      NS.Store.set('meta', Object.assign({}, Lexicon.meta || {}, {
+        schema: NS.Store.DATA_SCHEMA
+      }))
     ]);
   }
 
@@ -8305,38 +8772,66 @@ details.more > summary:hover { color: var(--jade); }
  * 不做独立的小名用字库，而是**从已选中的大名里衍生**：
  * 用户认可了大名（字义、五行都合适），小名只要好叫、亲切、无谐音就够了。
  *
- * 候选 = 大名的每个用字 × 五种构词法（叠字 / 小X / 阿X / X儿 / 单字）
+ * 候选 = 大名的每个用字 × 各构词法
+ *   （叠字 / 小X / X宝 / 阿X / X儿 / X子 / X妹 / X仔 / X妞 / X哥 /
+ *     单字 / 直接叫大名 / 小+两字 / 小+叠字）
+ *
  * 评分因素：
- *   构词法常见度、用字是否小名友好、是否取末字（更常见）
+ *   构词法常见度、用字是否小名友好、是否取末字（更常见）、性别是否相符
  *   普通话谐音（会淘汰）、姓氏连读谐音（扣分）、四川话谐音（扣分并提示）
+ *
+ * 为什么是「一组」而不是「一个」
+ * ---------------------------------------------------------------
+ * 用户反馈「小名也可以多样化，也不一定是叠词」。
+ * 旧版返回分数最高的**一个**，而叠字权重最高（1.0），
+ * 于是无论什么名字，建议永远只有叠词 —— 那不是「最合适」，
+ * 是评分把其他构词法全压住了。
+ *
+ * 现在返回最多 5 个，并保证：
+ *   1. 构词法互不重复（不会 5 个都是叠字）
+ *   2. 两个用字都被覆盖（不会 5 个都是「和和 / 小和 / 和宝 / 阿和」）
+ * 实现见 pickDiverse。
  * ========================================================================= */
 (function (global) {
   'use strict';
   var NS = (global.NS = global.NS || {});
 
-  function el(obj, key, def) {
-    return obj && obj[key] !== undefined ? obj[key] : def;
+  /** 造一个附属字音节（小/阿/儿/宝/妹/仔/妞/哥/子）。
+   *  这些字不在字库里，读音要自带，否则谐音检测拿不到音节。 */
+  function affixSyllable(ch) {
+    var a = NS.NICKNAME_AFFIX_PINYIN[ch];
+    return a ? { char: ch, pinyin: a.pinyin, tone: a.tone }
+      : { char: ch, pinyin: '', tone: 0 };
+  }
+
+  function cloneSyllable(s) {
+    return { char: s.char, pinyin: s.pinyin, tone: s.tone };
   }
 
   /**
    * 取候选小名的音节序列（用于谐音检测与拼音显示）
-   * @param {Object} pattern
-   * @param {Object} charInfo 字库条目
+   * @param {Object} pattern 构词模板
+   * @param {Object} info 当前用字的字库条目（双字构词法时为 null）
+   * @param {Array} fullSyllables 整个大名的音节序列
    */
-  function syllablesFor(pattern, charInfo) {
-    var affix = NS.NICKNAME_AFFIX_PINYIN;
-    var base = { char: charInfo.char, pinyin: charInfo.pinyin, tone: charInfo.tone };
+  function syllablesFor(pattern, info, fullSyllables) {
+    var base = info
+      ? { char: info.char, pinyin: info.pinyin, tone: info.tone }
+      : null;
+    var full = (fullSyllables || []).map(cloneSyllable);
+
+    /* 带后缀的（X宝 / X妹 / X仔 …）统一走这里 */
+    if (pattern.suffix) return [base, affixSyllable(pattern.suffix)];
+
     switch (pattern.id) {
-      case 'repeat':
-        return [base, { char: charInfo.char, pinyin: charInfo.pinyin, tone: charInfo.tone }];
-      case 'xiao':
-        return [{ char: '小', pinyin: affix['小'].pinyin, tone: affix['小'].tone }, base];
-      case 'a':
-        return [{ char: '阿', pinyin: affix['阿'].pinyin, tone: affix['阿'].tone }, base];
-      case 'er':
-        return [base, { char: '儿', pinyin: affix['儿'].pinyin, tone: affix['儿'].tone }];
-      default:
-        return [base];
+      case 'repeat': return [base, cloneSyllable(base)];
+      case 'xiaoDie': return [affixSyllable('小'), base, cloneSyllable(base)];
+      case 'xiao': return [affixSyllable('小'), base];
+      case 'a': return [affixSyllable('阿'), base];
+      case 'er': return [base, affixSyllable('儿')];
+      case 'full': return full;
+      case 'xiaofull': return [affixSyllable('小')].concat(full);
+      default: return [base];
     }
   }
 
@@ -8347,15 +8842,79 @@ details.more > summary:hover { color: var(--jade); }
   }
 
   /**
-   * 为一个大名推荐小名
+   * 从用字推断性别倾向，用于筛掉明显性别不符的构词法。
+   * 不该给女孩推「X仔」、给男孩推「X妞」。
+   * 判定不明确（男女字都有 / 全是中性）时返回 null，表示不筛。
+   */
+  function inferGender(givenChars) {
+    var hasF = false, hasM = false;
+    givenChars.forEach(function (info) {
+      if (info.gender === '女') hasF = true;
+      else if (info.gender === '男') hasM = true;
+    });
+    if (hasF && !hasM) return '女';
+    if (hasM && !hasF) return '男';
+    return null;
+  }
+
+  /**
+   * 多样性挑选：同时保证「构词法不重复」和「两个用字都被覆盖」。
+   *
+   * 只按分数取前 N 个会得到「和和 / 清和 / 小和 / 和宝」——
+   * 四种构词法但全来自同一个字，等于没多样。
+   * 所以分三轮：
+   *   1. 按用字轮流取，每个字配一个还没用过的构词法（覆盖两个用字）
+   *   2. 补足剩余构词法（覆盖更多说法）
+   *   3. 还不够就放宽（候选本来就少时，比如单字名）
+   */
+  function pickDiverse(sorted, limit) {
+    var out = [], usedP = Object.create(null), i;
+
+    /* 第一轮：每个用字先各拿一个 */
+    var order = [], seenChar = Object.create(null);
+    for (i = 0; i < sorted.length; i++) {
+      if (seenChar[sorted[i].baseChar]) continue;
+      seenChar[sorted[i].baseChar] = 1;
+      order.push(sorted[i].baseChar);
+    }
+    order.forEach(function (ch) {
+      if (out.length >= limit) return;
+      for (var j = 0; j < sorted.length; j++) {
+        var r = sorted[j];
+        if (r.baseChar !== ch || usedP[r.pattern]) continue;
+        usedP[r.pattern] = 1;
+        out.push(r);
+        return;
+      }
+    });
+
+    /* 第二轮：补足剩余构词法 */
+    for (i = 0; i < sorted.length && out.length < limit; i++) {
+      if (usedP[sorted[i].pattern]) continue;
+      usedP[sorted[i].pattern] = 1;
+      out.push(sorted[i]);
+    }
+
+    /* 第三轮：放宽 */
+    for (i = 0; i < sorted.length && out.length < limit; i++) {
+      if (out.indexOf(sorted[i]) >= 0) continue;
+      out.push(sorted[i]);
+    }
+
+    out.sort(function (a, b) { return b.score - a.score; });
+    return out;
+  }
+
+  /**
+   * 为一个大名推荐小名（**一组**候选，不是单个）
    * @param {Array<Object>} givenChars 名字用字（CHAR_DB 条目）
    * @param {string} surname 姓氏原文
-   * @param {Object} [ctx] { surnameSyllables, sichuan:boolean }
-   * @returns {Object|null}
+   * @param {Object} [ctx] { surnameSyllables, sichuan, limit, gender }
+   * @returns {Array<Object>} 按分数降序，构词法与用字都已做多样性约束
    */
   function suggest(givenChars, surname, ctx) {
     ctx = ctx || {};
-    if (!givenChars || !givenChars.length) return null;
+    if (!givenChars || !givenChars.length) return [];
 
     /* 姓氏读音：没传就从姓氏库自己查。
      * 依赖调用方传好容易漏，漏了就静默不做「姓+小名」的谐音检查。 */
@@ -8368,104 +8927,137 @@ details.more > summary:hover { color: var(--jade); }
         })
         : [];
     }
+
     var wantSichuan = !!ctx.sichuan && NS.Dialect.available();
+    var limit = ctx.limit || 5;
+    var gender = ctx.gender || inferGender(givenChars);
+    var fullStr = givenChars.map(function (i) { return i.char; }).join('');
+    var fullSyllables = givenChars.map(function (i) {
+      return { char: i.char, pinyin: i.pinyin, tone: i.tone };
+    });
     var results = [];
 
-    givenChars.forEach(function (info, idx) {
-      var isLast = idx === givenChars.length - 1;
-      NS.NICKNAME_PATTERNS.forEach(function (pattern) {
-        var name = pattern.build(info.char);
-        var syllables = syllablesFor(pattern, info);
+    /** 给单个候选打分并收集 */
+    function addCandidate(pattern, info, isLast) {
+      /* 双字构词法（直接叫 / 小+两字）不绑定单个用字，
+       * 用字取末字来判「小名友好度」——小名习惯取末字。 */
+      var baseInfo = info || givenChars[givenChars.length - 1];
+      var name = pattern.build(baseInfo.char, fullStr);
+      var syllables = syllablesFor(pattern, info, fullSyllables);
 
-        var score = 0;
-        var reasons = [];
+      var score = 0;
+      var reasons = [];
 
-        /* 构词法常见度 */
-        score += pattern.weight * 20;
+      /* 构词法常见度 */
+      score += pattern.weight * 20;
 
-        /* 用字友好度 */
-        if (NS.NICKNAME_FRIENDLY[info.char]) {
-          score += 26;
-          reasons.push('「' + info.char + '」是小名常用字');
+      /* 用字友好度 */
+      if (NS.NICKNAME_FRIENDLY[baseInfo.char]) {
+        score += 26;
+        reasons.push('「' + baseInfo.char + '」是小名常用字');
+      }
+      if (NS.NICKNAME_AWKWARD[baseInfo.char]) {
+        score -= 28;
+        reasons.push('「' + baseInfo.char + '」叠叫偏生硬');
+      }
+
+      /* 取末字更符合习惯 */
+      if (isLast && givenChars.length > 1) score += 6;
+
+      /* 单字小名只在名字本身够亲切时才考虑 */
+      if (pattern.id === 'single' && !NS.NICKNAME_FRIENDLY[baseInfo.char]) {
+        score -= 10;
+      }
+
+      /* 性别不明的名字，带性别倾向的后缀（X妹/X仔）适当降权，
+       * 不是排除 —— 用户没选性别时也可能就想要「X妹」。 */
+      if (pattern.gender && !gender) score -= 6;
+
+      /* 性别相符时反过来给奖励。
+       * 不加这一条的话，X妹/X仔/X妞/X哥 这几个「地域叫法」的权重
+       * 本来就低（0.44-0.54），永远进不了 top 5 —— 等于加了白加。
+       * 而名字性别明确时，「雪妹」比「阿雪」更贴切，值得往上排。 */
+      if (pattern.gender && gender && pattern.gender === gender) score += 6;
+
+      /* 普通话谐音：小名单独念 */
+      var homo = NS.Pinyin.checkHomophone(syllables);
+      if (!homo.pass) {
+        score -= 60;
+      } else {
+        score += 12;
+        reasons.push('普通话无谐音');
+      }
+
+      /* 姓氏连读（有人会连姓一起叫） */
+      var withSurname = null;
+      if (surnameSyllables.length) {
+        withSurname = NS.Pinyin.checkHomophone(
+          surnameSyllables.concat(syllables));
+        if (!withSurname.pass) {
+          score -= 26;
+          reasons.push('与姓氏连读有谐音风险');
         }
-        if (NS.NICKNAME_AWKWARD[info.char]) {
-          score -= 28;
-          reasons.push('「' + info.char + '」叠叫偏生硬');
+      }
+
+      /* 四川话：只提示不淘汰 */
+      var sichuan = null;
+      if (wantSichuan) {
+        sichuan = NS.Dialect.check(name);
+        if (sichuan.hits && sichuan.hits.length) {
+          score -= 20;
         }
+      }
 
-        /* 取末字更符合习惯 */
-        if (isLast && givenChars.length > 1) score += 6;
+      results.push({
+        name: name,
+        pattern: pattern.id,
+        patternLabel: pattern.label,
+        baseChar: baseInfo.char,
+        pinyin: pinyinText(syllables),
+        score: Math.round(score),
+        reasons: reasons,
+        homophone: homo,
+        homophoneWithSurname: withSurname,
+        sichuan: sichuan,
+        excluded: !homo.pass
+      });
+    }
 
-        /* 单字小名只在名字本身够亲切时才考虑 */
-        if (pattern.id === 'single' && !NS.NICKNAME_FRIENDLY[info.char]) {
-          score -= 10;
-        }
-
-        /* 普通话谐音：小名单独念 */
-        var homo = NS.Pinyin.checkHomophone(syllables);
-        if (!homo.pass) {
-          score -= 60;
-        } else {
-          score += 12;
-          reasons.push('普通话无谐音');
-        }
-
-        /* 姓氏连读（有人会连姓一起叫） */
-        var withSurname = null;
-        if (surnameSyllables.length) {
-          withSurname = NS.Pinyin.checkHomophone(
-            surnameSyllables.concat(syllables));
-          if (!withSurname.pass) {
-            score -= 26;
-            reasons.push('与姓氏连读有谐音风险');
-          }
-        }
-
-        /* 四川话：只提示不淘汰 */
-        var sichuan = null;
-        if (wantSichuan) {
-          sichuan = NS.Dialect.check(name);
-          if (sichuan.hits && sichuan.hits.length) {
-            score -= 20;
-          }
-        }
-
-        results.push({
-          name: name,
-          pattern: pattern.id,
-          patternLabel: pattern.label,
-          baseChar: info.char,
-          pinyin: pinyinText(syllables),
-          score: Math.round(score),
-          reasons: reasons,
-          homophone: homo,
-          homophoneWithSurname: withSurname,
-          sichuan: sichuan,
-          excluded: !homo.pass
-        });
+    NS.NICKNAME_PATTERNS.forEach(function (pattern) {
+      /* 双字构词法（直接叫 / 小+两字）只算一次，否则会按用字数重复 */
+      if (pattern.needFull) {
+        if (givenChars.length < 2) return;
+        if (pattern.gender && gender && pattern.gender !== gender) return;
+        addCandidate(pattern, null, true);
+        return;
+      }
+      givenChars.forEach(function (info, idx) {
+        /* 性别不符的后缀直接不生成：不该给女孩推「X仔」、给男孩推「X妞」 */
+        if (pattern.gender && gender && pattern.gender !== gender) return;
+        addCandidate(pattern, info, idx === givenChars.length - 1);
       });
     });
 
     var usable = results.filter(function (r) { return !r.excluded; });
     if (!usable.length) {
-      /* 全部有谐音问题：返回分数最高但标记风险，让用户自己判断 */
+      /* 全部有谐音问题：把最高分的几个标上风险返回，让用户自己判断 */
       results.sort(function (a, b) { return b.score - a.score; });
-      var fallback = results[0];
-      if (fallback) fallback.risky = true;
-      return fallback || null;
+      var risky = pickDiverse(results, limit);
+      risky.forEach(function (r) { r.risky = true; });
+      return risky;
     }
     usable.sort(function (a, b) {
       if (b.score !== a.score) return b.score - a.score;
       /* 同分优先叠字（最常见） */
       return a.pattern === 'repeat' ? -1 : 1;
     });
-    return usable[0];
+    return pickDiverse(usable, limit);
   }
 
   /**
    * 给一批名字结果补充小名建议
    * @param {Array} items 生成结果
-   * @param {Object} opts { surname, surnameSyllables, sichuan }
+   * @param {Object} opts { surname, surnameSyllables, sichuan, gender, limit }
    */
   function attach(items, opts) {
     var count = 0;
@@ -8474,8 +9066,10 @@ details.more > summary:hover { color: var(--jade); }
         return NS.CHAR_DB[c];
       }).filter(Boolean);
       if (!chars.length) return;
-      item.nickname = suggest(chars, opts.surname, opts);
-      if (item.nickname) count++;
+      var list = suggest(chars, opts.surname, opts);
+      item.nicknames = list;           /* 一组候选 */
+      item.nickname = list[0] || null; /* 首个，兼容旧调用方 */
+      if (list.length) count++;
     });
     return count;
   }
@@ -8574,9 +9168,71 @@ details.more > summary:hover { color: var(--jade); }
             '当前环境无法持久化，请用「导出数据文件」保存成果。</span>';
         }
       }
+
+      /* 本地占用：用户反馈「不要每次打开网页或者更新版本都给我把手机
+       * 内存占满了」—— 那就得让他能**看见**占了多少、大头是什么，
+       * 而不是只能猜，或者反复点清空。 */
+      this.renderUsage();
+
+      /* 版本不兼容时清过数据，要把原因说清楚，否则用户会觉得「我的词库
+       * 怎么莫名其妙没了」。 */
+      var notice = $('lexSchemaNotice');
+      if (notice) {
+        if (st.discardNotice) {
+          var n = st.discardNotice;
+          var why = n.state === 'future'
+            ? '本地数据来自更新版本的程序，当前程序不认识它的格式'
+            : '本地数据是很早的版本留下的，数据格式已经变了';
+          notice.innerHTML = '<b>本地的联网词库已自动清理</b>　' + why +
+            '，为避免读出错误结果已丢弃（版本 ' + n.saved +
+            ' → ' + n.current + '）。' +
+            (n.keptCustomChars
+              ? '你在「按部首找字」里手工加入的 <b>' + n.keptCustomChars +
+                '</b> 个字已保留。' : '') +
+            '　重新点「开始更新」同步一次即可恢复。';
+          notice.style.display = '';
+        } else {
+          notice.style.display = 'none';
+        }
+      }
+
       this.renderCustomChars();
       /* 通知主界面更新「词库管理」按钮上的小圆点 */
       if (NS.refreshLexDot) NS.refreshLexDot(st);
+    },
+
+    /**
+     * 渲染本地存储占用。
+     *
+     * 分类列出，因为大头永远是字典（20MB 级）—— 用户看到「字典 21MB」
+     * 就能理解为什么手机存储会紧张，也能判断要不要清掉重来。
+     */
+    renderUsage: function () {
+      var box = $('lexUsage');
+      if (!box) return;
+      box.innerHTML = '<span class="hint">正在统计本地占用…</span>';
+
+      NS.Lexicon.usage().then(function (u) {
+        if (!u) return;
+        var names = {
+          dict: '字典', poems: '诗词', pinyinMap: '拼音表',
+          fantiMap: '繁简表', shupinMap: '蜀拼表',
+          dialectWords: '方言词', customChars: '自建字', meta: '其他'
+        };
+        /* 按占用从大到小，只列非零项 */
+        var parts = Object.keys(u.byKey)
+          .map(function (k) { return { k: k, v: u.byKey[k] }; })
+          .filter(function (x) { return x.v > 0; })
+          .sort(function (a, b) { return b.v - a.v; });
+        var detail = parts.map(function (x) {
+          return esc(names[x.k] || x.k) + ' ' + esc(fmtSize(x.v));
+        }).join('　');
+
+        box.innerHTML = '本地占用：<b>' + esc(fmtSize(u.totalBytes)) + '</b>' +
+          (detail ? '<br><span class="lex-usage-detail">' + detail + '</span>' : '');
+      }).catch(function () {
+        box.innerHTML = '<span class="hint">占用统计不可用</span>';
+      });
     },
 
     /* ---------------- 主面板 ---------------- */
@@ -8601,6 +9257,17 @@ details.more > summary:hover { color: var(--jade); }
       var storage = el('p', 'more-note');
       storage.id = 'lexStorage';
       root.appendChild(storage);
+
+      /* 本地占用（分类明细由 renderUsage 异步填） */
+      var usage = el('p', 'more-note');
+      usage.id = 'lexUsage';
+      root.appendChild(usage);
+
+      /* 版本不兼容而清空过数据时的说明（平时隐藏） */
+      var schemaNotice = el('p', 'lex-schema-notice');
+      schemaNotice.id = 'lexSchemaNotice';
+      schemaNotice.style.display = 'none';
+      root.appendChild(schemaNotice);
 
       /* 数据源 */
       var srcTitle = el('div', 'lex-sub', '选择要下载的数据源');
@@ -8777,14 +9444,35 @@ details.more > summary:hover { color: var(--jade); }
       bReset.type = 'button';
       bReset.style.color = '#a63a2e';
       bReset.addEventListener('click', function () {
-        if (!global.confirm('确定清空所有联网数据吗？\n' +
-          '（会删除联网加入的字与诗篇，内置字库不受影响）')) return;
-        NS.Lexicon.reset().then(function () {
-          SyncUI.refreshStatus();
-          SyncUI.log('已清空联网数据，回到内置字库状态。', 'warn');
+        /* 把「会释放多少空间」写进确认框 —— 用户点这个按钮的动机
+         * 通常就是「手机存储紧张」，告诉他能腾出多少最有说服力。
+         *
+         * 文案必须与实际行为一致：reset() 是**全部清掉**，连
+         * 「按部首找字」手工加进字库的字也会删。这一点和
+         * 版本不兼容时的自动清理（discardIncompatible）不同 ——
+         * 后者会保留手工加的字。区别是有意的：
+         *   自动清理是用户没要求的，不能销毁他的劳动成果；
+         *   手动清空是他自己点的，就该给个干净的初始状态。 */
+        NS.Lexicon.usage().then(function (u) {
+          var size = u ? fmtSize(u.totalBytes) : '全部';
+          if (!global.confirm('确定清空联网词库吗？\n\n' +
+            '会释放约 ' + size + ' 本地存储。\n' +
+            '联网加入的字、字典、诗篇都会删除，且**不可恢复**；\n' +
+            '通过「按部首找字」手工加进字库的字也会一并删除。\n' +
+            '内置字库不受影响，清空后可随时重新同步。')) return;
+          NS.Lexicon.reset().then(function () {
+            SyncUI.refreshStatus();
+            SyncUI.log('已清空联网词库，释放 ' + size + '，回到内置字库状态。', 'warn');
+          });
         });
       });
       io.appendChild(bReset);
+
+      /* 顺手说明「为什么有时候感觉占了很多」 */
+      var usageHint = el('p', 'hint');
+      usageHint.innerHTML = '如果手机存储紧张，通常是<b>新华字典</b>（约 20MB）占的；' +
+        '同步时可以取消勾选它，只留拼音表与诗词库，占用会小很多。';
+      root.appendChild(usageHint);
       root.appendChild(io);
     },
 
@@ -10115,16 +10803,32 @@ details.more > summary:hover { color: var(--jade); }
     /* 字义 */
     card.appendChild(el('p', 'nc-meaning', item.meaning));
 
-    /* 小名建议 */
-    if (item.nickname) {
-      var nn = item.nickname;
+    /* 小名建议 —— 列出一组不同构词法的候选。
+     * 用户反馈「小名也可以多样化，也不一定是叠词」：
+     * 旧版只给分数最高的一个，而叠字权重最高，所以永远只看到叠词。 */
+    var nnList = item.nicknames || (item.nickname ? [item.nickname] : []);
+    if (nnList.length) {
       var nick = el('div', 'nc-nick');
-      nick.innerHTML = '小名建议 <b>' + esc(nn.name) + '</b>' +
-        '<span class="nc-nick-meta">' + esc(nn.pinyin) + '　' +
-        esc(nn.patternLabel) + '</span>' +
-        (nn.risky ? '<span class="nc-nick-risk">有谐音风险，仅供参考</span>' : '') +
-        (nn.reasons.length ? '<span class="nc-nick-why">' +
-          esc(nn.reasons.join(' · ')) + '</span>' : '');
+      var nHead = el('span', 'nc-nick-head', '小名建议');
+      if (nnList[0].risky) {
+        nHead.appendChild(el('span', 'nc-nick-risk', '有谐音风险，仅供参考'));
+      }
+      nick.appendChild(nHead);
+
+      var nList = el('div', 'nc-nick-list');
+      nnList.forEach(function (nn, i) {
+        var chip = el('span', 'nc-nick-item' + (i === 0 ? ' top' : ''));
+        chip.innerHTML = '<b>' + esc(nn.name) + '</b>' +
+          '<i>' + esc(nn.patternLabel) + '</i>';
+        chip.title = nn.pinyin + '　' + nn.patternLabel +
+          (nn.reasons.length ? '　' + nn.reasons.join(' · ') : '');
+        nList.appendChild(chip);
+      });
+      nick.appendChild(nList);
+
+      nick.appendChild(el('span', 'nc-nick-why',
+        esc(nnList[0].pinyin) +
+        (nnList[0].reasons.length ? '　' + esc(nnList[0].reasons.join(' · ')) : '')));
       card.appendChild(nick);
     }
 
@@ -10324,15 +11028,17 @@ details.more > summary:hover { color: var(--jade); }
       body.appendChild(scNote);
     }
 
-    /* 小名的谐音检查明细 */
-    if (item.nickname && item.nickname.homophone) {
+    /* 小名的谐音检查明细（逐个候选列出，便于对照挑选） */
+    var nnAll = item.nicknames || (item.nickname ? [item.nickname] : []);
+    if (nnAll.length) {
       var nnNote = el('p', 'more-note');
-      var h = item.nickname.homophone;
-      nnNote.innerHTML = '<b>小名「' + esc(item.nickname.name) + '」</b>　全拼 ' +
-        esc(h.pinyin) + '　' +
-        (h.pass ? '无谐音' : '有谐音风险') +
-        (item.nickname.sichuan && item.nickname.sichuan.hits.length
-          ? '；四川话近似「' + esc(item.nickname.sichuan.hits[0].word) + '」' : '');
+      nnNote.innerHTML = '<b>小名谐音检查</b>　' + nnAll.map(function (n) {
+        var h = n.homophone || {};
+        var sc = (n.sichuan && n.sichuan.hits && n.sichuan.hits.length)
+          ? '，四川话近似「' + esc(n.sichuan.hits[0].word) + '」' : '';
+        return esc(n.name) + '（' + esc(h.pinyin || n.pinyin) + '　' +
+          (h.pass ? '无谐音' : '<span class="warn">有谐音风险</span>') + sc + '）';
+      }).join('　·　');
       body.appendChild(nnNote);
     }
 
@@ -10654,7 +11360,10 @@ details.more > summary:hover { color: var(--jade); }
       ['诗词出处', function (it) {
         return it.poetry ? '《' + esc(it.poetry.source) + '》' : '—';
       }],
-      ['小名', function (it) { return it.nickname ? esc(it.nickname.name) : '—'; }],
+      ['小名', function (it) {
+        var l = it.nicknames || (it.nickname ? [it.nickname] : []);
+        return l.length ? l.map(function (n) { return esc(n.name); }).join('、') : '—';
+      }],
       ['字义', function (it) { return esc(it.meaning); }]
     ];
 
@@ -10706,10 +11415,12 @@ details.more > summary:hover { color: var(--jade); }
         (r.heat ? '　重名热度：' + r.heat.value + '（' + r.heat.text + '）' : ''));
       lines.push('   理由：' + r.reasons.join('、'));
       lines.push('   字义：' + r.meaning);
-      if (r.nickname) {
-        lines.push('   小名建议：' + r.nickname.name + '（' +
-          r.nickname.pinyin + '·' + r.nickname.patternLabel + '）' +
-          (r.nickname.risky ? '［有谐音风险］' : ''));
+      var nnOut = r.nicknames || (r.nickname ? [r.nickname] : []);
+      if (nnOut.length) {
+        lines.push('   小名：' + nnOut.map(function (n) {
+          return n.name + '（' + n.pinyin + '·' + n.patternLabel + '）' +
+            (n.risky ? '［有谐音风险］' : '');
+        }).join('，'));
       }
       if (r.sichuan && r.sichuan.pinyin) {
         lines.push('   四川话读音：' + r.sichuan.pinyin +

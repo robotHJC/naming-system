@@ -17,7 +17,7 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
 [
   'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
-  'data/radical-hints.js', 'data/namewords.js',
+  'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/infer.js', 'core/lexicon.js', 'core/radical.js', 'core/variant.js'

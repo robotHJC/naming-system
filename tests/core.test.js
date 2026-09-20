@@ -9,7 +9,7 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
 [
   'data/chars-extra.js', 'data/chars.js', 'data/surnames.js', 'data/poetry.js',
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
-  'data/radical-hints.js', 'data/namewords.js',
+  'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/infer.js', 'core/lexicon.js', 'core/radical.js', 'core/variant.js'
@@ -547,6 +547,66 @@ section('11. 现代感');
     [NS.CHAR_DB['清'], NS.CHAR_DB['和']], ctx);
   ok('分数仍在 0-100 区间', perfect.score >= 0 && perfect.score <= 100,
     String(perfect.score));
+}
+
+/* ---------------- 12. 时代感（上代用字扣分） ----------------
+ *
+ * 用户反馈「功能里面有的名字太老气了，比如伟、刚、钢、茂、超」。
+ * 根因是热度表衡量的是「这个字在人口里有多常见」，而不是
+ * 「在当代起名里有多时髦」—— 伟/刚/军/丽/艳 热度 85-86，
+ * 全部落在「现代感」的舒适区拿满分，可它们的常见来自 50-90 年代出生的人。
+ * ------------------------------------------------ */
+section('12. 时代感（上代用字）');
+{
+  ok('上代用字表已加载', NS.ERA_CHARS && Object.keys(NS.ERA_CHARS).length > 50,
+    String(NS.ERA_CHARS && Object.keys(NS.ERA_CHARS).length));
+
+  /* 用户点名的字必须被标出来 */
+  const shouldFlag = '伟刚钢茂超军强国建华永德志平丽艳敏静娟燕芳秀英梅桂';
+  const missed = [];
+  for (const c of shouldFlag) if (!NS.ERA_CHARS[c]) missed.push(c);
+  ok('用户点名的老气字都被收录', missed.length === 0, missed.join(''));
+
+  /* 反向回归：常见雅字不能被误伤（这是最容易犯的错） */
+  const mustNotFlag = '明清和安宁佳欣嘉子一语诺沐涵辰宇泽睿轩书舒知兰云月雪雨风花春秋冬';
+  const wrong = [];
+  for (const c of mustNotFlag) if (NS.ERA_CHARS[c]) wrong.push(c);
+  ok('当代雅字没有被误收', wrong.length === 0, wrong.join(''));
+
+  /* 实测对照：老气组合必须被压下去 */
+  const r12 = NS.Bazi.analyzeBazi(1990, 3, 15, 9, 0);
+  const c12 = NS.Score.buildContext({ surname: '郝', xiyongshen: r12.xiyongshen });
+  const ev = (nm) => NS.Score.evaluate(
+    [...nm].filter(ch => NS.CHAR_DB[ch]).map(ch => NS.CHAR_DB[ch]), c12);
+
+  const old = ev('建军');
+  const good = ev('清和');
+  ok('老气组合被扣分', old.score < good.score,
+    old.score + ' vs ' + good.score);
+  ok('扣分理由里写明是上一代用字',
+    old.reasons.some(x => x.indexOf('上一代') >= 0), old.reasons.join('·'));
+  ok('两个老气字都被记录', old.detail.modern.era.length === 2,
+    old.detail.modern.era.join(','));
+  console.log(`  郝建军 ${old.score} 分（${old.detail.modern.era.join('、')}）`
+    + `／郝清和 ${good.score} 分`);
+
+  /* 关键：好搭配不能被误杀。
+   * 「静」在表里（老气组合常客），但「静姝」出自诗经且在现代词表里，
+   * 词表 +12 应当抵掉扣分，仍然拿到现代搭配加分。 */
+  const jingshu = ev('静姝');
+  ok('含上代用字的好搭配仍能拿到现代搭配加分',
+    jingshu.reasons.some(x => x.indexOf('现代常用搭配') >= 0),
+    jingshu.reasons.join('·'));
+  ok('好搭配的分数高于纯老气组合', jingshu.score > old.score,
+    jingshu.score + ' vs ' + old.score);
+  console.log(`  郝静姝 ${jingshu.score} 分（${jingshu.reasons.join('·')}）`);
+
+  /* 扣分力度：每个上代字扣 6 分，而「热度舒适区」整名最多给 6 分，
+   * 所以一个字就能抵掉整名的热度加分、两个字直接压到垫底；
+   * 同时必须小于词表的 12 分，否则「静姝」这类好搭配会被误杀。 */
+  ok('扣分力度在合理区间（≥热度上限且 < 词表加分）',
+    NS.ERA_PENALTY >= 6 && NS.ERA_PENALTY < 12,
+    String(NS.ERA_PENALTY));
 }
 
 console.log(`\n${'='.repeat(52)}`);

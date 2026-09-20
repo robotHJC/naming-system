@@ -863,16 +863,32 @@
     /* 字义 */
     card.appendChild(el('p', 'nc-meaning', item.meaning));
 
-    /* 小名建议 */
-    if (item.nickname) {
-      var nn = item.nickname;
+    /* 小名建议 —— 列出一组不同构词法的候选。
+     * 用户反馈「小名也可以多样化，也不一定是叠词」：
+     * 旧版只给分数最高的一个，而叠字权重最高，所以永远只看到叠词。 */
+    var nnList = item.nicknames || (item.nickname ? [item.nickname] : []);
+    if (nnList.length) {
       var nick = el('div', 'nc-nick');
-      nick.innerHTML = '小名建议 <b>' + esc(nn.name) + '</b>' +
-        '<span class="nc-nick-meta">' + esc(nn.pinyin) + '　' +
-        esc(nn.patternLabel) + '</span>' +
-        (nn.risky ? '<span class="nc-nick-risk">有谐音风险，仅供参考</span>' : '') +
-        (nn.reasons.length ? '<span class="nc-nick-why">' +
-          esc(nn.reasons.join(' · ')) + '</span>' : '');
+      var nHead = el('span', 'nc-nick-head', '小名建议');
+      if (nnList[0].risky) {
+        nHead.appendChild(el('span', 'nc-nick-risk', '有谐音风险，仅供参考'));
+      }
+      nick.appendChild(nHead);
+
+      var nList = el('div', 'nc-nick-list');
+      nnList.forEach(function (nn, i) {
+        var chip = el('span', 'nc-nick-item' + (i === 0 ? ' top' : ''));
+        chip.innerHTML = '<b>' + esc(nn.name) + '</b>' +
+          '<i>' + esc(nn.patternLabel) + '</i>';
+        chip.title = nn.pinyin + '　' + nn.patternLabel +
+          (nn.reasons.length ? '　' + nn.reasons.join(' · ') : '');
+        nList.appendChild(chip);
+      });
+      nick.appendChild(nList);
+
+      nick.appendChild(el('span', 'nc-nick-why',
+        esc(nnList[0].pinyin) +
+        (nnList[0].reasons.length ? '　' + esc(nnList[0].reasons.join(' · ')) : '')));
       card.appendChild(nick);
     }
 
@@ -1072,15 +1088,17 @@
       body.appendChild(scNote);
     }
 
-    /* 小名的谐音检查明细 */
-    if (item.nickname && item.nickname.homophone) {
+    /* 小名的谐音检查明细（逐个候选列出，便于对照挑选） */
+    var nnAll = item.nicknames || (item.nickname ? [item.nickname] : []);
+    if (nnAll.length) {
       var nnNote = el('p', 'more-note');
-      var h = item.nickname.homophone;
-      nnNote.innerHTML = '<b>小名「' + esc(item.nickname.name) + '」</b>　全拼 ' +
-        esc(h.pinyin) + '　' +
-        (h.pass ? '无谐音' : '有谐音风险') +
-        (item.nickname.sichuan && item.nickname.sichuan.hits.length
-          ? '；四川话近似「' + esc(item.nickname.sichuan.hits[0].word) + '」' : '');
+      nnNote.innerHTML = '<b>小名谐音检查</b>　' + nnAll.map(function (n) {
+        var h = n.homophone || {};
+        var sc = (n.sichuan && n.sichuan.hits && n.sichuan.hits.length)
+          ? '，四川话近似「' + esc(n.sichuan.hits[0].word) + '」' : '';
+        return esc(n.name) + '（' + esc(h.pinyin || n.pinyin) + '　' +
+          (h.pass ? '无谐音' : '<span class="warn">有谐音风险</span>') + sc + '）';
+      }).join('　·　');
       body.appendChild(nnNote);
     }
 
@@ -1402,7 +1420,10 @@
       ['诗词出处', function (it) {
         return it.poetry ? '《' + esc(it.poetry.source) + '》' : '—';
       }],
-      ['小名', function (it) { return it.nickname ? esc(it.nickname.name) : '—'; }],
+      ['小名', function (it) {
+        var l = it.nicknames || (it.nickname ? [it.nickname] : []);
+        return l.length ? l.map(function (n) { return esc(n.name); }).join('、') : '—';
+      }],
       ['字义', function (it) { return esc(it.meaning); }]
     ];
 
@@ -1454,10 +1475,12 @@
         (r.heat ? '　重名热度：' + r.heat.value + '（' + r.heat.text + '）' : ''));
       lines.push('   理由：' + r.reasons.join('、'));
       lines.push('   字义：' + r.meaning);
-      if (r.nickname) {
-        lines.push('   小名建议：' + r.nickname.name + '（' +
-          r.nickname.pinyin + '·' + r.nickname.patternLabel + '）' +
-          (r.nickname.risky ? '［有谐音风险］' : ''));
+      var nnOut = r.nicknames || (r.nickname ? [r.nickname] : []);
+      if (nnOut.length) {
+        lines.push('   小名：' + nnOut.map(function (n) {
+          return n.name + '（' + n.pinyin + '·' + n.patternLabel + '）' +
+            (n.risky ? '［有谐音风险］' : '');
+        }).join('，'));
       }
       if (r.sichuan && r.sichuan.pinyin) {
         lines.push('   四川话读音：' + r.sichuan.pinyin +

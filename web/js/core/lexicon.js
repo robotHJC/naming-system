@@ -44,7 +44,9 @@
      * 靠它判断缓存是否失效，不必在每次取用时重算一遍。 */
     dataVersion: 0,
     fantiMap: null,       /* 联网的 OpenCC 繁→简对照 */
-    meta: null,           /* { lastSync, sources: {id: {...}} } */
+    meta: null,           /* { lastSync, schema, sources: {id: {...}} } */
+    /* 上一次启动时丢弃了不兼容的本地数据（用于界面提示），null 表示没发生 */
+    discardNotice: null,
 
     /* ---------------- 解析 ---------------- */
 
@@ -375,6 +377,29 @@
 
     restore: function () {
       return NS.Store.ready.then(function () {
+        /* 先查本地数据的格式版本。
+         *
+         * 用户反馈：「如果我有多个版本更新，上一个版本下载的联网词库
+         * 要么保留合并，要么就给清理掉；不要每次打开网页或者更新版本
+         * 都给我把手机内存占满了。」
+         *
+         * 在这之前没有任何版本判断，restore() 无条件读入本地数据 ——
+         * 旧格式数据会被直接当成有效数据用，既可能产生怪结果，
+         * 又永远占着空间没人清。
+         *
+         * 现在的规则（见 store.js 的 DATA_SCHEMA / MIN_COMPAT_SCHEMA）：
+         *   兼容 → 原样沿用，只把版本号补上
+         *   不兼容 → 清掉联网数据，保留用户自定义字，并留一条提示 */
+        return NS.Store.get('meta').then(function (meta) {
+          /* 完全没有本地数据（全新环境）→ 没有东西需要作废，直接跳过。
+           * persist() 永远是把 meta 和其余数据一起写的，所以
+           * meta 为空就等价于「本地没有任何可保留的数据」。 */
+          if (!meta) return null;
+          var st = NS.Store.schemaState(meta.schema);
+          if (st.state === 'ok') return null;
+          return Lexicon.discardIncompatible(st);
+        });
+      }).then(function () {
         return Promise.all([
           NS.Store.get('pinyinMap'), NS.Store.get('dict'),
           NS.Store.get('poems'), NS.Store.get('customChars'),
@@ -405,6 +430,39 @@
       });
     },
 
+    /**
+     * 本地数据格式与当前程序不兼容：清掉**联网数据**，但保留用户自定义字。
+     *
+     * 为什么单独保留 customChars：那是用户在「按部首找字」里一个个手工挑进
+     * 字库的，丢了是真实的损失；而联网数据（字典/诗词/拼音表）随时能重新同步，
+     * 清掉只是麻烦一次。这个取舍对用户最有利。
+     *
+     * @param {Object} st schemaState() 的返回
+     */
+    discardIncompatible: function (st) {
+      var keep = [];
+      return NS.Store.get('customChars').then(function (cc) {
+        keep = cc || [];
+        return NS.Store.clear();
+      }).then(function () {
+        /* clear 会把所有键删光，把自定义字放回去 */
+        return keep.length ? NS.Store.set('customChars', keep) : null;
+      }).then(function () {
+        Lexicon.discardNotice = {
+          state: st.state,             /* 'stale' | 'future' */
+          saved: st.saved,
+          current: st.current,
+          keptCustomChars: keep.length
+        };
+        return null;
+      });
+    },
+
+    /** 本地存储占用（字节），用于界面提示与判断是否需要清理 */
+    usage: function () {
+      return NS.Store.usage();
+    },
+
     status: function () {
       return {
         poems: NS.Poetry.poems.length,
@@ -417,7 +475,13 @@
         dialectWords: NS.Dialect.status().dialectWords,
         dialectReady: NS.Dialect.status().available,
         lastSync: (Lexicon.meta && Lexicon.meta.lastSync) || null,
-        backend: NS.Store.getBackend()
+        backend: NS.Store.getBackend(),
+        /* 数据格式版本，界面用来解释「为什么本地数据被清了」 */
+        schema: {
+          saved: (Lexicon.meta && Lexicon.meta.schema) || null,
+          current: NS.Store.DATA_SCHEMA
+        },
+        discardNotice: Lexicon.discardNotice
       };
     },
 
@@ -434,6 +498,7 @@
         Lexicon.fantiMap = Object.create(null);
         NS.Dialect.reset();
         Lexicon.meta = {};
+        Lexicon.discardNotice = null;
         Lexicon.dataVersion++;
         /* 繁简表还原成内置版本 */
         NS.FAN_JIAN = Object.create(null);
@@ -443,6 +508,12 @@
         /* 诗词回到内置篇目 */
         NS.RAW_POEMS.length = NS.Poetry.builtinCount;
         NS.Poetry.rebuild();
+        /* 写回一个带当前 schema 的空 meta。
+         * 不写的话下次启动会看到「有 meta 但版本缺失」，被判成旧数据走一遍
+         * 清理流程 —— 虽然清的是空数据，但会给用户弹一条莫名其妙的
+         * 「本地数据已清空，请重新同步」提示。 */
+        return NS.Store.set('meta', { schema: NS.Store.DATA_SCHEMA });
+      }).then(function () {
         return Lexicon.status();
       });
     }
@@ -468,7 +539,11 @@
         .map(function (p) {
           return { source: p[0], title: p[1], content: p[2] };
         })),
-      NS.Store.set('meta', Lexicon.meta || {})
+      /* 盖上数据格式版本戳。下次启动靠它判断本地数据能不能沿用；
+       * 不写这个字段的话，将来改了格式就只能靠容错去猜。 */
+      NS.Store.set('meta', Object.assign({}, Lexicon.meta || {}, {
+        schema: NS.Store.DATA_SCHEMA
+      }))
     ]);
   }
 
