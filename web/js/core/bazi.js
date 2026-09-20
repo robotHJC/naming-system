@@ -325,6 +325,11 @@
     /* 调候（寒暖燥湿）。单独一步、放在最后 ——
      * 它要读刚算好的 power 与 xiyongshen，而且只做提示不改结果。 */
     result.tiaohou = NS.Tiaohou ? NS.Tiaohou.analyze(result) : null;
+
+    /* 地支刑冲合害。同样只进展示层、不改分数 ——
+     * 按地支关系去修正五行力量（合化/冲损）是有流派分歧的做法，
+     * 详见 core/branches.js 头部。 */
+    result.branchRel = NS.BranchRel ? NS.BranchRel.analyze(result) : null;
     return result;
   }
 

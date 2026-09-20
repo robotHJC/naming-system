@@ -555,6 +555,62 @@ input::placeholder { color: #b6b0a4; }
   opacity: .8;
 }
 
+/* ---------------- 地支刑冲合害 ----------------
+ * 也是一行行小标签，不占大块面积。
+ * 冲与刑用警示色（主起伏、不顺），合与三合三会用绿（主聚、主成）。 */
+.br-box {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fbfaf6;
+}
+
+.br-head {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.br-head .br-sub {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.br-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.br-chip {
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+}
+
+.br-chip.chong { background: var(--red-pale); border-color: #eccdc8; color: #a63a2e; }
+.br-chip.xing { background: var(--red-pale); border-color: #eccdc8; color: #a63a2e; }
+.br-chip.hai { background: var(--gold-pale); border-color: #e6dcbe; color: #8a6a20; }
+.br-chip.he { background: var(--jade-pale); border-color: #cfe0d8; color: var(--jade); }
+.br-chip.full { background: var(--jade); border-color: var(--jade); color: #fff; }
+.br-chip.part { background: var(--jade-pale); border-color: #cfe0d8; color: var(--jade); }
+.br-chip.none { color: var(--ink-3); }
+
+.br-advice {
+  margin: 9px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--gold);
+  border-radius: 5px;
+  background: var(--gold-pale);
+  font-size: 12px;
+  line-height: 1.8;
+  color: #6b5a30;
+}
+
+.br-advice b { color: #4f421f; }
+
 .wx-1 { color: var(--jade); }
 .wx-2 { color: var(--red); }
 .wx-3 { color: var(--gold); }

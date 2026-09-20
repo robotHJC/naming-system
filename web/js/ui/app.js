@@ -1071,6 +1071,58 @@
       panel.appendChild(thBox);
     }
 
+    /* 地支刑冲合害。**只展示、不改推荐分数** ——
+     * 按地支关系去修正五行力量（合化/冲损）是有流派分歧的做法，
+     * 详见 core/branches.js 头部。 */
+    var br = info.branchRel;
+    if (br) {
+      var brBox = el('div', 'br-box');
+      var brHead = el('div', 'br-head');
+      brHead.innerHTML = '地支关系　<span class="br-sub">' +
+        esc(br.pillars.map(function (p) { return p.zhi; }).join(' ')) +
+        '　（只作参考，不参与评分）</span>';
+      brBox.appendChild(brHead);
+
+      var brList = el('div', 'br-list');
+      function brChip(cls, text) {
+        brList.appendChild(el('span', 'br-chip ' + cls, text));
+      }
+      br.chong.forEach(function (c) {
+        brChip('chong', c.a + c.b + ' 冲（' + c.where + '）');
+      });
+      br.he.forEach(function (c) {
+        brChip('he', c.a + c.b + ' 合（' + c.where + '）');
+      });
+      br.xing.forEach(function (c) {
+        brChip('xing', c.full
+          ? c.a + ' ' + c.name
+          : c.a + c.b + ' ' + (c.a === c.b ? '自刑' : c.name) +
+            '（' + c.where + '）');
+      });
+      br.hai.forEach(function (c) {
+        brChip('hai', c.a + c.b + ' 害（' + c.where + '）');
+      });
+      br.sanhe.concat(br.sanhui).forEach(function (g) {
+        brChip(g.complete ? 'full' : 'part',
+          g.label + '　' + (g.complete ? '齐' : '有' + g.present.join('') +
+            '缺' + g.missing.join('')));
+      });
+      if (!brList.children.length) {
+        brChip('none', '四支之间没有冲/合/刑/害');
+      }
+      brBox.appendChild(brList);
+
+      br.advice.forEach(function (a) {
+        var adv = el('p', 'br-advice');
+        adv.innerHTML = '<b>' + esc(a.title) + '</b>　' + esc(a.text);
+        brBox.appendChild(adv);
+      });
+      if (br.note) {
+        brBox.appendChild(el('p', 'more-note', br.note));
+      }
+      panel.appendChild(brBox);
+    }
+
     if (opts.xiyongshen.join('') !== info.xiyongshen.join('')) {
       var note = el('p', 'more-note');
       note.innerHTML = '本次按手动指定的喜用神「<b>' +

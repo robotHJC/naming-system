@@ -213,6 +213,41 @@
           add('命理', '调候', l3);
         }
       }
+
+      /* 6a-4. 地支刑冲合害。**只展示、不改推荐** ——
+       * 按地支关系去修正五行力量（合化/冲损）是有流派分歧的做法，
+       * 详见 core/branches.js 头部。 */
+      if (bazi.branchRel) {
+        var br = bazi.branchRel;
+        var l4 = [];
+        l4.push('四支：' + br.pillars.map(function (p) { return p.zhi; }).join(' '));
+        var parts = [];
+        br.chong.forEach(function (c) { parts.push(c.a + c.b + ' 冲（' + c.where + '）'); });
+        br.he.forEach(function (c) { parts.push(c.a + c.b + ' 合（' + c.where + '）'); });
+        br.xing.forEach(function (c) {
+          parts.push(c.full
+            ? c.a + ' ' + c.name
+            : c.a + c.b + ' ' + (c.a === c.b ? '自刑' : c.name) +
+              '（' + c.where + '）');
+        });
+        br.hai.forEach(function (c) { parts.push(c.a + c.b + ' 害（' + c.where + '）'); });
+        l4.push(parts.length ? '关系：' + parts.join('　') : '四支之间没有冲/合/刑/害');
+        br.sanhe.concat(br.sanhui).forEach(function (g) {
+          l4.push(g.label + '　' + (g.complete
+            ? '三支齐全'
+            : '已有 ' + g.present.join('、') + '，独缺「' + g.missing.join('、') + '」'));
+        });
+        if (br.note) l4.push(br.note);
+        br.advice.forEach(function (a) {
+          l4.push('**' + a.title + '**　' + a.text);
+        });
+        l4.push('说明：地支的冲合刑害是传统命理判断命局松紧的基本依据，' +
+          '这里如实列出。但**按地支关系去修正五行力量（合化、冲损）各家说法不一** —— ' +
+          '三合成局要不要真化成那个五行，要看月令、透干、有没有被冲破，' +
+          '各本条件不同，所以本系统**不拿它改喜用神，也不因此调分**。' +
+          '上面给的选字思路是可选参考，不是必须。');
+        add('命理', '地支刑冲合害', l4);
+      }
     }
 
     /* 6b. 用字与喜用神

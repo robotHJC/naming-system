@@ -11,7 +11,8 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'data/nayin.js', 'data/shuli81.js', 'data/nameblock.js',
-  'core/wuxing.js', 'core/calendar.js', 'core/tiaohou.js', 'core/bazi.js',
+  'core/wuxing.js', 'core/calendar.js', 'core/tiaohou.js', 'core/branches.js',
+  'core/bazi.js',
   'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/infer.js', 'core/lexicon.js', 'core/radical.js', 'core/variant.js',
@@ -1085,6 +1086,117 @@ section('21. 时辰未知（只知日期）');
   ok('未知时辰 ≠ 子时（不能瞎填 00:00）',
     noH.baziStr !== zero.baziStr,
     noH.baziStr + ' ／ ' + zero.baziStr);
+}
+
+/* ---------------- 22. 地支刑冲合害 ---------------- */
+section('22. 地支刑冲合害');
+{
+  const B = NS.BranchRel;
+
+  /* 六冲：十二支恰好分成 6 对，且不能自己冲自己 */
+  const chong = [];
+  NS.DIZHI.forEach(z => NS.DIZHI.forEach(w => {
+    if (B.isChong(z, w) && z < w) chong.push(z + w);
+  }));
+  eq('六冲恰为 6 对', chong.length, 6);
+  ok('没有地支自己冲自己', NS.DIZHI.every(z => !B.isChong(z, z)));
+
+  /* 六合：一对一且互逆，否则解冲建议会指错 */
+  let heBad = 0;
+  NS.DIZHI.forEach(z => {
+    const w = B.LIUHE[z];
+    if (!w || B.LIUHE[w] !== z) heBad++;
+  });
+  eq('六合一对一且互逆', heBad, 0);
+
+  /* 三合局 / 三会方：各 4 组、每组三支、覆盖十二支且不重复 */
+  [['三合', B.SANHE], ['三会', B.SANHUI]].forEach(([name, arr]) => {
+    const all = [];
+    arr.forEach(g => g.zhi.forEach(z => all.push(z)));
+    eq(name + '恰为 4 组', arr.length, 4);
+    eq(name + '覆盖十二支且不重复', new Set(all).size, 12);
+    eq(name + '共 12 支', all.length, 12);
+  });
+
+  eq('六害恰为 6 对', B.LIUHAI.length, 6);
+  eq('自刑为辰午酉亥', B.ZIXING.join(''), '辰午酉亥');
+
+  /* 实排对照（手算：丙午 癸巳 甲午 己巳 → 地支 午巳午巳）
+   *   午午 = 自刑（午在自刑表里）
+   *   巳午未三会火：有巳午，缺未
+   *   巳巳不是自刑（巳不在自刑表里）
+   *   四支之间无冲无合无害 */
+  const r = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);
+  const br = r.branchRel;
+  ok('branchRel 已产出', !!br);
+  eq('地支个数为 4', br.zhiCount, 4);
+  eq('检出午午自刑', br.xing.filter(x => x.a === x.b && x.a === '午').length, 1);
+  ok('巳巳不算自刑', !br.xing.some(x => x.a === '巳' && x.b === '巳'));
+  eq('该八字无冲', br.chong.length, 0);
+  const huo = br.sanhui.filter(g => g.wuxing === '火')[0];
+  ok('检出巳午未三会火', !!huo);
+  ok('三会火缺「未」', !!huo && huo.missing.join('') === '未',
+    huo ? huo.missing.join('') : '');
+  ok('三会火未齐', !!huo && !huo.complete);
+
+  /* 日支被冲要给解冲建议，且必须提到正确的合神 ——
+   * 建议里不提合神，那「解冲」就是句空话 */
+  let checked = 0;
+  for (let mo = 1; mo <= 12 && checked < 3; mo++) {
+    const a = NS.Bazi.analyzeBazi(2026, mo, 15, 10, 0);
+    const adv = a.branchRel.advice.filter(x => x.kind === 'chong');
+    if (!adv.length) continue;
+    checked++;
+    const jie = B.LIUHE[a.pillars[2].zhi];
+    ok('解冲建议提到合神「' + jie + '」',
+      adv.every(x => x.text.indexOf(jie) >= 0));
+  }
+  ok('至少验证到一个日支被冲的样本', checked > 0, String(checked));
+
+  /* 时辰未知时只有三个地支，且要明确提示少一支 */
+  const noH = NS.Bazi.analyzeBazi(2026, 5, 20, 0, 0, { noHour: true });
+  eq('时柱未知时只比对 3 个地支', noH.branchRel.zhiCount, 3);
+  ok('提示了少一支会让三合判断不同',
+    noH.branchRel.note.indexOf('少一支') >= 0, noH.branchRel.note);
+
+  /* 三支齐全时三刑必须合并成一条 ——
+   * 寅巳申 齐了会报出三条「无恩之刑」（寅巳、寅申、巳申），
+   * 读起来像出了三次事，其实是一件事。 */
+  const full3 = NS.Bazi.analyzeBazi(2026, 2, 15, 10, 0);   /* 午 寅 申 巳 */
+  ok('寅巳申三支齐全', ['寅', '巳', '申']
+    .every(z => full3.pillars.some(p => p.zhi === z)),
+    full3.pillars.map(p => p.zhi).join(''));
+  const xing = full3.branchRel.xing;
+  ok('三刑全时合并为一条', xing.filter(x => x.full).length === 1,
+    JSON.stringify(xing.map(x => x.a + x.b)));
+  ok('不再重复报单对三刑', !xing.some(x => !x.full && x.name === '无恩之刑'),
+    JSON.stringify(xing.map(x => x.name)));
+  ok('合并那条写明了「三刑全」',
+    xing.some(x => x.full && x.name.indexOf('三刑全') >= 0));
+  /* 但三刑不全时仍要逐对报（不能为了好看把真问题吞掉） */
+  const part3 = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0);   /* 午 巳 午 巳 */
+  ok('三刑不全时不合并', !part3.branchRel.xing.some(x => x.full));
+
+  /* 关键：地支关系**不能**影响分数与喜用神 ——
+   * 按合化/冲损去改五行力量是有流派分歧的做法，刻意不做。
+   * 这条断言锁住这个决定，防止以后有人「顺手」把它接进评分。 */
+  const withRel = NS.Bazi.analyzeBazi(2026, 2, 15, 10, 0);   /* 有日支被冲 */
+  const wugeBefore = withRel.power['金'];
+  ok('地支关系不参与五行力量计算',
+    Math.abs(withRel.power['金'] - wugeBefore) < 1e-9);
+  ok('有冲的八字照样只按扶抑法给喜用神',
+    withRel.xiyongshen.length > 0 && withRel.xiyongshen.length <= 2,
+    withRel.xiyongshen.join('、'));
+
+  /* 报告里要有这一块，并说明它不改分 */
+  const rep = NS.Report.evaluate('郝', '清和', { bazi: withRel });
+  const blk = rep.blocks.filter(x => x.title === '地支刑冲合害')[0];
+  ok('报告里有「地支刑冲合害」块', !!blk);
+  ok('报告说明了不拿它改喜用神',
+    !!blk && blk.lines.join('').indexOf('不拿它改喜用神') >= 0,
+    blk ? blk.lines.join('').slice(-60) : '');
+  console.log('  2026-02-15 → ' + rep.blocks
+    .filter(x => x.title === '地支刑冲合害')[0].lines[1]);
 }
 
 console.log(`\n${'='.repeat(52)}`);

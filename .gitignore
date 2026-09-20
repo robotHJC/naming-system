@@ -1,4 +1,4 @@
-# 构建产物（用 打包.bat 重新生成，不入库）
+﻿# 构建产物（用 打包.bat 重新生成，不入库）
 dist/
 
 # 测试日志（每次运行测试都会重写）
@@ -17,7 +17,7 @@ Thumbs.db
 *.log
 tools/_msg.txt
 tools/_msg2.txt
-tools/_msg3.txt
+tools/_msg*.txt
 
 # 数据生成工具的临时产物与下载缓存。
 # 缓存里有新华字典 word.json（27MB）和 OpenCC 繁简表，
