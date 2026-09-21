@@ -165,16 +165,25 @@
    * 这是一条**倒 U 型**曲线，不是「越常见越好」：
    *
    *   热度          评分   理由
-   *   > 91         0.60   烂大街（「爱华」「艳丽」）
-   *   55 ~ 91      1.00   当代起名的主流区间，既熟悉又不撞名
-   *   40 ~ 54      0.50   偏冷门（「芮」「芊」「芷」）
+   *   > 93         0.45   极烫（梓 98、涵 97、轩 97）
+   *   85 ~ 93      0.75   偏烫（悦 90、琪 90、诗 89、若 88、昊 85）
+   *   55 ~ 84      1.00   当代起名的主流区间，既熟悉又不撞名
+   *   40 ~ 54      0.50   偏冷门（「芮」「芈」「芷」）
    *   < 40         0.15   生僻到大多数人读不出来（「铄」「珏」「仟」）
+   *
+   * 85~93 这一档是**反网红**改动的核心：原来的分界线在 91，
+   * 实测下来 85–91 这一段藏了大量高撞名字（用户点名的 31 个「网红字」里，
+   * 有 18 个落在这里拿满分：依91 妍91 悦90 琪90 莎89 诗89 佳89 雅89 若88 昊85）。
+   * 分界线提到 85 后，整张表覆盖 80 个字（占字库 16%），
+   * 而 80–84 仍归主流区间 —— 那一段（紫82、璐83）是否该罚有争议，
+   * 宁可漏收不错杀。
    *
    * 下半支对应「太文绉绉」：古籍用字热度普遍偏低，
    * 这条曲线让「唯」「亦」「愚」这类字拿不到现代感的分。
    */
   function comfort(heat) {
-    if (heat > 91) return 0.6;
+    if (heat > 93) return 0.45;
+    if (heat >= 85) return 0.75;
     if (heat >= 55) return 1;
     if (heat >= 40) return 0.5;
     return 0.15;
@@ -217,7 +226,7 @@
     }
     score += wxScore;
 
-    /* ---- 2. 音韵（15）----
+    /* ---- 2. 音韵（19）—— 音韵评分 v2 ----
      *
      * 关键：**必须把姓氏算进来**。
      * 早期版本只检查名字内部（rows），于是「郝澜瑞」l-án-ruì 的
@@ -229,46 +238,94 @@
      *
      * 判定方式也从「全名内两两互不相同」改成**相邻比较**：
      * 拗口与否取决于相邻音节，隔着一个字同声母（如「郝明兰」）并不别扭。
+     *
+     * v2 的核心改动：**「不一样」不等于「顺口」**。
+     * 旧版只问「撞没撞」，可三个维度全不撞的名字照样会闷 ——
+     * 「李知微 zhī-wēi」声母/韵母/声调都不撞，读起来却发闷，
+     * 因为两个字都是齐齿呼，口型一直没张开。所以新增两项：
+     *   2c 四呼开口度 —— 直接刻画「口型打开没有」
+     *   2i 零声母相邻 —— 两字都 y/w 起头会粘连
+     * 并把 2h 的鼻音检测从「一律罚」改成「**只罚同型**」：
+     * 前鼻接后鼻（听南 tīng-nán）是有变化的，不该和三个 -ng 同罚。
+     *
+     * 权重重新配平（总分仍是 19，不动 100 分大盘）：
+     *   2c 四呼 6　2a 声母撞 2　2b 叠韵 2　2d 声调错落 3
+     *   2e 平仄 2　2g 送气 1　2h 鼻音同型 2　2i 零声母 1
+     *   2f 上声连读 -2
+     * 6+2+2+3+2+1+2+1 = 19
+     *
+     * 2c 拿到最大权重（6 分）是实测定的：它的判别力（坏组 0.86 vs
+     * 好组 0.25）远高于其余各项；而且初版给 4 分时实测压不住别的加分项 ——
+     * 「李桐月」（齐-合-撮，全闷）仍然排第 1。提到 6 分后才沉下去。
      */
     var full = ctx.surnameSyllables.concat(rows.map(function (r) {
       return { char: r.char, pinyin: r.obj.pinyin, tone: r.obj.tone };
     }));
     var tones = full.map(function (s) { return s.tone; });
-    var sms = full.map(function (s) {
-      return NS.Pinyin.splitSyllable(s.pinyin || '').initial;
+    /* 音韵特征只算一次，下面几项共用 */
+    var ph = full.map(function (s) {
+      return NS.Pinyin.phonology(s.pinyin || '');
     });
-    var yms = full.map(function (s) {
-      return NS.Pinyin.splitSyllable(s.pinyin || '').final;
-    });
+    var sms = ph.map(function (p) { return p.initial; });
+    var yms = ph.map(function (p) { return p.final; });
 
-    /* 相邻声母相同 → 连读发懒音（李澜→李兰、郝涵→郝安），最难听 */
+    /* 2a. 相邻声母相同 → 连读发懒音（李澜→李兰、郝涵→郝安），最难听 */
     var sameInitial = [];
     for (i = 1; i < sms.length; i++) {
       if (sms[i] && sms[i] === sms[i - 1]) sameInitial.push(full[i - 1].char + full[i].char);
     }
-    if (!sameInitial.length) score += 4;
-    else if (sameInitial.length === 1 && sms.length > 2) score += 2;
+    if (!sameInitial.length) score += 2;
+    else if (sameInitial.length === 1 && sms.length > 2) score += 1;
 
-    /* 相邻韵母相同 → 叠韵，两个字的音糊在一起 */
+    /* 2b. 相邻韵母相同 → 叠韵，两个字的音糊在一起 */
     var sameFinal = [];
     for (i = 1; i < yms.length; i++) {
       if (yms[i] && yms[i] === yms[i - 1]) sameFinal.push(full[i - 1].char + full[i].char);
     }
-    if (!sameFinal.length) score += 3;
-    else if (sameFinal.length === 1 && yms.length > 2) score += 1.5;
+    if (!sameFinal.length) score += 2;
+    else if (sameFinal.length === 1 && yms.length > 2) score += 1;
 
-    /* 相邻声调相同 → 声调单调 */
+    /* 2c. 四呼开口度 —— v2 新增，音韵里**最能区分「闷」与「亮」**的一项
+     *
+     * 上面两项问的是「撞没撞」，这一项问的是「口型打开没有」。
+     * 「李知微 zhī-wēi」声母不同、韵母不同、声调也不同，三项全过，
+     * 读起来照样发闷 —— 因为两个字都是齐齿呼，口型一直没张开。
+     *
+     * 阈值不是拍脑袋定的：把一批公认「闷」的名字（沁芸 齐+撮、
+     * 知微 齐+合、芷萱 齐+合、若薇 合+合、婉婷 合+齐）与一批公认
+     * 「好念」的名字（澄 开、亦然 齐+开）放一起算「闷音音节占比」，
+     * 前者平均 0.86、后者平均 0.25。分档就按这个实测区间切。
+     *
+     * 口径：zhi/chi/shi/ri/zi/ci/si 的韵母写作 i，实际是舌尖元音，
+     * 音位学上属开口呼，但听感偏暗，本层按「偏闷」处理（听感口径）。
+     */
+    var dullN = 0;
+    for (i = 0; i < ph.length; i++) if (ph[i].dull) dullN++;
+    var dullRatio = ph.length ? dullN / ph.length : 0;
+    if (dullRatio >= 1) {
+      reasons.push('全名没有一个开口音，口型始终没打开，读起来发闷');
+    } else if (dullRatio >= 0.67) {
+      score += 1.5;
+      reasons.push('开口音偏少，读起来略闷');
+    } else if (dullRatio >= 0.34) {
+      score += 4;
+    } else {
+      score += 6;
+      reasons.push('开口音为主，读起来明亮');
+    }
+
+    /* 2d. 相邻声调相同 → 声调单调 */
     var sameTone = 0;
     for (i = 1; i < tones.length; i++) {
       if (tones[i] === tones[i - 1]) sameTone++;
     }
     if (sameTone === 0) {
-      score += 4; reasons.push('声调错落');
+      score += 3; reasons.push('声调错落');
     } else if (sameTone < tones.length - 1) {
-      score += 2;
+      score += 1.5;
     }
 
-    /* 平仄相间：汉语读起来顺口的根本。
+    /* 2e. 平仄相间：汉语读起来顺口的根本。
      * 声调 1、2 为平，3、4 为仄（轻声按仄处理）。
      * 「思远」= 平仄、「静姝」= 仄平，都是好搭配；
      * 「书云」= 平平，读着偏平。 */
@@ -278,20 +335,20 @@
       if (pingze[i] !== pingze[i - 1]) alternated++;
     }
     if (alternated === pingze.length - 1) {
-      score += 4;
+      score += 2;
       reasons.push('平仄相间');
     } else if (alternated > 0) {
-      score += 2;
+      score += 1;
     }
 
-    /* 上声（三声）连读要变调，是最费力的组合：「郝雨语」得上声→阳平→上声 */
+    /* 2f. 上声（三声）连读要变调，是最费力的组合：「郝雨语」得上声→阳平→上声 */
     var thirdRun = false;
     for (i = 1; i < tones.length; i++) {
       if (tones[i] === 3 && tones[i - 1] === 3) thirdRun = true;
     }
     if (thirdRun) score -= 2;
 
-    /* 送气声母连用。
+    /* 2g. 送气声母连用。
      *
      * 与上面的「相邻声母相同」是两回事：这里声母并不相同，但都是送气音
      * （p t k q ch c），连着两个就会有「喷麦」感 ——「谭天琪」tán-tiān-qí。
@@ -301,24 +358,48 @@
     for (i = 1; i < sms.length; i++) {
       if (ASPIRATED[sms[i]] && ASPIRATED[sms[i - 1]]) aspRun = true;
     }
-    if (!aspRun) score += 2;
+    if (!aspRun) score += 1;
     else reasons.push('送气音连读偏冲');
 
-    /* 鼻音韵尾连用。
+    /* 2h. 鼻音韵尾连用 —— v2 改为**只罚同型**
      *
-     * 连着两个 -n / -ng 尾，字音含在鼻子里不出头，读起来含糊拖沓 ——
-     * 「张明光」zhāng-míng-guāng 三个 -ng。中间夹一个非鼻音韵尾就散了。 */
-    var NASAL_END = /(ng|n)$/;
-    var nasalRun = false;
+     * 旧版一律用 /(ng|n)$/ 判，把前鼻音与后鼻音一视同仁。
+     * 但两者连用其实是**有变化**的：「听南 tīng-nán」后鼻接前鼻，
+     * 口型有交代，读起来是响的；真正含糊的是**同型连用** ——
+     * 「张明光 zhāng-míng-guāng」三个 -ng，「婉婷 wǎn-tíng」一前一后
+     * 但都收在鼻子里。所以按鼻音类型分组比较，异型不扣分。 */
+    var nasalSameType = '', nasalMix = false;
     for (i = 1; i < yms.length; i++) {
-      if (NASAL_END.test(yms[i]) && NASAL_END.test(yms[i - 1])) nasalRun = true;
+      var na = NS.Pinyin.nasalType(yms[i - 1]);
+      var nb = NS.Pinyin.nasalType(yms[i]);
+      if (na && nb) {
+        if (na === nb) nasalSameType = na;
+        else nasalMix = true;
+      }
     }
-    if (!nasalRun) score += 2;
-    else reasons.push('鼻音韵尾连读偏含糊');
+    if (!nasalSameType) score += 2;
+    else {
+      reasons.push('鼻音韵尾同型连用（都是' +
+        (nasalSameType === 'ng' ? '后鼻音' : '前鼻音') + '），读起来含糊');
+    }
+
+    /* 2i. 零声母相邻 —— v2 新增
+     * 两个零声母字连读（都以 y/w 开头，如「望月 wàng-yuè」），
+     * 中间没有辅音起头，两字会粘在一起，缺一个「落脚点」。 */
+    var zeroRun = false;
+    for (i = 1; i < sms.length; i++) {
+      if (ph[i].pos === '零声母' && ph[i - 1].pos === '零声母') zeroRun = true;
+    }
+    if (!zeroRun) score += 1;
+    else reasons.push('相邻两字都是零声母（y/w 起头），连读容易粘连');
 
     detail.phonetic = {
       sameInitial: sameInitial, sameFinal: sameFinal,
-      aspiratedRun: aspRun, nasalRun: nasalRun
+      aspiratedRun: aspRun,
+      nasalSame: !!nasalSameType, nasalMix: nasalMix, nasalType: nasalSameType,
+      zeroRun: zeroRun, dullRatio: dullRatio,
+      kaidu: ph.map(function (p) { return p.kd; }),
+      pos: ph.map(function (p) { return p.pos; })
     };
 
     /* ---- 2b. 字形均衡（3）——「可读性」的直接指标 ----
@@ -465,14 +546,41 @@
     if (hitWord) {
       /* 12 → 5。
        *
-       * 这张白名单只有 268 条，实测（小红书/抖音流传的 21 个热门名）
-       * **只命中 1 个**。而它原来价值 12 分（占本项 18 分的 2/3），
+       * 这张白名单实测 **268 条**（原始数组 296 条里含 28 个重复项），
+       * 而它原来价值 12 分（占本项 18 分的 2/3），
        * 于是「不在表里」= 白丢 12 分 —— 等于用一张小表代替「好听」打分，
-       * 把代理指标当成了目标本身。
-       * 白名单仍然有意义（命中说明是公认的好搭配），但降为加分项，
-       * 不再是硬门槛。腾出的权重给了音韵与字形（都是直接指标）。 */
-      mnScore += 5;
-      reasons.push('现代常用搭配「' + hitWord + '」');
+       * 把代理指标当成了目标本身。白名单仍然有意义（命中说明是公认的
+       * 好搭配），但降为加分项，不再是硬门槛。
+       *
+       * 再加一层**反网红**：这张表是按「当代用字习惯」整理的，
+       * 里面混进了大量**撞名率极高**的搭配 —— 沐涵(96.5)、宇轩(96.5)、
+       * 涵宇(96.5)、芷萱、雨萱、梦涵、一诺、浩然……给它们加分，
+       * 等于系统在主动推荐烂大街的名字。
+       *
+       * 但**手工拉黑是错的**：上一版用了一张 268 条的手写名单当门槛，
+       * 实测只命中 21 个真实流行名里的 1 个 —— 说明「我以为的网红」不可信。
+       * 所以这里**用数据判**：取两个字热度的均值当撞名率的代理指标。
+       *   均值 >= 92 → 不加分（沐涵/宇轩/浩宇 这一档）
+       *   均值 >= 88 → 加 2
+       *   否则       → 加 5
+       * 阈值来自实测：268 个词里均值 >=92 的有 21 个、>=88 的有 64 个。 */
+      var hh = function (c) {
+        return NS.HEAT[c] !== undefined ? NS.HEAT[c] : NS.DEFAULT_HEAT;
+      };
+      var avgWordHeat = (hh(hitWord.charAt(0)) + hh(hitWord.charAt(1))) / 2;
+      /* 两条判据：手写的组合表（抓「芷萱」这种单字热度不高的）
+       * + 数据驱动的热度均值（抓「沐涵」这种确实很烫的）。
+       * 组合表在前 —— 它更准，命中就不必再看热度了。 */
+      var isCliche = NS.NAME_CLICHE_SET && NS.NAME_CLICHE_SET[hitWord];
+      if (isCliche || avgWordHeat >= 92) {
+        reasons.push('「' + hitWord + '」是近年高撞名搭配，不加分');
+      } else if (avgWordHeat >= 88) {
+        mnScore += 2;
+        reasons.push('现代常用搭配「' + hitWord + '」（偏常见）');
+      } else {
+        mnScore += 5;
+        reasons.push('现代常用搭配「' + hitWord + '」');
+      }
     }
     var comfortSum = 0;
     mnChars.forEach(function (c) {

@@ -477,20 +477,103 @@ section('9. 音韵（含姓氏连读）');
   ok('不误报送气连用（' + rc.char + xc.char + ' r-x）',
     aspNo.aspiratedRun === false, JSON.stringify(aspNo));
 
-  /* ---- 鼻音韵尾连用（新增）----
-   * 连着两个 -n / -ng 尾，字音含在鼻子里不出头（「张明光」三个 -ng）。 */
-  const isNasal = (c) => /(ng|n)$/.test(NS.Pinyin.splitSyllable(c.pinyin).final);
-  const nas2 = NS.CHAR_LIST.filter(isNasal).slice(0, 2);
-  const non2 = NS.CHAR_LIST.filter(c => !isNasal(c)).slice(0, 2);
-  ok('鼻音尾/非鼻音尾都有可用的对照字',
-    nas2.length === 2 && non2.length === 2);
+  /* ---- 鼻音韵尾连用（v2 改为**只罚同型**）----
+   * 同型（-n+-n 或 -ng+-ng）才含糊；
+   * 前鼻接后鼻（-ng+-n，如「听南 tīng-nán」）是有变化的，不该罚。 */
+  const nType = (c) => NS.Pinyin.nasalType(
+    NS.Pinyin.splitSyllable(c.pinyin).final);
+  const samePair = (() => {
+    for (const t of ['ng', 'n']) {
+      const g = NS.CHAR_LIST.filter(c => nType(c) === t);
+      if (g.length >= 2) return [g[0], g[1]];
+    }
+    return null;
+  })();
+  const mixPair = (() => {
+    const a = NS.CHAR_LIST.filter(c => nType(c) === 'ng')[0];
+    const b = NS.CHAR_LIST.filter(c => nType(c) === 'n')[0];
+    return (a && b) ? [a, b] : null;
+  })();
+  const nonNasal2 = NS.CHAR_LIST.filter(c => !nType(c)).slice(0, 2);
+  ok('同型 / 异型 / 非鼻音 三组对照字都能凑齐',
+    !!(samePair && mixPair && nonNasal2.length === 2),
+    [samePair, mixPair, nonNasal2]
+      .map(g => g && g.map(c => c.char).join('')).join(' | '));
 
-  const nasYes = NS.Score.evaluate(nas2, ctxLi).detail.phonetic;
-  ok('检出鼻音韵尾连用（' + nas2.map(c => c.char).join('') + '）',
-    nasYes.nasalRun === true, JSON.stringify(nasYes));
-  const nasNo = NS.Score.evaluate(non2, ctxLi).detail.phonetic;
-  ok('不误报鼻音尾连用（' + non2.map(c => c.char).join('') + '）',
-    nasNo.nasalRun === false, JSON.stringify(nasNo));
+  const nasSame = NS.Score.evaluate(samePair, ctxLi).detail.phonetic;
+  ok('检出鼻音韵尾同型连用（' + samePair.map(c => c.char).join('') +
+    ' 都是' + nType(samePair[0]) + '）',
+    nasSame.nasalSame === true, JSON.stringify(nasSame));
+
+  const nasMix = NS.Score.evaluate(mixPair, ctxLi).detail.phonetic;
+  ok('不误报异型鼻音连用（' + mixPair.map(c => c.char).join('') +
+    ' 后鼻接前鼻，有变化）',
+    nasMix.nasalSame === false, JSON.stringify(nasMix));
+  ok('异型鼻音记为 nasalMix（供报告区分说明）',
+    nasMix.nasalMix === true, JSON.stringify(nasMix));
+
+  const nasNo = NS.Score.evaluate(nonNasal2, ctxLi).detail.phonetic;
+  ok('不误报非鼻音（' + nonNasal2.map(c => c.char).join('') + '）',
+    nasNo.nasalSame === false, JSON.stringify(nasNo));
+
+  /* ---- 四呼开口度（v2 新增）----
+   * 这一项解决的正是「声母韵母声调都不撞、读起来却依然发闷」：
+   * 「李知微」三项全不撞，但两个字都是闷音（舌尖+合）。
+   * 阈值依据实测：公认「闷」的名字闷音占比平均 0.86，「好念」的 0.25。 */
+  const phonOf = (c) => NS.Pinyin.phonology(c.pinyin);
+  const allDull = NS.CHAR_LIST.filter(c => phonOf(c).dull).slice(0, 2);
+  const allOpen = NS.CHAR_LIST.filter(c => !phonOf(c).dull).slice(0, 2);
+  ok('能凑齐「全闷」与「全开」的对照字',
+    allDull.length === 2 && allOpen.length === 2,
+    allDull.map(c => c.char).join('') + ' / ' + allOpen.map(c => c.char).join(''));
+
+  const pDull = NS.Score.evaluate(allDull, ctxLi).detail.phonetic;
+  ok('全闷组合的 dullRatio = 1（' + allDull.map(c => c.char).join('') + '）',
+    pDull.dullRatio >= 1, JSON.stringify(pDull.kaidu));
+
+  const pOpen = NS.Score.evaluate(allOpen, ctxLi).detail.phonetic;
+  ok('全开组合的 dullRatio < 0.67（' + allOpen.map(c => c.char).join('') + '）',
+    pOpen.dullRatio < 0.67, JSON.stringify(pOpen.kaidu));
+
+  ok('输出每个音节的四呼与发音部位（含姓氏）',
+    Array.isArray(pDull.kaidu) && pDull.kaidu.length === 3 &&
+    Array.isArray(pDull.pos) && pDull.pos.length === 3,
+    JSON.stringify(pDull.kaidu) + ' ' + JSON.stringify(pDull.pos));
+
+  /* 舌尖元音：zhi/zi 等的韵母写作 i，实际不是 [i]，应归「舌尖」 */
+  const zhChar = NS.CHAR_LIST.filter(c =>
+    NS.Pinyin.splitSyllable(c.pinyin).initial === 'zh')[0];
+  ok('zhi 的韵母归「舌尖」而非「齐」（' + zhChar.char + ' ' + zhChar.pinyin + '）',
+    NS.Pinyin.phonology(zhChar.pinyin).kd === '舌尖',
+    NS.Pinyin.phonology(zhChar.pinyin).kd);
+
+  /* ---- y/w 音位还原 ----
+   * 不还原会把「望 wàng」按书写形式判成 ang（开=明亮），
+   * 实际音位是 uang（合=闷）—— 结论正好反了。共 17 种组合有这个问题。 */
+  ok('ya → ia（齐）', NS.Pinyin.realFinal('y', 'a') === 'ia');
+  ok('yan → ian（齐）', NS.Pinyin.realFinal('y', 'an') === 'ian');
+  ok('yu → v（撮）', NS.Pinyin.realFinal('y', 'u') === 'v');
+  ok('yong → iong（撮）', NS.Pinyin.realFinal('y', 'ong') === 'iong');
+  ok('wei → ui（合）', NS.Pinyin.realFinal('w', 'ei') === 'ui');
+  ok('wang → uang（合）', NS.Pinyin.realFinal('w', 'ang') === 'uang');
+  ok('xuan → van（撮；j/q/x 后的 u 其实是 ü）',
+    NS.Pinyin.realFinal('x', 'uan') === 'van');
+  ok('望 的音位韵母是 uang（合）而非 ang（开）',
+    NS.Pinyin.phonology('wang').real === 'uang' &&
+    NS.Pinyin.phonology('wang').kd === '合',
+    JSON.stringify(NS.Pinyin.phonology('wang')));
+
+  /* ---- 零声母相邻（v2 新增）----
+   * 两个 y/w 起头的字连读，中间没有辅音起头，容易粘在一起。 */
+  const zeroPair = NS.CHAR_LIST.filter(c => phonOf(c).pos === '零声母')
+    .slice(0, 2);
+  if (zeroPair.length === 2) {
+    const pZero = NS.Score.evaluate(zeroPair, ctxLi).detail.phonetic;
+    ok('检出零声母相邻（' + zeroPair.map(c => c.char).join('') + '）',
+      pZero.zeroRun === true, JSON.stringify(pZero.pos));
+  } else {
+    ok('字库里有零声母字可供检测', false);
+  }
 
   /* ---- 字形均衡（新增，「可读性」）----
    * 只断言「信息被算出来了」，具体阈值属于经验值，不适合钉死。 */

@@ -367,6 +367,29 @@
     if (ph.sameFinal && ph.sameFinal.length) {
       l5.push('叠韵：' + ph.sameFinal.join('、') + '　两个字的音会糊在一起。');
     }
+    /* 四呼格局：v2 新增，直接刻画「口型打开没有」。
+     * 这一句是整块音韵里最该被读到的 —— 它解释的正是
+     * 「声母韵母声调都不撞、却依然不好听」那个最让人困惑的情况。 */
+    if (ph.kaidu && ph.kaidu.length && ph.dullRatio !== undefined) {
+      var kdTxt = ph.kaidu.join('-');
+      if (ph.dullRatio >= 1) {
+        l5.push('开口度：' + kdTxt + '　**全名没有一个开口音**' +
+          '（a/o/e/ai/an/ang…），口型始终没打开，读起来是闷的。' +
+          '**这是「声母韵母都不撞却依然不好听」最常见的原因。**');
+      } else if (ph.dullRatio >= 0.67) {
+        l5.push('开口度：' + kdTxt + '　开口音偏少，读起来略闷。');
+      } else {
+        l5.push('开口度：' + kdTxt + '　开口音足够，读起来是明亮的。');
+      }
+    }
+    if (ph.nasalSame) {
+      l5.push('鼻音韵尾**同型**连用（都是' +
+        (ph.nasalType === 'ng' ? '后鼻音' : '前鼻音') +
+        '），读起来含糊。（前鼻接后鼻反而有变化，不算问题）');
+    }
+    if (ph.zeroRun) {
+      l5.push('相邻两字都是零声母（y/w 起头），中间没有辅音起头，连读容易粘连。');
+    }
     var homo = score.detail.homophone;
     if (homo) {
       l5.push(homo.pass
@@ -376,7 +399,7 @@
             ? '，近似「' + homo.hits.map(function (h) { return h.word; }).join('、') + '」'
             : ''));
     }
-    if (!l5.length) l5.push('声母、韵母、声调均无相撞。');
+    if (!l5.length) l5.push('声母、韵母、声调均无相撞，开口度也足够。');
     l5.push('（音韵与命理无关，但名字每天都要被念，实际影响不比五行小）');
     add('语言', '音韵与谐音', l5,
       homo && !homo.pass ? 'warn' : 'neutral');

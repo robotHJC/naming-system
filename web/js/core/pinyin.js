@@ -220,12 +220,138 @@
     return { plain: out, tone: tone };
   }
 
+  /* =================================================================
+   * 音韵分类层（音韵评分 v2 的基础设施）
+   *
+   * 旧的音韵检查只问「声母一样吗 / 韵母一样吗 / 声调一样吗」，
+   * 但**「不一样」不等于「顺口」**。「李知微 zhī-wēi」三项全不撞，
+   * 读起来依然发闷 —— 因为两个字都是齐齿呼，口型一直没打开。
+   * 这一层补上两个维度：
+   *   1. 发音部位（唇／舌尖中／舌根／舌面／舌尖后／舌尖前／零声母）
+   *   2. 四呼开口度（开／齐／合／撮）—— 决定明亮还是发闷
+   * ================================================================= */
+
+  /* 声母按发音部位分类。
+   * y/w 归「零声母」—— 它们不是真正的辅音声母，
+   * 书写上只是介音 i/u 的改写（ya = ia、wu = u）。 */
+  var POS = {
+    b: '唇', p: '唇', m: '唇', f: '唇',
+    d: '舌尖中', t: '舌尖中', n: '舌尖中', l: '舌尖中',
+    g: '舌根', k: '舌根', h: '舌根',
+    j: '舌面', q: '舌面', x: '舌面',
+    zh: '舌尖后', ch: '舌尖后', sh: '舌尖后', r: '舌尖后',
+    z: '舌尖前', c: '舌尖前', s: '舌尖前',
+    y: '零声母', w: '零声母', '': '零声母'
+  };
+
+  /* 四呼开口度：开 = 明亮，齐/合/撮/舌尖 = 偏闷。
+   * 键名用**书写省略式**（ui/iu/un），与字库里的拼音写法一致。 */
+  var KAIDU = {};
+  (function () {
+    var put = function (kind, list) {
+      for (var i = 0; i < list.length; i++) KAIDU[list[i]] = kind;
+    };
+    put('开', ['a', 'o', 'e', 'ai', 'ei', 'ao', 'ou', 'an', 'en',
+      'ang', 'eng', 'er']);
+    put('齐', ['i', 'ia', 'ie', 'iao', 'iu', 'ian', 'in', 'iang', 'ing']);
+    put('合', ['u', 'ua', 'uo', 'uai', 'ui', 'uan', 'un', 'uang', 'ong']);
+    put('撮', ['v', 've', 'van', 'vn', 'iong']);
+    /* 舌尖元音：zhi/chi/shi/ri/zi/ci/si 的韵母写作 i，
+     * 但实际读 [ɿ]/[ʅ]，**不是** [i]。音位学上属开口呼，
+     * 听感上比 a/o/e 暗、比真 i 更闷。
+     * 本层按「偏闷」处理 —— 这是**听感口径**，不是音位学分类；
+     * 取名场景下用户反馈「李知微 zhī-wēi 闷」走的正是这个口径。 */
+    put('舌尖', ['-i']);
+  })();
+
+  /* j/q/x 后面写的 u 实际都是 ü（ju=jü、xuan=xüan、que=qüe） */
+  var JQX = { j: 1, q: 1, x: 1 };
+  /* 舌尖元音的前接声母 */
+  var ZHI_GROUP = { zh: 1, ch: 1, sh: 1, r: 1, z: 1, c: 1, s: 1 };
+  /* 音位式 → 书写省略式（四呼表的键名） */
+  var ALIAS = { uei: 'ui', iou: 'iu', uen: 'un', ueng: 'ong' };
+
+  /**
+   * 把「书写拼音的韵母」还原成「实际音位的韵母」。
+   *
+   * 为什么必须做：拼音里 y/w 不是声母，而是介音 i/u/ü 的改写。
+   * 直接按书写形式查四呼表会**大面积判反**，共 17 种组合：
+   *   ya   → 写成 a，   实际 ia（齐齿）   ← 会误判成「开口=明亮」
+   *   yan  → 写成 an，  实际 ian（齐齿）  ← 同上，结论正好反了
+   *   yu   → 写成 u，   实际 ü（撮口）
+   *   wei  → 写成 ei，  实际 uei（合口）
+   *   wo   → 写成 o，   实际 uo（合口）
+   *   wang → 写成 ang， 实际 uang（合口） ← 也是会判反的一类
+   * 所以必须先还原，再查表。
+   */
+  function realFinal(initial, final) {
+    var f = final;
+    /* j/q/x 后的 u 一律是 ü —— 不处理的话「萱 xuan」会被判成合口
+     * 而不是撮口（虽然都算「闷」，但标签是错的） */
+    if (JQX[initial] && f.charAt(0) === 'u') f = 'v' + f.slice(1);
+
+    if (initial === 'y') {
+      if (f.charAt(0) === 'i') { /* yi yin ying：本来就是 i 开头 */ }
+      else if (f === 'u') f = 'v';          /* yu    → ü */
+      else if (f === 'ue') f = 've';        /* yue   → üe */
+      else if (f === 'uan') f = 'van';      /* yuan  → üan */
+      else if (f === 'un') f = 'vn';        /* yun   → ün */
+      else if (f === 'ong') f = 'iong';     /* yong  → iong */
+      else if (f === 'e') f = 'ie';         /* ye    → ie */
+      else if (f === 'ou') f = 'iou';       /* you   → iou */
+      else f = 'i' + f;                     /* ya yao yan yang */
+    } else if (initial === 'w') {
+      if (f === 'u') { /* wu → u */ }
+      else if (f === 'eng') f = 'ueng';     /* weng  → ueng */
+      else f = 'u' + f;                     /* wa wo wai wei wan wen wang */
+    }
+    return ALIAS[f] || f;
+  }
+
+  /**
+   * 一个音节的音韵特征
+   * @param {string} py 无调拼音，如 'zhang' 'wei' 'nv'
+   * @returns {{initial:string, final:string, real:string,
+   *            pos:string, kd:string, dull:boolean}}
+   *   initial/final 书写形式；real 音位形式的韵母
+   *   pos  发音部位；kd 四呼；dull 是否「偏闷」（非开口）
+   */
+  function phonology(py) {
+    /* 不借用 normalize()：它会把 ü 转成 'ü'，而四呼表的键名用 'v' */
+    var s = String(py || '').toLowerCase()
+      .replace(/u:/g, 'v').replace(/ü/g, 'v').replace(/[1-5]/g, '');
+    var sp = splitSyllable(s);
+    var rf = realFinal(sp.initial, sp.final);
+    if (rf === 'i' && ZHI_GROUP[sp.initial]) rf = '-i';
+    var kd = KAIDU[rf] || '';
+    return {
+      initial: sp.initial, final: sp.final, real: rf,
+      pos: POS[sp.initial] || '?',
+      kd: kd, dull: kd !== '开'
+    };
+  }
+
+  /**
+   * 鼻音韵尾的类型。前鼻 -n 与后鼻 -ng 分开 ——
+   * 同型连用（-ng + -ng）才含糊，异型（-ng + -n）反而有变化。
+   */
+  function nasalType(final) {
+    if (/ng$/.test(final || '')) return 'ng';
+    if (/n$/.test(final || '')) return 'n';
+    return '';
+  }
+
   NS.Pinyin = {
     INITIALS: INITIALS,
     splitSyllable: splitSyllable,
     normalize: normalize,
     toneMark: toneMark,
     stripTone: stripTone,
-    checkHomophone: checkHomophone
+    checkHomophone: checkHomophone,
+    POS: POS,
+    KAIDU: KAIDU,
+    realFinal: realFinal,
+    phonology: phonology,
+    nasalType: nasalType
   };
 })(typeof window !== 'undefined' ? window : globalThis);
