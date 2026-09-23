@@ -12676,13 +12676,37 @@ details.more > summary:hover { color: var(--jade); }
    * 把「分组名」或「界面标签」都归一成分组名。
    * 界面上偏旁选择器用的是 label（草字头 / 三点水），
    * 而字典里的部首字段是 艹 / 水，中间必须转一道。
+   *
+   * 标签并不总是干净的一个词 ——「氵」的标签是**「三点水 / 水字底」**
+   * （带斜杠和第二种写法），「火」是「火字旁 / 四点底」。
+   * 实测只做字符串相等比较时，传「三点水」查不到任何字
+   * （返回 0 个，而「氵」能查到 1027 个）。所以拆斜杠、生成多种写法备选。
    */
+  function labelKeys(label) {
+    var out = [];
+    String(label || '').split(/[\/／、|·]/).forEach(function (raw) {
+      var s = raw.replace(/\s+/g, '');
+      if (!s) return;
+      if (out.indexOf(s) < 0) out.push(s);
+      /* 「水字底」→「水」、「草字头」→「草」：两种写法都留着，
+       * 因为上层可能传「草字头」也可能传「草」 */
+      var t = s.replace(/字?[旁头底]$/, '');
+      if (t && t !== s && out.indexOf(t) < 0) out.push(t);
+    });
+    return out;
+  }
+
   function resolveName(name) {
     var idx = nameIndex();
     if (idx[name]) return name;
     var groups = NS.RADICAL_GROUPS || [];
+    var want = String(name || '').replace(/\s+/g, '');
     for (var i = 0; i < groups.length; i++) {
-      if (groups[i].label === name) return groups[i].name;
+      var g = groups[i];
+      if (g.label === name) return g.name;
+      /* 精确标签对不上时才拆写法 —— 放在最后一道，
+       * 免得「草」这类短写法误匹配到别的分组 */
+      if (labelKeys(g.label).indexOf(want) >= 0) return g.name;
     }
     return name;
   }
@@ -12782,11 +12806,18 @@ details.more > summary:hover { color: var(--jade); }
         heat: heat,
         blocked: blk.blocked,
         blockReason: blk.reason || '',
+        hasMeaning: !!meaning,
         notable: common || lit,
-        /* 适不适合起名：笔画 4–16、有读音、有释义、且不在「不宜入名」表里。
+        /* 适不适合起名：笔画 4–16、有读音、不在「不宜入名」表里。
+         *
+         * **刻意不要求有释义**：释义是 13MB 的可选数据，很多人不会下载。
+         * 要求它会导致没下释义时「字典当用字来源」静默失效 ——
+         * 实测就是这样：整本字典补不进一个字，用户看到的是名字毫无变化，
+         * 完全不知道是少了哪份数据。所以释义只作为显示信息，
+         * 质量筛选交给 notable 与人工的不宜入名表。
+         *
          * blocked 单独留一份，界面可以显示「为什么没推荐它」。 */
-        suitable: !blk.blocked && strokes >= min && strokes <= max &&
-          !!meaning && !!pinyin
+        suitable: !blk.blocked && strokes >= min && strokes <= max && !!pinyin
       });
     });
 
@@ -15948,6 +15979,14 @@ details.more > summary:hover { color: var(--jade); }
       }
       box.appendChild(el('div', 'hint',
         head + '。已列出前 ' + res.items.length + ' 个，可滚动作梗查看全部：'));
+      /* 释义是 13MB 的可选数据，没下的时候整个面板都是字无释义 ——
+       * 不说的话用户会以为解析坏了 */
+      if (!res.items.some(function (x) { return x.hasMeaning; })) {
+        box.appendChild(el('div', 'hint',
+          '还没下载「新华字典·释义」数据，所以看不到字义；' +
+          '其余信息（笔画/部首/拼音/多音字）都是齐的。' +
+          '想查字义就去上面勾上那一项（13MB）。'));
+      }
 
       var list = el('div', 'lex-rad-list');
       res.items.forEach(function (it, i) {
@@ -15978,12 +16017,13 @@ details.more > summary:hover { color: var(--jade); }
             esc(it.blockReason || '') + '">不宜 · ' +
             esc(it.blockReason || '') + '</i>';
         }
+        var meanTxt = it.meaning || '（未下载释义数据）';
         body.innerHTML = '<b>' + esc(it.char) + '</b>' +
           '<span class="lr-meta">' + it.strokes + '画 · ' +
           esc(it.radical || name) + ' · ' + esc(it.pinyin || '无读音') +
           '</span>' +
-          '<span class="lr-mean" title="' + esc(String(it.meaning)) + '">' +
-          esc(String(it.meaning)) + '</span>' +
+          '<span class="lr-mean" title="' + esc(String(meanTxt)) + '">' +
+          esc(String(meanTxt)) + '</span>' +
           (badges ? '<span class="lr-badges">' + badges + '</span>' : '');
         lab.appendChild(body);
         list.appendChild(lab);

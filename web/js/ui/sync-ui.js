@@ -697,6 +697,14 @@
       }
       box.appendChild(el('div', 'hint',
         head + '。已列出前 ' + res.items.length + ' 个，可滚动作梗查看全部：'));
+      /* 释义是 13MB 的可选数据，没下的时候整个面板都是字无释义 ——
+       * 不说的话用户会以为解析坏了 */
+      if (!res.items.some(function (x) { return x.hasMeaning; })) {
+        box.appendChild(el('div', 'hint',
+          '还没下载「新华字典·释义」数据，所以看不到字义；' +
+          '其余信息（笔画/部首/拼音/多音字）都是齐的。' +
+          '想查字义就去上面勾上那一项（13MB）。'));
+      }
 
       var list = el('div', 'lex-rad-list');
       res.items.forEach(function (it, i) {
@@ -727,12 +735,13 @@
             esc(it.blockReason || '') + '">不宜 · ' +
             esc(it.blockReason || '') + '</i>';
         }
+        var meanTxt = it.meaning || '（未下载释义数据）';
         body.innerHTML = '<b>' + esc(it.char) + '</b>' +
           '<span class="lr-meta">' + it.strokes + '画 · ' +
           esc(it.radical || name) + ' · ' + esc(it.pinyin || '无读音') +
           '</span>' +
-          '<span class="lr-mean" title="' + esc(String(it.meaning)) + '">' +
-          esc(String(it.meaning)) + '</span>' +
+          '<span class="lr-mean" title="' + esc(String(meanTxt)) + '">' +
+          esc(String(meanTxt)) + '</span>' +
           (badges ? '<span class="lr-badges">' + badges + '</span>' : '');
         lab.appendChild(body);
         list.appendChild(lab);
