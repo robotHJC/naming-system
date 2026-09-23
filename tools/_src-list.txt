@@ -1,6 +1,0 @@
-=== mapull/chinese-dictionary ===
-  0 个文件
-
-=== pwxcoo/chinese-xinhua ===
-  0 个文件
-

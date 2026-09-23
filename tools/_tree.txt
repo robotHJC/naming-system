@@ -1,2 +1,0 @@
-mapull/chinese-dictionary@202304 HTTP 403
-pwxcoo/chinese-xinhua@master HTTP 403
