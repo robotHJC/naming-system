@@ -888,6 +888,29 @@ input::placeholder { color: #b6b0a4; }
 
 .src-chip:hover { border-color: var(--jade-light); color: var(--jade); }
 
+/* 来源分组标题：字典 / 诗词 / 方言 / 属性表 ——
+ * 来源多到 30 个，不分组根本找不到「新华字典」在哪 */
+.src-group {
+  flex-basis: 100%;
+  margin: 8px 0 2px;
+  font-size: 12px;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+}
+
+.src-group:first-child { margin-top: 0; }
+
+/* 不可用的芯片：未同步的词库，以及不构成用字范围的属性表。
+ * 仍然列出来 —— 用户需要知道「为什么这里没有《孟子》」 */
+.src-chip.off {
+  opacity: .45;
+  cursor: not-allowed;
+  border-style: dashed;
+  background: #f6f5f0;
+}
+
+.src-chip.off:hover { border-color: var(--line); color: var(--ink-2); }
+
 .src-chip[aria-pressed="true"] {
   background: var(--jade);
   border-color: var(--jade);
@@ -2889,17 +2912,30 @@ details.more > summary:hover { color: var(--jade); }
        联网加入的字的康熙笔画是<b>按部首推算</b>的近似值（实测规则准确率
        只有 93.3%，且是整类部首系统性错），所以那边会标「推断值，需人工核对」。
        简单模式<b>不用康熙笔画</b>，所以不受这个问题影响。</p>
-    <p><b>关于用字来源筛选</b>　可以指定<b>只从某几本书里取字</b>
-       （「只在《诗经》和《三字经》里选字」）。可多选，<b>多选是并集</b> ——
-       勾《诗经》和《楚辞》就是两本书的字都能用。</p>
-    <p style="margin-top:8px">它与「偏好部首」是<b>交集</b>关系：既要在所选书的用字里，
+    <p><b>关于用字来源筛选</b>　可以指定<b>只从某几本书或某个词库里取字</b>
+       （「只在《诗经》和《三字经》里选字」「只用《新华字典》的字」）。
+       可多选，<b>多选是并集</b> —— 勾《诗经》和《楚辞》就是两本书的字都能用。</p>
+    <p style="margin-top:8px">列表里<b>所有联网词库都会出现</b>，按
+       <b>汉字字典 / 诗词出处 / 方言 / 字的属性表</b> 分组：
+       已同步的可以直接点；<b>没同步的也列出来</b>（灰掉，鼠标悬停会说明
+       「去词库管理勾上它并联网更新后可用」）—— 不列的话你只能靠猜
+       「为什么这里没有《孟子》」。
+       拼音表、繁简对照表、多音字表、释义这四项是<b>字的属性表</b>，
+       不构成「用字范围」（拼音表覆盖四万多个汉字，拿它当范围等于不过滤），
+       所以灰掉并注明原因。</p>
+    <p style="margin-top:8px"><b>新华字典这一类来源是特殊的</b>：它不是一个
+       「出处」，而是整张汉字表。勾上它等于说「用字不必出自诗文，
+       字典里有就行」——系统会从字典里挑字组合，并用热度和
+       <b>一级常用字／诗词里出现过</b>两道依据来裁剪。
+       勾「新华字典·常用字表」则只在那 3500 个字里挑。
+       选了字典类来源时，界面会提示「系统会从里面挑字组合」。</p>
+    <p style="margin-top:8px">它与「偏好部首」是<b>交集</b>关系：既要在所选来源的用字里，
        又要带你要的偏旁，两个条件都满足才行。所以两个一起用时要留意
        可用字会不会太少 —— 界面会实时告诉你「已选 N 个来源，共有 X 个不同用字可用」，
        少于 80 字会提示你可能凑不出好名字。</p>
-    <p style="margin-top:8px">字集是从<b>已同步的诗篇</b>里反推的，所以
-       <b>没同步过的书不会出现在列表里</b>（列出来点了也是空集，
-       只会让人以为坏了）。去「词库管理」同步《诗经》等诗词之后，
-       这里就能按书筛了。</p>
+    <p style="margin-top:8px"><b>诗词源</b>的字集是从<b>已同步的诗篇正文</b>里反推的，
+       所以它只在<b>内置 490 字</b>里筛（不会凭空把诗里生僻的字拉进来）；
+       字典类来源才是从两万字里挑。</p>
     <p><b>关于从新华字典按偏旁找字</b>　选了偏好部首（如「草字头」）时，
        系统除了内置字库，还会从《新华字典》里把该部首的字补进来 ——
        内置的偏旁表是手写的，只覆盖 278 字，<b>草字头只有 47 个字</b>
@@ -5373,6 +5409,7 @@ details.more > summary:hover { color: var(--jade); }
       id: 'fanti',
       group: 'core',
       name: '繁简对照表（OpenCC）',
+      noPool: '这是繁简字的对照关系，不是用字范围',
       format: 'fanti',
       size: 83830,
       defaultOn: true,
@@ -5388,6 +5425,9 @@ details.more > summary:hover { color: var(--jade); }
       id: 'pinyin',
       group: 'core',
       name: '汉字拼音表（含声调）',
+      /* 拼音表覆盖四万多个汉字 —— 拿它当「用字范围」等于不过滤，
+       * 列出来反而让人以为选了个有效的约束 */
+      noPool: '它覆盖四万多个汉字，拿它当用字范围等于不过滤',
       format: 'pinyin',
       size: 840665,
       defaultOn: true,
@@ -5671,6 +5711,8 @@ details.more > summary:hover { color: var(--jade); }
       id: 'shupin',
       group: 'dialect',
       name: '蜀拼字表（四川话读音）',
+      charPool: 'shupin',
+      short: '蜀拼字表',
       format: 'shupin',
       size: 412617,
       defaultOn: false,
@@ -5684,6 +5726,8 @@ details.more > summary:hover { color: var(--jade); }
       id: 'sichuanWords',
       group: 'dialect',
       name: '四川方言词汇表',
+      charPool: 'words',
+      short: '四川方言词',
       format: 'fangyan',
       size: 133665,
       defaultOn: false,
@@ -5716,6 +5760,11 @@ details.more > summary:hover { color: var(--jade); }
       id: 'xhbase',
       group: 'dict',
       name: '新华字典·字表（2.1 万字）',
+      /* charPool：这个源能当「用字来源」（详见 generator.poolOfSource）。
+       * short 是「用字来源」里芯片上显示的短名 —— 那里空间小，
+       * 全名「新华字典·字表（2.1 万字）」放不下。 */
+      charPool: 'dict',
+      short: '新华字典·字表',
       format: 'xhbase',
       size: 2891776,
       defaultOn: true,
@@ -5729,6 +5778,7 @@ details.more > summary:hover { color: var(--jade); }
       id: 'xhpoly',
       group: 'dict',
       name: '新华字典·多音字表（2495 字）',
+      noPool: '这是 2495 个多音字的清单，不是用字范围',
       format: 'xhpoly',
       size: 253952,
       defaultOn: true,
@@ -5742,6 +5792,8 @@ details.more > summary:hover { color: var(--jade); }
       id: 'xhcommon',
       group: 'dict',
       name: '新华字典·常用字表（3500 字）',
+      charPool: 'common',
+      short: '新华字典·常用字',
       format: 'xhcommon',
       size: 184320,
       defaultOn: true,
@@ -5756,6 +5808,9 @@ details.more > summary:hover { color: var(--jade); }
       id: 'xhdetail',
       group: 'dict',
       name: '新华字典·释义（逐读音，13 MB）',
+      /* 释义是字的属性，不构成用字范围 —— 列在「用字来源」里会让人以为
+       * 选了它就只能用这些字，实际上每个字都有释义 */
+      noPool: '这是字的属性表（给每个字配释义），不构成「用字范围」',
       format: 'xhdetail',
       size: 13032448,
       defaultOn: false,
@@ -9691,18 +9746,61 @@ details.more > summary:hover { color: var(--jade); }
   /* ---------------- 候选池 ---------------- */
 
   /**
-   * 用字来源里有没有勾《新华字典》。
+   * 一个源作为「用字来源」时提供的字集；返回 null 表示它不构成用字范围。
    *
-   * 勾了才走「只在新华字典里取名」那条路 —— 那是从两万字的字典里挑字，
-   * 跟「按部首补几个字」不是一回事：前者是**整本字典当候选池**，
-   * 后者只是给一个部首多凑几个候选。必须分清，否则用户勾了字典
-   * 却只多出 120 个艹部字，跟他要的「简单在新华字典里面组合」不符。
+   * 为什么不能只认诗词源：诗词源的字集是从**已同步的诗篇正文**里反推的，
+   * 天然就是「这本书用过哪些字」。而《新华字典》这类字典源本身就是
+   * 一张汉字表 —— 它更该能当用字来源（「只要字典里有这个字就能用」）。
+   * 原来只判断 group === 'poetry'，勾了新华字典也不出现在选择器里。
+   *
+   * 各源的字集来源不一样，所以按 id 分派，而不是硬编码一个「取 key」的假设：
+   *   poetry       诗篇正文 → Poetry.charsBySource()[显示名]
+   *   xhbase       整本字典 → Lexicon.dict
+   *   xhcommon     一级常用字 → Lexicon.commonSet
+   *   shupin       四川话能读的字 → Dialect.shupinMap
+   *   sichuanWords 方言词用到的字 → Dialect.dialectWords
+   *
+   * @param {Object} src NS.SOURCE_BY_ID[id]
+   * @returns {Object|null} { 字: 1 }；null = 不可作用字来源（或还没同步）
    */
-  function dictSourceSelected(sourceIds) {
+  function poolOfSource(src) {
+    if (!src) return null;
+    var lex = NS.Lexicon;
+    if (src.group === 'poetry') {
+      var bySrc = (NS.Poetry && NS.Poetry.charsBySource)
+        ? NS.Poetry.charsBySource() : null;
+      return bySrc ? (bySrc[src.name] || null) : null;
+    }
+    if (!src.charPool) return null;
+    if (src.charPool === 'dict') return (lex && lex.dict) || null;
+    if (src.charPool === 'common') return (lex && lex.commonSet) || null;
+    if (src.charPool === 'shupin') {
+      return (NS.Dialect && NS.Dialect.shupinMap) || null;
+    }
+    if (src.charPool === 'words') {
+      var m = Object.create(null);
+      ((NS.Dialect && NS.Dialect.dialectWords) || []).forEach(function (w) {
+        String((w && w.word) || '').split('').forEach(function (c) {
+          m[c] = 1;
+        });
+      });
+      return Object.keys(m).length ? m : null;
+    }
+    return null;
+  }
+
+  /**
+   * 用字来源里有没有**需要从外部补字**的字集。
+   *
+   * 诗词源不需要：它的字只在内置 490 字里筛（字集本身就是从诗篇反推的）。
+   * 字典/常用字/蜀拼/方言源需要 —— 它们的字集远大于内置字库，
+   * 不补的话「只用新华字典取名」实际还是在内置 490 字里转。
+   */
+  function hasPullSource(sourceIds) {
     if (!sourceIds || !sourceIds.length) return false;
     for (var i = 0; i < sourceIds.length; i++) {
       var s = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[sourceIds[i]] : null;
-      if (s && (s.dictPool || s.format === 'xhbase')) return true;
+      if (s && s.charPool) return true;
     }
     return false;
   }
@@ -9711,42 +9809,26 @@ details.more > summary:hover { color: var(--jade); }
    * 把「按词库筛选用字」的源 id 列表解析成一个字集。
    *
    * 语义：**用字必须出现在所选源里**（用户选的是这个）。
-   * 多个源之间是「并集」—— 勾《诗经》和《三字经》就是两本书的字都能用；
+   * 多个源之间是「并集」—— 勾《诗经》和新华字典就是两边都行；
    * 与「偏好部首」之间才是交集（两个约束都要满足）。
    *
-   * 《新华字典》这一源特殊：它不是一个「出处」，而是整个汉字表。
-   * 勾上它等于说「用字不必出自诗文，字典里有就行」——
-   * 这时字集就是字典的全部两万字，真正的裁剪交给下游的
-   * 热/常用字/诗词依据三重排序（见 expandByDict）。
+   * 一个字集远大于内置字库的源（当前是 charPool 标记的那几个）
+   * 会让 `hasPullSource` 返回 true，下游 expandByPool 会从里面补字进候选池。
    *
    * @param {string[]} sourceIds
    * @returns {Object|null} { 字: 1 }；null 表示不筛
    */
   function resolveCharPool(sourceIds) {
     if (!sourceIds || !sourceIds.length) return null;
-    var bySrc = (NS.Poetry && NS.Poetry.charsBySource)
-      ? NS.Poetry.charsBySource() : null;
     var pool = Object.create(null);
     var hitAny = false;
     sourceIds.forEach(function (id) {
       var src = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[id] : null;
-      /* 新华字典：整本字典都是它的「用字」 */
-      if (src && (src.dictPool || src.format === 'xhbase')) {
-        var lex = NS.Lexicon;
-        if (lex && lex.dict) {
-          var n = 0;
-          Object.keys(lex.dict).forEach(function (ch) { pool[ch] = 1; n++; });
-          if (n) hitAny = true;
-        }
-        return;
-      }
-      if (!bySrc) return;
-      /* 诗篇里存的是**显示名**（「诗经」），不是 id */
-      var name = src ? src.name : id;
-      var set = bySrc[name];
+      var set = poolOfSource(src);
       if (!set) return;
-      hitAny = true;
-      Object.keys(set).forEach(function (ch) { pool[ch] = 1; });
+      var n = 0;
+      Object.keys(set).forEach(function (ch) { pool[ch] = 1; n++; });
+      if (n) hitAny = true;
     });
     /* 一个源都没同步过时不能返回空集 —— 那会让结果为空，
      * 而用户看到的是「没有符合条件的名」，会以为是名字太少。 */
@@ -9795,10 +9877,11 @@ details.more > summary:hover { color: var(--jade); }
    * 从《新华字典》补字进候选池。两种触发方式，共用一套挑选逻辑
    * （Radical.dictCandidates）：
    *
-   *   1. **来源模式**：用户把「新华字典」勾成了用字来源（ctx.dictPool）
-   *      → 从整本字典里挑，这才是真正的「只在新华字典里取名」。
-   *      没有别的来源约束，按热度排（按笔画排会挑出一堆「一丁七丈上不」）。
-   *   2. **部首模式**：用户只选了偏好部首 → 按部首挑，按笔画排。
+   *   1. **来源模式**：用字来源里勾了带 charPool 的源（新华字典·字表 /
+   *      常用字表 / 蜀拼字表 / 方言词）→ 从字典里拉字，再用
+   *      ctx.charPool 限定到这些源的字集。这才是真正的「只在新华字典里取名」
+   *      ／「只用 3500 常用字取名」。
+   *   2. **部首模式**：用户只选了偏好部首 → 按部首拉，按笔画排。
    *      为什么必须补：radicals.js 的 RADICAL_GROUPS 是**手写表，只覆盖
    *      内置 278 字**，于是「草字头」只有 48 个可选字 ——
    *      全是 芊芷菡茉茵菁萱蕙蕴薇蕾 这类古风字。用户的需求是
@@ -9836,7 +9919,7 @@ details.more > summary:hover { color: var(--jade); }
     if (!R || !R.dictCandidates || !lex || !lex.dict) return 0;
 
     var rads = ctx.preferRadicals || [];
-    var asPool = !!ctx.dictPool;
+    var asPool = !!ctx.sourcePull;
     if (!asPool && !rads.length) return 0;   /* 没触发条件：保持内置字库 */
 
     var key = (asPool ? 'P' : '') + '|' + rads.slice().sort().join(',');
@@ -9859,6 +9942,9 @@ details.more > summary:hover { color: var(--jade); }
         available = true;
         (res.items || []).forEach(function (it) {
           if (seen[it.char]) return;
+          /* 与「用字来源」求交集：勾了《诗经》又要草字头，
+           * 那就只能从两个条件都满足的字里选 */
+          if (ctx.charPool && !ctx.charPool[it.char]) return;
           seen[it.char] = 1;
           items.push(it);
         });
@@ -9866,7 +9952,12 @@ details.more > summary:hover { color: var(--jade); }
     } else {
       var c = R.dictCandidates({ order: 'heat' });
       available = c.available;
-      items = c.items || [];
+      /* 字典自身的字集是全量汉字表 —— 真正“限定用字”的是
+       * ctx.charPool（新华字典/常用字/蜀拼/方言几个源的并集）。
+       * 不乘这一道的话，勾了「常用字表」也会把两万字的字典当成池子。 */
+      items = (c.items || []).filter(function (it) {
+        return !ctx.charPool || ctx.charPool[it.char];
+      });
     }
     if (!available) return 0;
 
@@ -9994,8 +10085,9 @@ details.more > summary:hover { color: var(--jade); }
     /* 用字来源筛选在这里解析，不在 buildContext 里 ——
      * 要扫全部诗篇，而 buildContext 每次评分都会被叫到。 */
     ctx.charPool = resolveCharPool(ctx.charSources);
-    /* 「只在新华字典里取名」：整本字典当候选池，见 expandByDict */
-    ctx.dictPool = dictSourceSelected(ctx.charSources);
+    /* 「只在新华字典/只用常用字取名」这类需要从外部补字的来源，
+     * 见 expandByDict */
+    ctx.sourcePull = hasPullSource(ctx.charSources);
     var length = Math.max(1, Math.min(opts.length || 2, 4));
     var built = buildPool(ctx, length);
 
@@ -10175,7 +10267,8 @@ details.more > summary:hover { color: var(--jade); }
     /* 导出给界面用：显示「按当前词库筛选，可用 X 字」，
      * 以及给测试直接验证筛选语义。 */
     resolveCharPool: resolveCharPool,
-    dictSourceSelected: dictSourceSelected,
+    poolOfSource: poolOfSource,
+    hasPullSource: hasPullSource,
     expandByDict: expandByDict,
     hasLiteraryUse: hasLiteraryUse,
     /** 清掉「已扩过的部首」记录 —— 测试与「重新同步字典后想再扩」时需要 */
@@ -15719,6 +15812,10 @@ details.more > summary:hover { color: var(--jade); }
         $('lexGo').disabled = false;
         $('lexProgress').style.display = 'none';
         self.refreshStatus();
+        /* 重建「用字来源」选择器 —— 刚同步的字典/诗词应该立刻变成可点，
+         * 而不是要求用户刷新页面。实测这就是「为什么用字来源里没有
+         * 新华字典」的一个原因：同步完不刷新，芯片一直是灰的。 */
+        if (NS.App && NS.App.refreshSourcePicker) NS.App.refreshSourcePicker();
 
         var okN = report.success.length, failN = report.failed.length;
         /* 诗词/蒙学/经部数据都是繁体。用户可能只勾了其中一个，
@@ -17434,52 +17531,100 @@ details.more > summary:hover { color: var(--jade); }
   /**
    * 建「用字来源」多选。
    *
-   * 只列出**实际同步过、拿得到字集**的诗词源 —— 把 23 个源全列出来、
-   * 其中 20 个点下去等于空集，用户会以为是坏的。
+   * 分三档展示，**所有联网词库都列出来**：
+   *   · 可用（已同步、确实有字集）→ 可点的芯片
+   *   · 未同步 → 灰掉的芯片，title 说明「去词库管理同步后可用」
+   *   · 不构成用字范围（拼音表/繁简表/多音字表/释义）→ 灰掉并说明原因
+   *
+   * 为什么不再只列「已同步的诗词源」：原来只判断 group === 'poetry'，
+   * 于是勾了《新华字典》也不出现 —— 用户会以为这个功能不支持字典。
+   * 现在按 NS.SOURCES 里声明的 charPool 字段来判，源之间是数据驱动的；
+   * 诗词源没有 charPool 字段，按 group 兜底。
+   *
+   * 未同步的仍然不可点（点了等于空集），但**列出来**并说明怎么让它可用 ——
+   * 不列出来的话，用户只能靠猜「为什么这里没有《孟子》」。
    */
   function initSourcePicker() {
     var box = $('srcSeg');
     if (!box) return;
     box.innerHTML = '';
 
-    var bySrc = NS.Poetry && NS.Poetry.charsBySource
-      ? NS.Poetry.charsBySource() : {};
-    var names = Object.keys(bySrc);
-    var items = [];
-    /* 源显示名 → 源 id。诗篇里存的是显示名（「诗经」），不是 id。 */
+    var byGroup = { poetry: [], dict: [], dialect: [], core: [] };
     (NS.SOURCES || []).forEach(function (s) {
-      if (s.group !== 'poetry') return;
-      if (!bySrc[s.name]) return;
-      items.push({ id: s.id, name: s.name, chars: Object.keys(bySrc[s.name]).length });
+      var isPool = !!s.charPool || s.group === 'poetry';
+      var set = isPool && NS.Generator && NS.Generator.poolOfSource
+        ? NS.Generator.poolOfSource(s) : null;
+      var n = set ? Object.keys(set).length : 0;
+      var item = {
+        id: s.id,
+        label: s.short || s.name,
+        full: s.name,
+        chars: n,
+        group: byGroup[s.group] ? s.group : 'core',
+        /* 能当用字来源吗 */
+        isPool: isPool,
+        why: s.noPool || '',
+        ready: n > 0
+      };
+      byGroup[item.group].push(item);
     });
-    items.sort(function (a, b) { return b.chars - a.chars; });
+    /* 字多的排前面 —— 用户第一眼想看到的是「哪些源能用」 */
+    Object.keys(byGroup).forEach(function (g) {
+      byGroup[g].sort(function (a, b) { return b.chars - a.chars; });
+    });
 
-    if (!items.length) {
+    var GROUP_ORDER = ['dict', 'poetry', 'dialect', 'core'];
+    var GROUP_TITLE = {
+      dict: '汉字字典', poetry: '诗词出处',
+      dialect: '方言（四川话）', core: '字的属性表'
+    };
+    var shown = 0, usable = 0;
+
+    GROUP_ORDER.forEach(function (g) {
+      var list = byGroup[g];
+      if (!list.length) return;
+      box.appendChild(el('div', 'src-group', GROUP_TITLE[g]));
+      list.forEach(function (it) {
+        var b = el('button', 'src-chip', it.label);
+        b.type = 'button';
+        b.dataset.v = it.id;
+        if (!it.isPool) {
+          /* 属性表：不是用字范围，只展示 */
+          b.classList.add('off');
+          b.disabled = true;
+          b.title = it.full + '　—　' + it.why;
+        } else if (!it.ready) {
+          b.classList.add('off');
+          b.disabled = true;
+          b.title = it.full + '　—　还没同步。去「词库管理」勾上它并联网更新后可用。';
+        } else {
+          b.title = it.full + '：' + it.chars + ' 个不同用字';
+          usable++;
+          b.setAttribute('aria-pressed',
+            state.charSources.indexOf(it.id) >= 0 ? 'true' : 'false');
+          b.addEventListener('click', function () {
+            var i = state.charSources.indexOf(it.id);
+            if (i >= 0) state.charSources.splice(i, 1);
+            else state.charSources.push(it.id);
+            b.setAttribute('aria-pressed', i >= 0 ? 'false' : 'true');
+            updateSourceHint();
+            NS.Prefs.saveSoon(collectPrefs);
+          });
+        }
+        shown++;
+        box.appendChild(b);
+      });
+    });
+
+    if (!usable) {
       var h0 = $('srcHint');
       if (h0) {
-        h0.innerHTML = '<span style="color:#a9782c">还没有可用的诗词源。'
-          + '去「词库管理」同步《诗经》等诗词后，就能按书筛选用字了。</span>';
+        h0.innerHTML = '<span style="color:#a9782c">还没有已同步的词库。' +
+          '去「词库管理」联网更新（诗词或《新华字典》都行）之后，' +
+          '这里就能按来源筛用字了。</span>';
       }
       return;
     }
-
-    items.forEach(function (it) {
-      var b = el('button', 'src-chip', it.name);
-      b.type = 'button';
-      b.dataset.v = it.id;
-      b.title = it.name + '：共 ' + it.chars + ' 个不同用字';
-      b.setAttribute('aria-pressed',
-        state.charSources.indexOf(it.id) >= 0 ? 'true' : 'false');
-      b.addEventListener('click', function () {
-        var i = state.charSources.indexOf(it.id);
-        if (i >= 0) state.charSources.splice(i, 1);
-        else state.charSources.push(it.id);
-        b.setAttribute('aria-pressed', i >= 0 ? 'false' : 'true');
-        updateSourceHint();
-        NS.Prefs.saveSoon(collectPrefs);
-      });
-      box.appendChild(b);
-    });
     updateSourceHint();
   }
 
@@ -17494,8 +17639,11 @@ details.more > summary:hover { color: var(--jade); }
     var pool = NS.Generator && NS.Generator.resolveCharPool
       ? NS.Generator.resolveCharPool(state.charSources) : null;
     var n = pool ? Object.keys(pool).length : 0;
+    var pulls = NS.Generator && NS.Generator.hasPullSource
+      ? NS.Generator.hasPullSource(state.charSources) : false;
     h.innerHTML = '已选 <b>' + state.charSources.length + '</b> 个来源，'
       + '共有 <b>' + n + '</b> 个不同用字可用。'
+      + (pulls ? '　选了字典类来源，系统会从里面挑字组合。' : '')
       + (n < 80 ? '　<span style="color:#a9782c">可用字偏少，'
         + '可能凑不出好名字，建议多选几本。</span>' : '');
   }
@@ -19767,6 +19915,11 @@ details.more > summary:hover { color: var(--jade); }
       NS.SyncUI.init($('viewLexicon'));
       NS.Lexicon.restore().then(function (st) {
         refreshLexDot(st);
+        /* 恢复完再重建一次「用字来源」选择器。
+         * boot 里那次是**同步**跑的，那时 IndexedDB 还没读出来，
+         * 字典与诗篇都不在内存里 —— 于是已同步的《新华字典》
+         * 在芯片上会一直显示成「还没同步」（除非手动刷新页面）。 */
+        initSourcePicker();
       }).catch(function () { /* 忽略：无持久化环境 */ });
     }
 
@@ -19913,6 +20066,12 @@ details.more > summary:hover { color: var(--jade); }
         });
     } catch (e2) { /* 忽略 */ }
   }
+
+  /* 给别的界面模块用的钩子。
+   * 词库管理同步完成后要重建「用字来源」选择器 —— 刚同步的字典
+   * 应该立刻变成可点，而不是要用户刷新页面（见 sync-ui.js 的同步完成分支）。 */
+  NS.App = NS.App || {};
+  NS.App.refreshSourcePicker = initSourcePicker;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

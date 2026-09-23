@@ -27,6 +27,7 @@
       id: 'fanti',
       group: 'core',
       name: '繁简对照表（OpenCC）',
+      noPool: '这是繁简字的对照关系，不是用字范围',
       format: 'fanti',
       size: 83830,
       defaultOn: true,
@@ -42,6 +43,9 @@
       id: 'pinyin',
       group: 'core',
       name: '汉字拼音表（含声调）',
+      /* 拼音表覆盖四万多个汉字 —— 拿它当「用字范围」等于不过滤，
+       * 列出来反而让人以为选了个有效的约束 */
+      noPool: '它覆盖四万多个汉字，拿它当用字范围等于不过滤',
       format: 'pinyin',
       size: 840665,
       defaultOn: true,
@@ -325,6 +329,8 @@
       id: 'shupin',
       group: 'dialect',
       name: '蜀拼字表（四川话读音）',
+      charPool: 'shupin',
+      short: '蜀拼字表',
       format: 'shupin',
       size: 412617,
       defaultOn: false,
@@ -338,6 +344,8 @@
       id: 'sichuanWords',
       group: 'dialect',
       name: '四川方言词汇表',
+      charPool: 'words',
+      short: '四川方言词',
       format: 'fangyan',
       size: 133665,
       defaultOn: false,
@@ -370,6 +378,11 @@
       id: 'xhbase',
       group: 'dict',
       name: '新华字典·字表（2.1 万字）',
+      /* charPool：这个源能当「用字来源」（详见 generator.poolOfSource）。
+       * short 是「用字来源」里芯片上显示的短名 —— 那里空间小，
+       * 全名「新华字典·字表（2.1 万字）」放不下。 */
+      charPool: 'dict',
+      short: '新华字典·字表',
       format: 'xhbase',
       size: 2891776,
       defaultOn: true,
@@ -383,6 +396,7 @@
       id: 'xhpoly',
       group: 'dict',
       name: '新华字典·多音字表（2495 字）',
+      noPool: '这是 2495 个多音字的清单，不是用字范围',
       format: 'xhpoly',
       size: 253952,
       defaultOn: true,
@@ -396,6 +410,8 @@
       id: 'xhcommon',
       group: 'dict',
       name: '新华字典·常用字表（3500 字）',
+      charPool: 'common',
+      short: '新华字典·常用字',
       format: 'xhcommon',
       size: 184320,
       defaultOn: true,
@@ -410,6 +426,9 @@
       id: 'xhdetail',
       group: 'dict',
       name: '新华字典·释义（逐读音，13 MB）',
+      /* 释义是字的属性，不构成用字范围 —— 列在「用字来源」里会让人以为
+       * 选了它就只能用这些字，实际上每个字都有释义 */
+      noPool: '这是字的属性表（给每个字配释义），不构成「用字范围」',
       format: 'xhdetail',
       size: 13032448,
       defaultOn: false,

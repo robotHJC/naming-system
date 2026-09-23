@@ -437,6 +437,10 @@
         $('lexGo').disabled = false;
         $('lexProgress').style.display = 'none';
         self.refreshStatus();
+        /* 重建「用字来源」选择器 —— 刚同步的字典/诗词应该立刻变成可点，
+         * 而不是要求用户刷新页面。实测这就是「为什么用字来源里没有
+         * 新华字典」的一个原因：同步完不刷新，芯片一直是灰的。 */
+        if (NS.App && NS.App.refreshSourcePicker) NS.App.refreshSourcePicker();
 
         var okN = report.success.length, failN = report.failed.length;
         /* 诗词/蒙学/经部数据都是繁体。用户可能只勾了其中一个，

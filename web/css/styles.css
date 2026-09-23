@@ -881,6 +881,29 @@ input::placeholder { color: #b6b0a4; }
 
 .src-chip:hover { border-color: var(--jade-light); color: var(--jade); }
 
+/* 来源分组标题：字典 / 诗词 / 方言 / 属性表 ——
+ * 来源多到 30 个，不分组根本找不到「新华字典」在哪 */
+.src-group {
+  flex-basis: 100%;
+  margin: 8px 0 2px;
+  font-size: 12px;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+}
+
+.src-group:first-child { margin-top: 0; }
+
+/* 不可用的芯片：未同步的词库，以及不构成用字范围的属性表。
+ * 仍然列出来 —— 用户需要知道「为什么这里没有《孟子》」 */
+.src-chip.off {
+  opacity: .45;
+  cursor: not-allowed;
+  border-style: dashed;
+  background: #f6f5f0;
+}
+
+.src-chip.off:hover { border-color: var(--line); color: var(--ink-2); }
+
 .src-chip[aria-pressed="true"] {
   background: var(--jade);
   border-color: var(--jade);

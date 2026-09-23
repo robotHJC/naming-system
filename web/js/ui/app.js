@@ -122,52 +122,100 @@
   /**
    * 建「用字来源」多选。
    *
-   * 只列出**实际同步过、拿得到字集**的诗词源 —— 把 23 个源全列出来、
-   * 其中 20 个点下去等于空集，用户会以为是坏的。
+   * 分三档展示，**所有联网词库都列出来**：
+   *   · 可用（已同步、确实有字集）→ 可点的芯片
+   *   · 未同步 → 灰掉的芯片，title 说明「去词库管理同步后可用」
+   *   · 不构成用字范围（拼音表/繁简表/多音字表/释义）→ 灰掉并说明原因
+   *
+   * 为什么不再只列「已同步的诗词源」：原来只判断 group === 'poetry'，
+   * 于是勾了《新华字典》也不出现 —— 用户会以为这个功能不支持字典。
+   * 现在按 NS.SOURCES 里声明的 charPool 字段来判，源之间是数据驱动的；
+   * 诗词源没有 charPool 字段，按 group 兜底。
+   *
+   * 未同步的仍然不可点（点了等于空集），但**列出来**并说明怎么让它可用 ——
+   * 不列出来的话，用户只能靠猜「为什么这里没有《孟子》」。
    */
   function initSourcePicker() {
     var box = $('srcSeg');
     if (!box) return;
     box.innerHTML = '';
 
-    var bySrc = NS.Poetry && NS.Poetry.charsBySource
-      ? NS.Poetry.charsBySource() : {};
-    var names = Object.keys(bySrc);
-    var items = [];
-    /* 源显示名 → 源 id。诗篇里存的是显示名（「诗经」），不是 id。 */
+    var byGroup = { poetry: [], dict: [], dialect: [], core: [] };
     (NS.SOURCES || []).forEach(function (s) {
-      if (s.group !== 'poetry') return;
-      if (!bySrc[s.name]) return;
-      items.push({ id: s.id, name: s.name, chars: Object.keys(bySrc[s.name]).length });
+      var isPool = !!s.charPool || s.group === 'poetry';
+      var set = isPool && NS.Generator && NS.Generator.poolOfSource
+        ? NS.Generator.poolOfSource(s) : null;
+      var n = set ? Object.keys(set).length : 0;
+      var item = {
+        id: s.id,
+        label: s.short || s.name,
+        full: s.name,
+        chars: n,
+        group: byGroup[s.group] ? s.group : 'core',
+        /* 能当用字来源吗 */
+        isPool: isPool,
+        why: s.noPool || '',
+        ready: n > 0
+      };
+      byGroup[item.group].push(item);
     });
-    items.sort(function (a, b) { return b.chars - a.chars; });
+    /* 字多的排前面 —— 用户第一眼想看到的是「哪些源能用」 */
+    Object.keys(byGroup).forEach(function (g) {
+      byGroup[g].sort(function (a, b) { return b.chars - a.chars; });
+    });
 
-    if (!items.length) {
+    var GROUP_ORDER = ['dict', 'poetry', 'dialect', 'core'];
+    var GROUP_TITLE = {
+      dict: '汉字字典', poetry: '诗词出处',
+      dialect: '方言（四川话）', core: '字的属性表'
+    };
+    var shown = 0, usable = 0;
+
+    GROUP_ORDER.forEach(function (g) {
+      var list = byGroup[g];
+      if (!list.length) return;
+      box.appendChild(el('div', 'src-group', GROUP_TITLE[g]));
+      list.forEach(function (it) {
+        var b = el('button', 'src-chip', it.label);
+        b.type = 'button';
+        b.dataset.v = it.id;
+        if (!it.isPool) {
+          /* 属性表：不是用字范围，只展示 */
+          b.classList.add('off');
+          b.disabled = true;
+          b.title = it.full + '　—　' + it.why;
+        } else if (!it.ready) {
+          b.classList.add('off');
+          b.disabled = true;
+          b.title = it.full + '　—　还没同步。去「词库管理」勾上它并联网更新后可用。';
+        } else {
+          b.title = it.full + '：' + it.chars + ' 个不同用字';
+          usable++;
+          b.setAttribute('aria-pressed',
+            state.charSources.indexOf(it.id) >= 0 ? 'true' : 'false');
+          b.addEventListener('click', function () {
+            var i = state.charSources.indexOf(it.id);
+            if (i >= 0) state.charSources.splice(i, 1);
+            else state.charSources.push(it.id);
+            b.setAttribute('aria-pressed', i >= 0 ? 'false' : 'true');
+            updateSourceHint();
+            NS.Prefs.saveSoon(collectPrefs);
+          });
+        }
+        shown++;
+        box.appendChild(b);
+      });
+    });
+
+    if (!usable) {
       var h0 = $('srcHint');
       if (h0) {
-        h0.innerHTML = '<span style="color:#a9782c">还没有可用的诗词源。'
-          + '去「词库管理」同步《诗经》等诗词后，就能按书筛选用字了。</span>';
+        h0.innerHTML = '<span style="color:#a9782c">还没有已同步的词库。' +
+          '去「词库管理」联网更新（诗词或《新华字典》都行）之后，' +
+          '这里就能按来源筛用字了。</span>';
       }
       return;
     }
-
-    items.forEach(function (it) {
-      var b = el('button', 'src-chip', it.name);
-      b.type = 'button';
-      b.dataset.v = it.id;
-      b.title = it.name + '：共 ' + it.chars + ' 个不同用字';
-      b.setAttribute('aria-pressed',
-        state.charSources.indexOf(it.id) >= 0 ? 'true' : 'false');
-      b.addEventListener('click', function () {
-        var i = state.charSources.indexOf(it.id);
-        if (i >= 0) state.charSources.splice(i, 1);
-        else state.charSources.push(it.id);
-        b.setAttribute('aria-pressed', i >= 0 ? 'false' : 'true');
-        updateSourceHint();
-        NS.Prefs.saveSoon(collectPrefs);
-      });
-      box.appendChild(b);
-    });
     updateSourceHint();
   }
 
@@ -182,8 +230,11 @@
     var pool = NS.Generator && NS.Generator.resolveCharPool
       ? NS.Generator.resolveCharPool(state.charSources) : null;
     var n = pool ? Object.keys(pool).length : 0;
+    var pulls = NS.Generator && NS.Generator.hasPullSource
+      ? NS.Generator.hasPullSource(state.charSources) : false;
     h.innerHTML = '已选 <b>' + state.charSources.length + '</b> 个来源，'
       + '共有 <b>' + n + '</b> 个不同用字可用。'
+      + (pulls ? '　选了字典类来源，系统会从里面挑字组合。' : '')
       + (n < 80 ? '　<span style="color:#a9782c">可用字偏少，'
         + '可能凑不出好名字，建议多选几本。</span>' : '');
   }
@@ -2455,6 +2506,11 @@
       NS.SyncUI.init($('viewLexicon'));
       NS.Lexicon.restore().then(function (st) {
         refreshLexDot(st);
+        /* 恢复完再重建一次「用字来源」选择器。
+         * boot 里那次是**同步**跑的，那时 IndexedDB 还没读出来，
+         * 字典与诗篇都不在内存里 —— 于是已同步的《新华字典》
+         * 在芯片上会一直显示成「还没同步」（除非手动刷新页面）。 */
+        initSourcePicker();
       }).catch(function () { /* 忽略：无持久化环境 */ });
     }
 
@@ -2601,6 +2657,12 @@
         });
     } catch (e2) { /* 忽略 */ }
   }
+
+  /* 给别的界面模块用的钩子。
+   * 词库管理同步完成后要重建「用字来源」选择器 —— 刚同步的字典
+   * 应该立刻变成可点，而不是要用户刷新页面（见 sync-ui.js 的同步完成分支）。 */
+  NS.App = NS.App || {};
+  NS.App.refreshSourcePicker = initSourcePicker;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

@@ -153,18 +153,61 @@
   /* ---------------- 候选池 ---------------- */
 
   /**
-   * 用字来源里有没有勾《新华字典》。
+   * 一个源作为「用字来源」时提供的字集；返回 null 表示它不构成用字范围。
    *
-   * 勾了才走「只在新华字典里取名」那条路 —— 那是从两万字的字典里挑字，
-   * 跟「按部首补几个字」不是一回事：前者是**整本字典当候选池**，
-   * 后者只是给一个部首多凑几个候选。必须分清，否则用户勾了字典
-   * 却只多出 120 个艹部字，跟他要的「简单在新华字典里面组合」不符。
+   * 为什么不能只认诗词源：诗词源的字集是从**已同步的诗篇正文**里反推的，
+   * 天然就是「这本书用过哪些字」。而《新华字典》这类字典源本身就是
+   * 一张汉字表 —— 它更该能当用字来源（「只要字典里有这个字就能用」）。
+   * 原来只判断 group === 'poetry'，勾了新华字典也不出现在选择器里。
+   *
+   * 各源的字集来源不一样，所以按 id 分派，而不是硬编码一个「取 key」的假设：
+   *   poetry       诗篇正文 → Poetry.charsBySource()[显示名]
+   *   xhbase       整本字典 → Lexicon.dict
+   *   xhcommon     一级常用字 → Lexicon.commonSet
+   *   shupin       四川话能读的字 → Dialect.shupinMap
+   *   sichuanWords 方言词用到的字 → Dialect.dialectWords
+   *
+   * @param {Object} src NS.SOURCE_BY_ID[id]
+   * @returns {Object|null} { 字: 1 }；null = 不可作用字来源（或还没同步）
    */
-  function dictSourceSelected(sourceIds) {
+  function poolOfSource(src) {
+    if (!src) return null;
+    var lex = NS.Lexicon;
+    if (src.group === 'poetry') {
+      var bySrc = (NS.Poetry && NS.Poetry.charsBySource)
+        ? NS.Poetry.charsBySource() : null;
+      return bySrc ? (bySrc[src.name] || null) : null;
+    }
+    if (!src.charPool) return null;
+    if (src.charPool === 'dict') return (lex && lex.dict) || null;
+    if (src.charPool === 'common') return (lex && lex.commonSet) || null;
+    if (src.charPool === 'shupin') {
+      return (NS.Dialect && NS.Dialect.shupinMap) || null;
+    }
+    if (src.charPool === 'words') {
+      var m = Object.create(null);
+      ((NS.Dialect && NS.Dialect.dialectWords) || []).forEach(function (w) {
+        String((w && w.word) || '').split('').forEach(function (c) {
+          m[c] = 1;
+        });
+      });
+      return Object.keys(m).length ? m : null;
+    }
+    return null;
+  }
+
+  /**
+   * 用字来源里有没有**需要从外部补字**的字集。
+   *
+   * 诗词源不需要：它的字只在内置 490 字里筛（字集本身就是从诗篇反推的）。
+   * 字典/常用字/蜀拼/方言源需要 —— 它们的字集远大于内置字库，
+   * 不补的话「只用新华字典取名」实际还是在内置 490 字里转。
+   */
+  function hasPullSource(sourceIds) {
     if (!sourceIds || !sourceIds.length) return false;
     for (var i = 0; i < sourceIds.length; i++) {
       var s = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[sourceIds[i]] : null;
-      if (s && (s.dictPool || s.format === 'xhbase')) return true;
+      if (s && s.charPool) return true;
     }
     return false;
   }
@@ -173,42 +216,26 @@
    * 把「按词库筛选用字」的源 id 列表解析成一个字集。
    *
    * 语义：**用字必须出现在所选源里**（用户选的是这个）。
-   * 多个源之间是「并集」—— 勾《诗经》和《三字经》就是两本书的字都能用；
+   * 多个源之间是「并集」—— 勾《诗经》和新华字典就是两边都行；
    * 与「偏好部首」之间才是交集（两个约束都要满足）。
    *
-   * 《新华字典》这一源特殊：它不是一个「出处」，而是整个汉字表。
-   * 勾上它等于说「用字不必出自诗文，字典里有就行」——
-   * 这时字集就是字典的全部两万字，真正的裁剪交给下游的
-   * 热/常用字/诗词依据三重排序（见 expandByDict）。
+   * 一个字集远大于内置字库的源（当前是 charPool 标记的那几个）
+   * 会让 `hasPullSource` 返回 true，下游 expandByPool 会从里面补字进候选池。
    *
    * @param {string[]} sourceIds
    * @returns {Object|null} { 字: 1 }；null 表示不筛
    */
   function resolveCharPool(sourceIds) {
     if (!sourceIds || !sourceIds.length) return null;
-    var bySrc = (NS.Poetry && NS.Poetry.charsBySource)
-      ? NS.Poetry.charsBySource() : null;
     var pool = Object.create(null);
     var hitAny = false;
     sourceIds.forEach(function (id) {
       var src = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[id] : null;
-      /* 新华字典：整本字典都是它的「用字」 */
-      if (src && (src.dictPool || src.format === 'xhbase')) {
-        var lex = NS.Lexicon;
-        if (lex && lex.dict) {
-          var n = 0;
-          Object.keys(lex.dict).forEach(function (ch) { pool[ch] = 1; n++; });
-          if (n) hitAny = true;
-        }
-        return;
-      }
-      if (!bySrc) return;
-      /* 诗篇里存的是**显示名**（「诗经」），不是 id */
-      var name = src ? src.name : id;
-      var set = bySrc[name];
+      var set = poolOfSource(src);
       if (!set) return;
-      hitAny = true;
-      Object.keys(set).forEach(function (ch) { pool[ch] = 1; });
+      var n = 0;
+      Object.keys(set).forEach(function (ch) { pool[ch] = 1; n++; });
+      if (n) hitAny = true;
     });
     /* 一个源都没同步过时不能返回空集 —— 那会让结果为空，
      * 而用户看到的是「没有符合条件的名」，会以为是名字太少。 */
@@ -257,10 +284,11 @@
    * 从《新华字典》补字进候选池。两种触发方式，共用一套挑选逻辑
    * （Radical.dictCandidates）：
    *
-   *   1. **来源模式**：用户把「新华字典」勾成了用字来源（ctx.dictPool）
-   *      → 从整本字典里挑，这才是真正的「只在新华字典里取名」。
-   *      没有别的来源约束，按热度排（按笔画排会挑出一堆「一丁七丈上不」）。
-   *   2. **部首模式**：用户只选了偏好部首 → 按部首挑，按笔画排。
+   *   1. **来源模式**：用字来源里勾了带 charPool 的源（新华字典·字表 /
+   *      常用字表 / 蜀拼字表 / 方言词）→ 从字典里拉字，再用
+   *      ctx.charPool 限定到这些源的字集。这才是真正的「只在新华字典里取名」
+   *      ／「只用 3500 常用字取名」。
+   *   2. **部首模式**：用户只选了偏好部首 → 按部首拉，按笔画排。
    *      为什么必须补：radicals.js 的 RADICAL_GROUPS 是**手写表，只覆盖
    *      内置 278 字**，于是「草字头」只有 48 个可选字 ——
    *      全是 芊芷菡茉茵菁萱蕙蕴薇蕾 这类古风字。用户的需求是
@@ -298,7 +326,7 @@
     if (!R || !R.dictCandidates || !lex || !lex.dict) return 0;
 
     var rads = ctx.preferRadicals || [];
-    var asPool = !!ctx.dictPool;
+    var asPool = !!ctx.sourcePull;
     if (!asPool && !rads.length) return 0;   /* 没触发条件：保持内置字库 */
 
     var key = (asPool ? 'P' : '') + '|' + rads.slice().sort().join(',');
@@ -321,6 +349,9 @@
         available = true;
         (res.items || []).forEach(function (it) {
           if (seen[it.char]) return;
+          /* 与「用字来源」求交集：勾了《诗经》又要草字头，
+           * 那就只能从两个条件都满足的字里选 */
+          if (ctx.charPool && !ctx.charPool[it.char]) return;
           seen[it.char] = 1;
           items.push(it);
         });
@@ -328,7 +359,12 @@
     } else {
       var c = R.dictCandidates({ order: 'heat' });
       available = c.available;
-      items = c.items || [];
+      /* 字典自身的字集是全量汉字表 —— 真正“限定用字”的是
+       * ctx.charPool（新华字典/常用字/蜀拼/方言几个源的并集）。
+       * 不乘这一道的话，勾了「常用字表」也会把两万字的字典当成池子。 */
+      items = (c.items || []).filter(function (it) {
+        return !ctx.charPool || ctx.charPool[it.char];
+      });
     }
     if (!available) return 0;
 
@@ -456,8 +492,9 @@
     /* 用字来源筛选在这里解析，不在 buildContext 里 ——
      * 要扫全部诗篇，而 buildContext 每次评分都会被叫到。 */
     ctx.charPool = resolveCharPool(ctx.charSources);
-    /* 「只在新华字典里取名」：整本字典当候选池，见 expandByDict */
-    ctx.dictPool = dictSourceSelected(ctx.charSources);
+    /* 「只在新华字典/只用常用字取名」这类需要从外部补字的来源，
+     * 见 expandByDict */
+    ctx.sourcePull = hasPullSource(ctx.charSources);
     var length = Math.max(1, Math.min(opts.length || 2, 4));
     var built = buildPool(ctx, length);
 
@@ -637,7 +674,8 @@
     /* 导出给界面用：显示「按当前词库筛选，可用 X 字」，
      * 以及给测试直接验证筛选语义。 */
     resolveCharPool: resolveCharPool,
-    dictSourceSelected: dictSourceSelected,
+    poolOfSource: poolOfSource,
+    hasPullSource: hasPullSource,
     expandByDict: expandByDict,
     hasLiteraryUse: hasLiteraryUse,
     /** 清掉「已扩过的部首」记录 —— 测试与「重新同步字典后想再扩」时需要 */
