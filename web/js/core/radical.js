@@ -123,14 +123,33 @@
     return !!nameIndex()[name];
   }
 
-  /** 某字是否属于给定的任一分组名 */
+  /**
+   * 某字是否属于给定的任一分组名。
+   *
+   * **两个来源都要查**：
+   *   1. RADICAL_GROUPS 手写表 —— 只覆盖内置 278 字，但精确
+   *   2. Lexicon.dict 新华字典的「部首」字段 —— 覆盖约 1.6 万字
+   *
+   * 只查前者的话，从字典补进来的字（见 generator.expandByDictRadicals）
+   * 一个都匹配不上，后续的 forceIn 会把它们全剪掉，等于白补。
+   * 实测字典的部首字段用的就是简体形式（艹 / 氵 / 钅），
+   * 与分组名直接相等，所以 aliasOf 同时兼顾了繁体变体。
+   */
   function matchAny(ch, names) {
     if (!names || !names.length) return false;
     var idx = buildIndex();
     var hit = idx[ch];
-    if (!hit) return false;
-    for (var i = 0; i < hit.length; i++) {
-      if (names.indexOf(NS.RADICAL_GROUPS[hit[i]].name) >= 0) return true;
+    if (hit) {
+      for (var i = 0; i < hit.length; i++) {
+        if (names.indexOf(NS.RADICAL_GROUPS[hit[i]].name) >= 0) return true;
+      }
+    }
+    var lex = NS.Lexicon;
+    var d = lex && lex.dict ? lex.dict[ch] : null;
+    if (d && d[1]) {
+      for (var j = 0; j < names.length; j++) {
+        if (aliasOf(names[j]).indexOf(d[1]) >= 0) return true;
+      }
     }
     return false;
   }

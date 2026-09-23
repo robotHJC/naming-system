@@ -79,6 +79,9 @@
     _cacheSize: 0,
     _lineCache: Object.create(null),
     _lineCacheSize: 0,
+    /* 「按来源聚字」的缓存。诗篇数量一变就失效（联网同步会改变它）。 */
+    _charsBySrc: null,
+    _charsBySrcN: -1,
 
     rebuild: function () {
       this.poems = (NS.RAW_POEMS || []).map(function (p) {
@@ -178,6 +181,46 @@
       }
       if (added) this.rebuild();
       return added;
+    },
+
+    /**
+     * 按来源聚出「这个源里出现过哪些字」。
+     *
+     * 用途：「按词库筛选名字」—— 勾了《诗经》就只从《诗经》出现过的
+     * 字里选字。用户需求原文：「允许用户可以指定在某一个或者某几个
+     * 词库里面筛选名字」。
+     *
+     * 为什么要缓存在这里：要扫完全部诗篇（几千首 × 每首几十字）。
+     * 放在评分里算会被每个候选组合重算一遍；缓存后只在诗篇数量
+     * 变化时重算。
+     *
+     * 注意 poems 里存的 source 是**显示名**（「诗经」），不是源 id ——
+     * 调用方自己做 id → 显示名 的映射（见 generator 的 resolveCharPool）。
+     *
+     * @returns {Object} { 源名: { 字: 1 } }
+     */
+    charsBySource: function () {
+      if (this._charsBySrc && this._charsBySrcN === this.poems.length) {
+        return this._charsBySrc;
+      }
+      var map = Object.create(null);
+      this.poems.forEach(function (p) {
+        var s = p.source || '(未标注出处)';
+        var set = map[s] || (map[s] = Object.create(null));
+        var t = p.content || '';
+        for (var i = 0; i < t.length; i++) {
+          var ch = t.charAt(i);
+          if (isCJK(ch)) set[ch] = 1;
+        }
+      });
+      this._charsBySrc = map;
+      this._charsBySrcN = this.poems.length;
+      return map;
+    },
+
+    /** 列出实际含诗篇的来源名（供界面只显示「已同步、可用」的源） */
+    availableSourceNames: function () {
+      return Object.keys(this.charsBySource());
     },
 
     /** 找出同时包含 chars 全部字的诗 → {source,title,line} | null */

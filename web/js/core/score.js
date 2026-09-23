@@ -1,9 +1,19 @@
 /* =========================================================================
  * score.js —— 名字评分
  *
- * 总分 100，维度与权重：
- *   五行 28 · 音韵 15 · 寓意 14 · 性别 4 · 风格 4
- *   三才五格 6 · 出处与搭配 6 · 现代感 18 · 谐音 5
+ * 两种模式，总分都是 100（权重表见下面的 WEIGHTS）：
+ *
+ *   八字模式（bazi）
+ *     五行 28 · 音韵 19 · 寓意 14 · 现代感 11 · 三才五格 6
+ *     出处 6 · 谐音 5 · 性别 4 · 风格 4 · 字形 3
+ *
+ *   简单模式（simple）—— 关掉全部命理项（五行、三才五格）
+ *     音韵 22 · 寓意 22 · 现代感 18 · 谐音 10 · 字形 8 · 出处 6
+ *     性别 5 · 风格 5 · 偏旁 4
+ *
+ * 字形均衡用**简体笔画**而不是康熙笔画 —— 它判断的是「写起来累不累」，
+ * 而人写的是简体（「听」7 画，不是「聽」22 画）。两种笔画分开存，
+ * 见 data/chars.js 的 NS.strokesSC。
  *
  * 本轮改动的动机：用户反馈「名字不顺口、太文绉绉」。
  * 两件事分开看，权重也分开调：
@@ -51,12 +61,61 @@
   'use strict';
   var NS = (global.NS = global.NS || {});
 
+  /* ---------------- 取名模式与权重 ----------------
+   *
+   * 两种模式，总分都是 100，但维度不同。
+   *
+   * bazi（默认）—— 八字模式：五行 28 分是最大项，三才五格也参与。
+   *   需要生辰或手动指定的喜用神；**只有这一模式用得到康熙笔画**。
+   *
+   * simple —— 简单模式：**关掉全部命理项**（五行、三才五格）。
+   *   用户需求原文：「我想暂时不考虑五行八字，只想简单取一个寓意比较好、
+   *   读起来朗朗上口、比较简单好听而且带某些偏旁部首的名字」，
+   *   并明确「考虑五行八字之后名字变得太过于古文了」。
+   *
+   *   腾出来的 34 分（五行 28 + 三才五格 6）重新分配：
+   *     音韵 19→22 · 寓意 14→22 · 现代感 11→18 · 谐音 5→10
+   *     字形 3→8 · 性别 4→5 · 风格 4→5 · 偏旁 0→4
+   *   音韵与寓意各拿 22，正对着用户说的「寓意好 + 朗朗上口」。
+   *
+   *   偏旁单独占 4 分是因为在这一模式下部首是**主要筛选手段**
+   *   （「我要草字头」）。没指定偏旁时给满分 —— 约束不存在就不该罚，
+   *   否则不填偏旁的人最高只能得 96 分，又回到「刻度被压扁」的老问题。
+   */
+  var WEIGHTS = {
+    bazi: {
+      wuxing: 28, phonetic: 19, strokes: 3, meaning: 14, gender: 4,
+      style: 4, wuge: 6, poetry: 6, modern: 11, homophone: 5, radical: 0
+    },
+    simple: {
+      wuxing: 0, phonetic: 22, strokes: 8, meaning: 22, gender: 5,
+      style: 5, wuge: 0, poetry: 6, modern: 18, homophone: 10, radical: 4
+    }
+  };
+
+  /* 各维度的「内部满值」。
+   * 子项的加分写法保持原样，最后按「目标权重 / 内部满值」缩放 ——
+   * 这样调权重不必重写子项逻辑，也不会出现「改了权重忘了改子项」
+   * 导致总分不再是 100。 */
+  var MAX = {
+    phonetic: 19, strokes: 3, meaning: 14, gender: 4,
+    style: 4, wuge: 6, poetry: 6, modern: 11
+  };
+
+  /** 模式的展示名，供界面与报告用 */
+  NS.MODE_NAMES = { bazi: '八字模式', simple: '简单模式' };
+
+  NS.WEIGHTS = WEIGHTS;
+
   /* ---------------- 上下文 ---------------- */
 
   function buildContext(opts) {
     opts = opts || {};
     var surname = opts.surname || '';
     var surnameInfo = NS.SURNAME_DB[surname] || null;
+
+    /* 模式。不认识的値一律回到八字模式 —— 它是兼容旧行为的那个。 */
+    var mode = (opts.mode === 'simple') ? 'simple' : 'bazi';
 
     var surnameStrokes = (opts.surnameStrokes && opts.surnameStrokes.length)
       ? opts.surnameStrokes.slice()
@@ -74,6 +133,14 @@
 
     var ctx = {
       surname: surname,
+      /* 'bazi' | 'simple'，见上面的 WEIGHTS */
+      mode: mode,
+      W: WEIGHTS[mode],
+      /* 用字来源筛选：选中的诗词源 id 列表（空 = 不筛）。
+       * 实际的字集由 generator 算好通过 opts.charPool 传进来 ——
+       * 它要扫全部诗篇，放在评分里算会被每个组合重算一遍。 */
+      charSources: (opts.charSources || []).slice(),
+      charPool: opts.charPool || null,
       /* 调用方给的**原始整名**（不含姓）。
        * 取名流程里它就是候选名，评估流程里是用户输入的任意名字 ——
        * 后者可能含字库外的字，这时靠 rows 拼是拼不出原名的
@@ -85,7 +152,14 @@
       gender: opts.gender || '中性',
       style: opts.style || '',
       keywords: (opts.keywords || []).filter(Boolean),
-      xiyongshen: opts.xiyongshen || [],
+      /* 简单模式**强制清空喜用神** —— 不只是「权重置 0」。
+       *
+       * 如果只把权重置 0 而把喜用神留着，字库剪枝（charRow 的 wx）
+       * 依旧会按喜用神挑字，用户仍然在用八字选字，只是分数上看不出来。
+       * 那正是用户抱怨的「考虑五行八字之后名字太过于古文」的根源 ——
+       * 五行分 28，是单项最大项，它选出来的水木字本身偏古风。
+       * 关就要关干净。 */
+      xiyongshen: (mode === 'simple') ? [] : (opts.xiyongshen || []),
       /* 部首偏好：至少一个字带所选部首（默认 any），或每个字都要（all） */
       preferRadicals: (opts.preferRadicals || []).filter(Boolean),
       avoidRadicals: (opts.avoidRadicals || []).filter(Boolean),
@@ -198,33 +272,42 @@
     var detail = {};
     var i, j;
 
-    /* ---- 1. 五行（28）---- */
+    /* ---- 1. 五行（八字模式 28；简单模式跳过）----
+     *
+     * 简单模式不进入这里，也**不调用**下面的「名字内部五行搭配」分支 ——
+     * 用户说的是「不考虑五行八字」，那就一个五行分都不给，
+     * 而不是换一套五行规则接着算。
+     */
     var wxScore = 0;
-    if (ctx.xiyongshen.length) {
-      rows.forEach(function (r) {
-        if (r.obj.wuxing === ctx.xiyongshen[0]) wxScore += 18;
-        else if (cx2(ctx, r.obj.wuxing)) wxScore += 9;
-      });
-      wxScore = Math.min(wxScore, 28);
-      if (wxScore >= 18) {
-        reasons.push('五行补' + ctx.xiyongshen[0]);
-      } else if (wxScore > 0) {
-        reasons.push('五行得助');
+    if (ctx.W.wuxing > 0) {
+      if (ctx.xiyongshen.length) {
+        rows.forEach(function (r) {
+          if (r.obj.wuxing === ctx.xiyongshen[0]) wxScore += 18;
+          else if (cx2(ctx, r.obj.wuxing)) wxScore += 9;
+        });
+        wxScore = Math.min(wxScore, 28);
+        if (wxScore >= 18) {
+          reasons.push('五行补' + ctx.xiyongshen[0]);
+        } else if (wxScore > 0) {
+          reasons.push('五行得助');
+        }
+      } else {
+        /* 无生辰：按名字内部五行搭配评价 */
+        var wxs = rows.map(function (r) { return r.obj.wuxing; });
+        var distinct = wxs.filter(function (w, k) { return wxs.indexOf(w) === k; });
+        wxScore += Math.min(distinct.length * 9, 18);
+        for (i = 1; i < wxs.length; i++) {
+          var a = wxs[i - 1], b = wxs[i];
+          if (NS.SHENG[a] === b || NS.SHENG[b] === a) wxScore += 9;
+          else if (a === b) wxScore += 4;
+        }
+        wxScore = Math.min(wxScore, 28);
+        if (distinct.length === wxs.length) reasons.push('五行搭配不重复');
       }
-    } else {
-      /* 无生辰：按名字内部五行搭配评价 */
-      var wxs = rows.map(function (r) { return r.obj.wuxing; });
-      var distinct = wxs.filter(function (w, k) { return wxs.indexOf(w) === k; });
-      wxScore += Math.min(distinct.length * 9, 18);
-      for (i = 1; i < wxs.length; i++) {
-        var a = wxs[i - 1], b = wxs[i];
-        if (NS.SHENG[a] === b || NS.SHENG[b] === a) wxScore += 9;
-        else if (a === b) wxScore += 4;
-      }
-      wxScore = Math.min(wxScore, 28);
-      if (distinct.length === wxs.length) reasons.push('五行搭配不重复');
+      /* 内部满值就是 28，与八字模式权重相等，所以此处不缩放；
+       * 写成乘式是为了将来调权重时不会漏。 */
+      score += wxScore * (ctx.W.wuxing / 28);
     }
-    score += wxScore;
 
     /* ---- 2. 音韵（19）—— 音韵评分 v2 ----
      *
@@ -269,21 +352,25 @@
     var sms = ph.map(function (p) { return p.initial; });
     var yms = ph.map(function (p) { return p.final; });
 
+    /* 音韵累加到 phRaw（内部满值 19），最后统一按模式权重缩放。
+     * 不直接写 score +=，否则改权重就得逐个改子项。 */
+    var phRaw = 0;
+
     /* 2a. 相邻声母相同 → 连读发懒音（李澜→李兰、郝涵→郝安），最难听 */
     var sameInitial = [];
     for (i = 1; i < sms.length; i++) {
       if (sms[i] && sms[i] === sms[i - 1]) sameInitial.push(full[i - 1].char + full[i].char);
     }
-    if (!sameInitial.length) score += 2;
-    else if (sameInitial.length === 1 && sms.length > 2) score += 1;
+    if (!sameInitial.length) phRaw += 2;
+    else if (sameInitial.length === 1 && sms.length > 2) phRaw += 1;
 
     /* 2b. 相邻韵母相同 → 叠韵，两个字的音糊在一起 */
     var sameFinal = [];
     for (i = 1; i < yms.length; i++) {
       if (yms[i] && yms[i] === yms[i - 1]) sameFinal.push(full[i - 1].char + full[i].char);
     }
-    if (!sameFinal.length) score += 2;
-    else if (sameFinal.length === 1 && yms.length > 2) score += 1;
+    if (!sameFinal.length) phRaw += 2;
+    else if (sameFinal.length === 1 && yms.length > 2) phRaw += 1;
 
     /* 2c. 四呼开口度 —— v2 新增，音韵里**最能区分「闷」与「亮」**的一项
      *
@@ -305,12 +392,12 @@
     if (dullRatio >= 1) {
       reasons.push('全名没有一个开口音，口型始终没打开，读起来发闷');
     } else if (dullRatio >= 0.67) {
-      score += 1.5;
+      phRaw += 1.5;
       reasons.push('开口音偏少，读起来略闷');
     } else if (dullRatio >= 0.34) {
-      score += 4;
+      phRaw += 4;
     } else {
-      score += 6;
+      phRaw += 6;
       reasons.push('开口音为主，读起来明亮');
     }
 
@@ -320,9 +407,9 @@
       if (tones[i] === tones[i - 1]) sameTone++;
     }
     if (sameTone === 0) {
-      score += 3; reasons.push('声调错落');
+      phRaw += 3; reasons.push('声调错落');
     } else if (sameTone < tones.length - 1) {
-      score += 1.5;
+      phRaw += 1.5;
     }
 
     /* 2e. 平仄相间：汉语读起来顺口的根本。
@@ -335,10 +422,10 @@
       if (pingze[i] !== pingze[i - 1]) alternated++;
     }
     if (alternated === pingze.length - 1) {
-      score += 2;
+      phRaw += 2;
       reasons.push('平仄相间');
     } else if (alternated > 0) {
-      score += 1;
+      phRaw += 1;
     }
 
     /* 2f. 上声（三声）连读要变调，是最费力的组合：「郝雨语」得上声→阳平→上声 */
@@ -346,7 +433,7 @@
     for (i = 1; i < tones.length; i++) {
       if (tones[i] === 3 && tones[i - 1] === 3) thirdRun = true;
     }
-    if (thirdRun) score -= 2;
+    if (thirdRun) phRaw -= 2;
 
     /* 2g. 送气声母连用。
      *
@@ -358,7 +445,7 @@
     for (i = 1; i < sms.length; i++) {
       if (ASPIRATED[sms[i]] && ASPIRATED[sms[i - 1]]) aspRun = true;
     }
-    if (!aspRun) score += 1;
+    if (!aspRun) phRaw += 1;
     else reasons.push('送气音连读偏冲');
 
     /* 2h. 鼻音韵尾连用 —— v2 改为**只罚同型**
@@ -377,7 +464,7 @@
         else nasalMix = true;
       }
     }
-    if (!nasalSameType) score += 2;
+    if (!nasalSameType) phRaw += 2;
     else {
       reasons.push('鼻音韵尾同型连用（都是' +
         (nasalSameType === 'ng' ? '后鼻音' : '前鼻音') + '），读起来含糊');
@@ -390,7 +477,7 @@
     for (i = 1; i < sms.length; i++) {
       if (ph[i].pos === '零声母' && ph[i - 1].pos === '零声母') zeroRun = true;
     }
-    if (!zeroRun) score += 1;
+    if (!zeroRun) phRaw += 1;
     else reasons.push('相邻两字都是零声母（y/w 起头），连读容易粘连');
 
     detail.phonetic = {
@@ -399,10 +486,15 @@
       nasalSame: !!nasalSameType, nasalMix: nasalMix, nasalType: nasalSameType,
       zeroRun: zeroRun, dullRatio: dullRatio,
       kaidu: ph.map(function (p) { return p.kd; }),
-      pos: ph.map(function (p) { return p.pos; })
+      pos: ph.map(function (p) { return p.pos; }),
+      /* 内部原分与缩放后的分都留下，便于排查「分数为什么变了」 */
+      raw: phRaw
     };
 
-    /* ---- 2b. 字形均衡（3）——「可读性」的直接指标 ----
+    /* 音韵按模式权重缩放：内部满值 19，八字模式 19（不缩放），简单模式 22。 */
+    score += phRaw * (ctx.W.phonetic / MAX.phonetic);
+
+    /* ---- 2b. 字形均衡（可读性）----
      *
      * 名字是要写一辈子的。这一项不看意思、也不看读音，只看字形：
      *   · 两字笔画相差太大（一个字 4 画一个字 22 画）视觉轻重失衡
@@ -410,64 +502,109 @@
      *   · 都很多则难写难认，低龄儿童尤其吃力
      * 阈值取的是一般书法课上「疏密均匀」的经验区间，不是精确美学度量。
      *
-     * 只给 3 分：它是次要信号，主要权重还是给了直接决定听感的音韵。
-     * （这几项的权重是配平过的：音韵 +4、字形 +3、现代感 −7，总分仍是 100。） */
-    var st = rows.map(function (r) { return r.obj.strokes || 0; });
+     * **用简体笔画，不是康熙笔画**（这一段早期写错过）。
+     * 要判断的是「写起来累不累、视觉轻不轻」，而人写的是简体：
+     * 「听」是 7 画，不是康熙「聽」的 22 画。内置 490 字简繁多数字形
+     * 一致所以看不出问题，一旦从新华字典导入「听/时/见」这类字就会算错 ——
+     * 会把「听」当成 22 画去判「笔画相差悬殊」。
+     * 简体值来自新华字典（strokesSC），没同步时退回康熙笔画。
+     */
+    var st = rows.map(function (r) { return NS.strokesSC(r.obj); });
+    var stRaw = 0;
     if (st.length >= 2) {
       var sdiff = Math.abs(st[0] - st[1]);
-      if (sdiff <= 6) score += 2;
-      else if (sdiff <= 12) score += 1;
+      if (sdiff <= 6) stRaw += 2;
+      else if (sdiff <= 12) stRaw += 1;
       else reasons.push('笔画相差 ' + sdiff + ' 画，字形轻重悬殊');
 
       var ssum = st[0] + st[1];
-      if (ssum >= 14 && ssum <= 32) score += 1;
+      if (ssum >= 14 && ssum <= 32) stRaw += 1;
       else if (ssum < 10 || ssum > 40) {
         reasons.push('笔画' + (ssum < 10 ? '偏少、字形单薄' : '偏多、书写吃力'));
       }
     } else {
       /* 单名：没有「两字对比」可言，给中间值 */
-      score += 2;
+      stRaw += 2;
     }
     detail.strokes = st;
+    detail.strokesKJ = rows.map(function (r) { return r.obj.strokes || 0; });
+    /* 内部满值 3，按模式权重缩放：八字 3（不缩放）、简单 8（放大 2.67 倍）。
+     * 简单模式把「简单」写名字的诉求直接折算成分数。 */
+    score += stRaw * (ctx.W.strokes / MAX.strokes);
 
-    /* ---- 3. 寓意 / 关键词（14）---- */
+    /* ---- 3. 寓意 / 关键词（八字 14 · 简单 22）---- */
     var kwTotal = rows.reduce(function (a, r) { return a + r.kwScore; }, 0);
-    kwTotal = Math.min(kwTotal, 14);
-    score += kwTotal;
+    kwTotal = Math.min(kwTotal, MAX.meaning);
+    score += kwTotal * (ctx.W.meaning / MAX.meaning);
     var hitWords = [];
     rows.forEach(function (r) { hitWords = hitWords.concat(r.kwHits); });
     if (hitWords.length) reasons.push('含关键词「' + hitWords.join('、') + '」');
 
-    /* ---- 4. 性别（4）---- */
-    score += Math.min(rows.reduce(function (a, r) {
+    /* ---- 4. 性别（八字 4 · 简单 5）---- */
+    var genderRaw = Math.min(rows.reduce(function (a, r) {
       return a + r.genderScore;
-    }, 0), 4);
+    }, 0), MAX.gender);
+    score += genderRaw * (ctx.W.gender / MAX.gender);
 
-    /* ---- 5. 风格（4）---- */
+    /* ---- 5. 风格（八字 4 · 简单 5）---- */
     var styleTotal = Math.min(rows.reduce(function (a, r) {
       return a + r.styleScore;
-    }, 0), 4);
-    score += styleTotal;
+    }, 0), MAX.style);
+    score += styleTotal * (ctx.W.style / MAX.style);
     if (styleTotal >= 2 && ctx.style) reasons.push(ctx.style + '风格');
 
-    /* ---- 6. 三才五格（6）----
-     * 旧版给 15，上一版降到 8，这一版降到 6。
-     * 它属于「数理派」，与八字喜用神不同源，也不是「好不好听」的指标，
-     * 继续保留只是为了不让它干扰真正影响观感的维度。 */
-    var givenStrokes = rows.map(function (r) { return r.obj.strokes; });
-    var wk = ctx.surnameStrokes.join(',') + '|' + givenStrokes.join(',');
-    var wuge = ctx.wugeCache[wk];
-    if (!wuge) {
-      wuge = NS.Wuge.calcWuge(ctx.surnameStrokes, givenStrokes);
-      ctx.wugeCache[wk] = wuge;
+    /* ---- 5b. 偏旁契合度（仅简单模式，4 分）----
+     *
+     * 部首筛选本身是**硬约束**（见 generator 的 passRadical），
+     * 这里额外给分的意义是：在两字名里鼓励**两字都带**想要的偏旁，
+     * 而不是只凑合上一个。
+     *
+     * 没指定偏旁时给满分 —— 约束不存在就不该罚，否则不填偏旁的人
+     * 最高只能得 96 分，又回到「刻度被压扁」的老问题。
+     */
+    if (ctx.W.radical > 0) {
+      if (!ctx.preferRadicals.length || !NS.Radical) {
+        score += ctx.W.radical;
+      } else {
+        var radHit = 0;
+        rows.forEach(function (r) {
+          if (NS.Radical.matchAny(r.char, ctx.preferRadicals)) radHit++;
+        });
+        score += radHit / rows.length * ctx.W.radical;
+        if (radHit === rows.length) {
+          reasons.push('每字都带「' + ctx.preferRadicals.join('、') + '」');
+        } else if (radHit > 0) {
+          reasons.push('含「' + ctx.preferRadicals.join('、') + '」偏旁');
+        }
+      }
     }
-    detail.wuge = wuge;
-    if (wuge.三才吉凶 === '大吉') {
-      score += 6; reasons.push('三才' + wuge.三才 + '大吉');
-    } else if (wuge.三才吉凶 === '中吉') {
-      score += 4;
-    } else {
-      score += 2;
+
+    /* ---- 6. 三才五格（八字 6 · 简单模式跳过）----
+     * 旧版给 15，降到 8，再降到 6。
+     * 它属于「数理派」，与八字喜用神不同源，也不是「好不好听」的指标。
+     *
+     * **简单模式必须跳过**，不只是权重置 0：它要用康熙笔画，
+     * 而简单模式走的正是「只看新华字典简体笔画」那条路（用户明确要求）。
+     * 一边宣称不用康熙笔画、一边拿它算三才，是自相矛盾的。
+     */
+    if (ctx.W.wuge > 0) {
+      var givenStrokes = rows.map(function (r) { return r.obj.strokes; });
+      var wk = ctx.surnameStrokes.join(',') + '|' + givenStrokes.join(',');
+      var wuge = ctx.wugeCache[wk];
+      if (!wuge) {
+        wuge = NS.Wuge.calcWuge(ctx.surnameStrokes, givenStrokes);
+        ctx.wugeCache[wk] = wuge;
+      }
+      detail.wuge = wuge;
+      var wugeRaw;
+      if (wuge.三才吉凶 === '大吉') {
+        wugeRaw = 6; reasons.push('三才' + wuge.三才 + '大吉');
+      } else if (wuge.三才吉凶 === '中吉') {
+        wugeRaw = 4;
+      } else {
+        wugeRaw = 2;
+      }
+      score += wugeRaw * (ctx.W.wuge / MAX.wuge);
     }
 
     /* ---- 7. 出处与搭配（6）---- */
@@ -487,11 +624,12 @@
       ctx.poetryCache[charsKey] = cached;
     }
 
+    var poetryRaw = 0;
     if (adj) {
       /* 日常词语（风雨/明月）不算典故，只给很少的分。
        * 这个标记由 poetry-lib 按词频给，离线时基本不会触发（那里有说明）。 */
       if (adj.everyday) {
-        score += 2;
+        poetryRaw += 2;
         detail.poetry = adj;
         detail.pairKind = 'everyday';
         reasons.push('「' + adj.pair + '」是常见词语，不算典故');
@@ -500,7 +638,7 @@
          * 蒙书与散文里凑出来的词只给一半 —— 实测「亦书」来自古文观止、
          * 「念一」来自「每一念」，都不是词。见 NON_CLASSIC_SOURCES。 */
         var full = adj.classic !== false;
-        score += full ? 6 : 3;
+        poetryRaw += full ? 6 : 3;
         detail.poetry = adj;
         detail.pairKind = full ? 'classic' : 'weak';
         reasons.push(full
@@ -508,16 +646,19 @@
           : '疑似成词「' + adj.pair + '」（非诗词类出处）');
       }
     } else if (sameLine) {
-      score += 2;
+      poetryRaw += 2;
       detail.poetry = sameLine;
       detail.pairKind = 'line';
       reasons.push('出自《' + sameLine.source + '》同句');
     } else if (samePoem) {
-      score += 0.5;
+      poetryRaw += 0.5;
       detail.poetry = samePoem;
       detail.pairKind = 'poem';
       reasons.push('出自《' + samePoem.source + '》');
     }
+    /* 内部满值 6，两种模式权重都是 6，所以实际不缩放 ——
+     * 写成乘式是为了将来调权重不会漏。 */
+    score += poetryRaw * (ctx.W.poetry / MAX.poetry);
 
     /* ---- 8. 现代感（18）----
      * 这是整个评分里**唯一一个直接信号**（其余都是代理指标：
@@ -582,12 +723,24 @@
         reasons.push('现代常用搭配「' + hitWord + '」');
       }
     }
-    var comfortSum = 0;
+    /* 用字热度落在舒适区 → 最多 6 分（倒 U 型，见 comfort）。
+     *
+     * 热度**不再直接查 NS.HEAT**，而是走 NS.heatOf()：
+     * 表内的字用表里的数据；表外的字（联网从新华字典补进来的，
+     * 共 14809 字全都没有数据）用「有没有被历代诗文用过」估一个值。
+     *
+     * 这一步是必须的，两条捷径都试过而且都错：
+     *   一律按 DEFAULT_HEAT(35) 罚 → 字典字系统性垫底，
+     *     实测 120 个艹字一个都进不了前十，功能等于白做；
+     *   一律放行 → 立刻放出「李苛苯」（苯＝苯）、「李苞苊」这类
+     *     根本不是名字的技术字。
+     * 详见 data/popularity.js 的 estimateHeatOutside。 */
+    var comfortSum = 0, comfortN = 0;
     mnChars.forEach(function (c) {
-      var h = NS.HEAT[c] !== undefined ? NS.HEAT[c] : NS.DEFAULT_HEAT;
-      comfortSum += comfort(h);
+      comfortSum += comfort(NS.heatOf(c));
+      comfortN++;
     });
-    mnScore += comfortSum / mnChars.length * 6;
+    mnScore += (comfortN ? comfortSum / comfortN : 1) * 6;
 
     /* 时代感扣分（见 data/era-chars.js）。
      *
@@ -633,18 +786,26 @@
       word: hitWord,
       era: eraHits,
       block: blockWord,
-      heat: NS.HEAT[mnChars[0]] !== undefined ? NS.HEAT[mnChars[0]] : NS.DEFAULT_HEAT
+      heat: NS.HEAT[mnChars[0]] !== undefined ? NS.HEAT[mnChars[0]] : NS.DEFAULT_HEAT,
+      /* 内部原分（可能为负）与缩放后的分 */
+      raw: mnScore
     };
-    score += mnScore;
+    /* 内部满值 11（白名单 5 + 舒适区 6），按模式权重缩放：
+     * 八字 11（不缩放）、简单 18（放大 1.64 倍）。
+     * 简单模式把「简单好听」的诉求直接压在这一项上。 */
+    score += mnScore * (ctx.W.modern / MAX.modern);
 
-    /* ---- 9. 谐音（5）---- */
+    /* ---- 9. 谐音（八字 5 · 简单 10）----
+     * 不合格直接 -20：谐音难听是硬伤，多少别的分都补不回来。
+     * （generator 里还有一道硬门槛，不合格的组合根本不进结果，
+     *  这个扣分主要用于评估页与候选池的自定义名字。） */
     var syllables = ctx.surnameSyllables.concat(rows.map(function (r) {
       return { char: r.char, pinyin: r.obj.pinyin, tone: r.obj.tone };
     }));
     var homo = NS.Pinyin.checkHomophone(syllables);
     detail.homophone = homo;
     if (homo.pass) {
-      score += 5;
+      score += ctx.W.homophone;
     } else {
       score -= 20;
       reasons.push('谐音风险');

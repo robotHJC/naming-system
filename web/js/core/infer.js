@@ -179,7 +179,13 @@
       gender: '中性',
       styles: [],
       meaning: meaning || '（联网词库未提供释义）',
+      /* —— 两种笔画，用途完全不同，必须分开存 ——
+       *   strokes  康熙笔画 —— 三才五格、姓名卦用（本处是**推断值**）
+       *   strokesSC 简体笔画 —— 字形均衡/可读性、书写难度用（**可靠值**）
+       * 新华字典给的就是简体笔画，所以这里 strokesSC 是准的，
+       * 而康熙笔画是拿它推算出来的，带 __inferred.strokesConfidence。 */
       strokes: kj.strokes,
+      strokesSC: parseInt(dictEntry.strokes, 10) || 0,
       /* —— 以下是推断元信息，界面据此显示「推断」徽标 —— */
       __inferred: {
         source: 'net',

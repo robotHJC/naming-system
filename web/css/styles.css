@@ -852,6 +852,50 @@ input::placeholder { color: #b6b0a4; }
 
 .rad-chip.on i { background: rgba(255, 255, 255, .3); color: #fff; }
 
+/* =========================================================================
+ * 用字来源筛选（「只从《诗经》里取字」）
+ *
+ * 与 .rad-chip 的区别：部首 chip 是按钮组（可多选偏好部首），
+ * 来源 chip 是**硬筛**，选中就真的不用别的书的字，所以用 aria-pressed
+ * 表达开着/关着，与 .cal-switch 一致。
+ * ========================================================================= */
+
+.src-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.src-chip {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfaf6;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  user-select: none;
+  transition: all .12s;
+}
+
+.src-chip:hover { border-color: var(--jade-light); color: var(--jade); }
+
+.src-chip[aria-pressed="true"] {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #fff;
+}
+
+/* 字典补字的说明：接在结果工具条的 meta 之后，占满整行 */
+.dict-note {
+  flex-basis: 100%;
+  margin-top: 4px;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
 .rad-actions {
   display: flex;
   flex-wrap: wrap;

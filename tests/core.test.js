@@ -11,6 +11,8 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'data/nayin.js', 'data/shuli81.js', 'data/nameblock.js',
+  /* sources.js 提供 NS.SOURCE_BY_ID，用字来源筛选靠它把源 id 映射成显示名 */
+  'data/sources.js',
   'core/wuxing.js', 'core/calendar.js', 'core/lunar.js',
   'core/tiaohou.js', 'core/branches.js',
   'core/bazi.js',
@@ -1605,6 +1607,123 @@ section('23. 农历换算');
   })());
   console.log('  农历 2033 闰十一月初一 → ' +
     ds(L.toGregorian(2033, 11, 1, true)));
+}
+
+/* ---------------- 24. 取名模式与用字来源 ---------------- */
+section('24. 取名模式（八字 / 简单）与用字来源筛选');
+{
+  /* ---- 权重表：两种模式都必须合计 100 ---- */
+  ['bazi', 'simple'].forEach(m => {
+    const W = NS.WEIGHTS[m];
+    const sum = Object.keys(W).reduce((a, k) => a + W[k], 0);
+    eq(m + ' 模式权重合计 100', sum, 100);
+  });
+  eq('八字模式五行 28（单项最大）', NS.WEIGHTS.bazi.wuxing, 28);
+  eq('简单模式没有五行也没有三才五格',
+    NS.WEIGHTS.simple.wuxing + NS.WEIGHTS.simple.wuge, 0);
+  ok('简单模式把分让给了音韵与寓意',
+    NS.WEIGHTS.simple.phonetic > NS.WEIGHTS.bazi.phonetic &&
+    NS.WEIGHTS.simple.meaning > NS.WEIGHTS.bazi.meaning,
+    '音韵 ' + NS.WEIGHTS.bazi.phonetic + '→' + NS.WEIGHTS.simple.phonetic +
+    '，寓意 ' + NS.WEIGHTS.bazi.meaning + '→' + NS.WEIGHTS.simple.meaning);
+  /* 偏旁契合度只能在简单模式给分，否则八字模式的老行为就变了 */
+  eq('八字模式偏旁权重为 0', NS.WEIGHTS.bazi.radical, 0);
+  ok('简单模式偏旁有权重', NS.WEIGHTS.simple.radical > 0);
+
+  const mkEval = (given, mode, extra) => {
+    const objs = given.split('').map(c => NS.CHAR_DB[c]);
+    const o = Object.assign(
+      { surname: '李', given: given, xiyongshen: [], taboo: [] }, extra || {});
+    if (mode) o.mode = mode;
+    return NS.Score.evaluate(objs, NS.Score.buildContext(o));
+  };
+  const XIPEI = NS.Bazi.analyzeBazi(2026, 5, 20, 10, 0).xiyongshen;
+
+  /* ---- 简单模式：命理项必须彻底消失 ---- */
+  const s1 = mkEval('蔚蓝', 'simple');
+  const b1 = mkEval('蔚蓝', null, { xiyongshen: XIPEI });
+  ok('简单模式没有五行类理由',
+    !s1.reasons.some(x => x.indexOf('五行') === 0), s1.reasons.join(' / '));
+  ok('简单模式没有三才类理由',
+    !s1.reasons.some(x => x.indexOf('三才') === 0), s1.reasons.join(' / '));
+  ok('八字模式确实有五行类理由',
+    b1.reasons.some(x => x.indexOf('五行') === 0), b1.reasons.join(' / '));
+  ok('简单模式不产出三才五格明细', !s1.detail.wuge);
+  ok('八字模式产出三才五格明细', !!b1.detail.wuge);
+
+  /* 简单模式必须**强制清空**喜用神 —— 只把权重置 0 是不够的：
+   * 字库剪枝（charRow 的 wx）依旧会按喜用神挑字，
+   * 用户仍在用八字选字，只是分数上看不出来。 */
+  eq('简单模式强制清空喜用神',
+    NS.Score.buildContext(
+      { surname: '李', xiyongshen: XIPEI, mode: 'simple' }).xiyongshen.length, 0);
+  eq('八字模式保留喜用神',
+    NS.Score.buildContext(
+      { surname: '李', xiyongshen: XIPEI }).xiyongshen.length, XIPEI.length);
+
+  /* ---- 两种笔画各司其职 ---- */
+  const mu = NS.CHAR_DB['沐'];
+  const origSC = mu.strokesSC;
+  mu.strokesSC = 7;
+  eq('strokesSC 优先返回简体笔画', NS.strokesSC(mu), 7);
+  ok('康熙笔画同时保留着', mu.strokes > 0 && mu.strokes !== 7,
+    '康熙=' + mu.strokes + ' 简体=7');
+  const gz = NS.Score.evaluate(
+    [mu, NS.CHAR_DB['菡']], NS.Score.buildContext({ surname: '李' }));
+  /* 字形均衡判断的是「写起来累不累」，必须用简体 ——
+   * 「听」是 7 画，不是康熙「聽」的 22 画。 */
+  eq('字形均衡用简体笔画', gz.detail.strokes[0], 7);
+  eq('同时给出康熙笔画备查', gz.detail.strokesKJ[0], mu.strokes);
+  mu.strokesSC = origSC;
+  eq('缺简体笔画时退回康熙（不是返回 0）',
+    NS.strokesSC({ char: 'X', strokes: 12, strokesSC: 0 }), 12);
+  eq('两样都没有时返回 0', NS.strokesSC({ char: 'Y' }), 0);
+  ok('联网加入的字会被标记康熙笔画是推断值',
+    NS.kangxiIsInferred({ __inferred: { strokesConfidence: 'mid' } }) === true &&
+    NS.kangxiIsInferred({ strokes: 8 }) === false);
+
+  /* ---- 热度：表内用数据，表外要有真实依据而不是一律判「偏冷」---- */
+  eq('表内字用表内热度', NS.heatOf('梓'), NS.HEAT['梓']);
+  const idx = Object.keys(NS.Poetry.index);
+  ok('内置诗篇索引非空', idx.length > 200, idx.length + ' 字');
+  const rich = idx.filter(c => NS.Poetry.index[c].length >= 4)[0];
+  ok('诗里出现得多的字估热更高',
+    !!rich && NS.heatOf(rich) > NS.heatOf('苯'),
+    (rich || '?') + '=' + (rich ? NS.heatOf(rich) : '?') +
+    ' vs 苯=' + NS.heatOf('苯'));
+
+  /* ---- 按来源筛用字 ---- */
+  const pShi = NS.Generator.resolveCharPool(['shijing']);
+  const pChu = NS.Generator.resolveCharPool(['chuci']);
+  ok('能按源 id 解析出字集',
+    !!pShi && Object.keys(pShi).length > 50,
+    pShi ? Object.keys(pShi).length + ' 字' : '(null)');
+  ok('不同源给出不同字集',
+    !!pChu && Object.keys(pChu).length !== Object.keys(pShi).length);
+  const pBoth = NS.Generator.resolveCharPool(['shijing', 'chuci']);
+  ok('多选是并集（大于任一个单选）',
+    !!pBoth && Object.keys(pBoth).length > Object.keys(pShi).length &&
+    Object.keys(pBoth).length > Object.keys(pChu).length,
+    Object.keys(pShi).length + ' / ' + Object.keys(pChu).length +
+    ' → ' + Object.keys(pBoth).length);
+  eq('空列表表示不筛', NS.Generator.resolveCharPool([]), null);
+  /* 没同步过该源时不能返回空集 —— 那会让结果变空，
+   * 用户看到「没有符合条件的名」会以为是名字太少。 */
+  eq('同步过但没这个源时也不筛',
+    NS.Generator.resolveCharPool(['不存在的源']), null);
+
+  /* 生成时确实生效：产出的每个字都必须在所选字集内 */
+  const out = NS.Generator.runSync(NS.Generator.plan({
+    surname: '李', gender: '中性', length: 2, top: 12,
+    charSources: ['shijing', 'chuci']
+  }));
+  const bad = [];
+  out.forEach(r => r.given.split('').forEach(c => {
+    if (!pBoth[c]) bad.push(c);
+  }));
+  ok('生成结果全部落在所选来源内',
+    out.length > 0 && bad.length === 0,
+    '越界字=' + (bad.join('') || '无') + '，结果 ' + out.length + ' 个');
 }
 
 console.log(`\n${'='.repeat(52)}`);

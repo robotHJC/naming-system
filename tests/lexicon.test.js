@@ -683,19 +683,32 @@ section('6e. 偏旁重复检测');
   /* 关键设计约束：**偏旁重复检测**只提示、不参与评分。
    * 偏旁表只覆盖字库里的常用字，若拿它扣分，会让「联网加字」暗中拉低分数。
    *
-   * 注意别把约束写粗了：score.js 的 buildContext 里确实用了 NS.Radical，
-   * 那是「避用部首」的硬排除（用户显式要求「不要草字头」），属于筛选不是扣分。
-   * 所以要守的是 evaluate() 本体，而不是整个文件 —— 最初写成整文件断言，
-   * 加避用部首功能时就误报了。 */
+   * 这个断言踩过两次同一个坑，两次都是把约束写粗了：
+   *   1. 最初写「整个 score.js 不出现 NS.Radical」——
+   *      加「避用部首」功能时误报，那是 buildContext 的硬排除。
+   *   2. 改成「evaluate 本体不出现 Radical」——
+   *      加「偏旁契合度」（简单模式给分）时又误报。
+   *
+   * 真正要守的不变式是**不能用偏旁重复去扣分**，所以直接查有没有调用
+   * 重复检测：Radical.check / dupes 是重复检测；
+   * matchAny 问的是「这个字属不属于用户想要的偏旁」，两回事。 */
   const scoreSrc = require('fs').readFileSync(
     path.join(BASE, 'core', 'score.js'), 'utf8');
   const evStart = scoreSrc.indexOf('function evaluate(');
   const evEnd = scoreSrc.indexOf('function uniq(', evStart);
   const evSrc = (evStart >= 0 && evEnd > evStart)
     ? scoreSrc.slice(evStart, evEnd) : '';
-  ok('evaluate() 本体不引用偏旁检测（偏旁重复不参与打分）',
-    evSrc.length > 200 && evSrc.indexOf('Radical') < 0 && evSrc.indexOf('偏旁') < 0,
+  ok('evaluate() 不调用偏旁重复检测（重复不参与打分）',
+    evSrc.length > 200 &&
+    evSrc.indexOf('Radical.check') < 0 && evSrc.indexOf('dupes') < 0,
     'evaluate 片段长度 ' + evSrc.length);
+  /* 偏旁契合度**只在简单模式**给分：八字模式权重为 0，
+   * 这样老行为一分不变，上面那条回归断言才守得住。 */
+  ok('偏旁契合度只在简单模式给分（八字模式权重为 0）',
+    !!NS.WEIGHTS && NS.WEIGHTS.bazi.radical === 0 &&
+    NS.WEIGHTS.simple.radical > 0,
+    'bazi=' + (NS.WEIGHTS ? NS.WEIGHTS.bazi.radical : '?') +
+    ' simple=' + (NS.WEIGHTS ? NS.WEIGHTS.simple.radical : '?'));
   ok('避用部首走 buildContext 的硬排除，不是扣分',
     scoreSrc.indexOf('NS.Radical') >= 0 &&
     scoreSrc.indexOf('NS.Radical') < evStart,

@@ -76,12 +76,16 @@
       .map(function (r) { return r.ch; });
 
     var xiyongshen = (opts.bazi && opts.bazi.xiyongshen) || [];
+    /* 模式要传给 buildContext —— 它决定五行/三才参不参与，
+     * 也决定下面展示哪些字段。不传就默认八字模式。 */
+    var mode = (opts.mode === 'simple') ? 'simple' : 'bazi';
     var ctx = NS.Score.buildContext({
       surname: surname,
       /* 传原始整名：评估的名字可能含字库外的字，
        * 靠 score.js 从 rows 拼会拼错，导致「整名成词」检查失效 */
       given: given,
       xiyongshen: xiyongshen,
+      mode: mode,
       taboo: opts.taboo || []
     });
 
@@ -101,24 +105,34 @@
         char: r.ch,
         pinyin: NS.Pinyin.toneMark(r.obj.pinyin, r.obj.tone),
         wuxing: wx,
+        /* 两种笔画都带上：康熙供三才五格/姓名卦，简体供可读性与展示。
+         * 以前只传康熙，简单模式下展示出来的就是「聽 22 画」这种
+         * 与实际书写无关的数。 */
         strokes: r.obj.strokes,
+        strokesSC: NS.strokesSC(r.obj),
+        strokesInferred: NS.kangxiIsInferred(r.obj),
         meaning: r.obj.meaning || '',
         styles: r.obj.styles || [],
-        heat: NS.HEAT[r.ch] !== undefined ? NS.HEAT[r.ch] : NS.DEFAULT_HEAT,
+        heat: NS.heatOf ? NS.heatOf(r.ch)
+          : (NS.HEAT[r.ch] !== undefined ? NS.HEAT[r.ch] : NS.DEFAULT_HEAT),
         eraChar: !!(NS.ERA_CHARS && NS.ERA_CHARS[r.ch] === 1),
         inferred: !!r.obj.__inferred,
+        fromDict: !!r.obj.__fromDict,
         wxLevel: level
       };
     });
 
-    /* ---- 3. 姓名卦 ---- */
+    /* ---- 3. 姓名卦（八字模式）----
+     * 梅花易数起卦用的是**康熙笔画**，所以简单模式必须跳过 ——
+     * 那一模式走的正是「只看新华字典简体笔画」那条路，
+     * 一边宣称不用康熙笔画、一边拿它起卦，是自相矛盾的。 */
     /* 姓氏笔画取自 ctx（它已按 SURNAME_DB 解析过，含复姓与兜底），
      * 不要自己从 CHAR_DB 求和 —— 姓氏根本不在字库里。 */
     var surnameStrokes = (ctx.surnameStrokes || []).reduce(function (a, b) {
       return a + b;
     }, 0);
     var givenStrokes = chars.reduce(function (a, c) { return a + c.strokes; }, 0);
-    var hexagram = NS.castNameHexagram
+    var hexagram = (mode !== 'simple' && NS.castNameHexagram)
       ? NS.castNameHexagram(surnameStrokes, givenStrokes) : null;
 
     /* ---- 4. 生肖冲突 ---- */
@@ -277,11 +291,19 @@
       var mark = c.wxLevel === 'best' ? '（正合首用神）'
         : c.wxLevel === 'good' ? '（属喜用）'
           : xiyongshen.length ? '（非喜用）' : '';
-      return c.char + '　' + c.pinyin + '　五行' + c.wuxing + '　' +
-        c.strokes + '画' + mark +
-        (c.meaning ? '　' + c.meaning : '') +
-        (c.inferred ? '　［推断值，需人工核对］' : '') +
-        (c.eraChar ? '　［偏上一代用字］' : '');
+      var parts = [c.char, c.pinyin];
+      /* 简单模式不展示五行与康熙笔画 —— 那都是命理口径的字段，
+       * 用户明确说了「不考虑五行八字」，展示了反而让人以为在算。
+       * 笔画改标简体，并注明「康熙」或「简体」，
+       * 否则两种数并列时用户不知道在看哪个（听 7 画 / 聽 22 画）。 */
+      if (mode !== 'simple') parts.push('五行' + c.wuxing);
+      parts.push((mode === 'simple' ? c.strokesSC + '画（简体）'
+        : c.strokes + '画（康熙）') + mark);
+      if (c.meaning) parts.push(c.meaning);
+      if (c.inferred) parts.push('［推断值，需人工核对］');
+      if (c.fromDict) parts.push('［本次从新华字典补入，未加入字库］');
+      if (c.eraChar) parts.push('［偏上一代用字］');
+      return parts.join('　');
     });
     /* 拿不到喜用神有两种原因，说法必须分开 ——
      * 「没填生辰」与「填了但缺日柱推不出日主」对用户的意思完全不同，

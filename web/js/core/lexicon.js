@@ -211,6 +211,31 @@
         Lexicon.dict[ch] = map[ch];
       });
       Lexicon.dataVersion++;
+      Lexicon.applySimplifiedStrokes();
+      return n;
+    },
+
+    /**
+     * 把新华字典的**简体笔画**回填到字库条目上（strokesSC）。
+     *
+     * 内置 490 字的 strokes 字段是**康熙笔画**（人工核定，供三才五格用）。
+     * 「字形均衡/可读性」要用的是简体笔画 —— 两者对「听→聽」「时→時」
+     * 这类字差得很远（听 7 画 vs 聽 22 画），必须分开存。
+     * 字典同步过之后才有简体值可回填；没同步时 strokesSC 为空，
+     * 读取走 NS.strokesSC() 退回康熙笔画。
+     *
+     * 幂等：重复调用不会反复覆盖，也不会改变 dataVersion。
+     * @returns {number} 实际回填了几个字
+     */
+    applySimplifiedStrokes: function () {
+      var dict = Lexicon.dict;
+      if (!dict) return 0;
+      var n = 0;
+      (NS.CHAR_LIST || []).forEach(function (c) {
+        var d = dict[c.char];
+        var sc = d ? parseInt(d[0], 10) : 0;
+        if (sc > 0 && c.strokesSC !== sc) { c.strokesSC = sc; n++; }
+      });
       return n;
     },
 
@@ -387,6 +412,7 @@
       } else if (src.format === 'xinhua') {
         var xh = Lexicon.parseXinhua(text);
         added = Lexicon.applyDict(xh.map);
+        /* applyDict 内部已经回填过简体笔画，这里不必再叫一次 */
       } else if (src.format === 'shupin') {
         var sp = NS.Dialect.parseShupin(text);
         added = NS.Dialect.applyShupin(sp.map);
@@ -453,6 +479,10 @@
         /* 幂等：把可能残留繁体的旧数据再转一次 */
         if (fk.length) Lexicon.reconvertPoems();
         Lexicon.applyCustomChars();
+        /* 字典是从本地存储恢复的，没走过 applyDict ——
+         * 不上这一步，重启后 strokesSC 就全丢了，
+         * 字形均衡会静默退回康熙笔画。 */
+        Lexicon.applySimplifiedStrokes();
         return Lexicon.status();
       });
     },

@@ -43,6 +43,8 @@
     style: 1, top: 1, keywords: 1, taboo: 1, mustInclude: 1, useSC: 1,
     /* 生辰模糊三档：只知道哪一年 / 不知道哪一天 / 不知道几点 */
     birthNoMonth: 1, birthNoDay: 1, birthNoHour: 1,
+    /* 取名模式（bazi / simple）与用字来源筛选（诗词源 id 数组） */
+    mode: 1, charSources: 1,
     /* 生辰按公历还是农历填（农历的选择本身不存，由 #birth 反推） */
     calMode: 1,
     /* 状态（不在 input 里，单独存） */

@@ -59,8 +59,134 @@
     /* 勾选待对比的名字（跨批次保留） */
     picked: [],
     /* 选中的偏好部首（按钮选的；手输的另算） */
-    radPicked: []
+    radPicked: [],
+    /* 取名模式：'bazi' 八字模式 | 'simple' 简单取名。
+     * 简单模式关掉全部命理项（五行、三才五格、姓名卦），
+     * 只按 音韵/寓意/字形/谐音/出处/现代感/偏旁 评分。
+     * 用户需求原文：「我想暂时不考虑五行八字，只想简单取一个寓意
+     * 比较好、读起来朗朗上口、比较简单好听而且带某些偏旁部首的名字」。 */
+    mode: 'bazi',
+    /* 用字来源筛选：选中的诗词源 id 列表。空 = 不筛。
+     * 语义是「用字必须出现在所选源里」。 */
+    charSources: []
   };
+
+  /* ---------------- 取名模式 ---------------- */
+
+  /** 按模式刷新提示与服务开关（八字模式下生辰才有意义） */
+  function paintMode() {
+    var simple = (state.mode === 'simple');
+    var h = $('modeHint');
+    if (h) {
+      h.innerHTML = simple
+        ? '简单取名：<b>不看八字五行</b>，只按 寓意、音韵、字形、谐音、出处、'
+          + '现代感与偏旁契合度 评分。适合「只想取个好听好寓意、带某偏旁」的情况。'
+        : '八字模式：按生辰推出喜用神选字（五行占 28 分），并计三才五格。'
+          + '觉得名字太古可以切到简单取名。';
+    }
+    /* 喜用神那一栏在简单模式下毫无意义，整个藏起来 ——
+     * 留着它会让人以为还能手动指定五行。 */
+    var xiField = $('xiSeg');
+    if (xiField) {
+      var wrap = xiField.closest ? xiField.closest('.field') : null;
+      if (wrap) wrap.hidden = simple;
+    }
+    /* 生辰在简单模式下不参与评分，但它还决定生肖提示等展示项，
+     * 所以**不隐藏**，只压暗并说明它不算分。 */
+    var birthField = $('birthLabel');
+    if (birthField) {
+      var bf = birthField.closest ? birthField.closest('.field') : null;
+      if (bf) bf.style.opacity = simple ? '.55' : '';
+    }
+    /* 用字来源只在诗词源真的同步过之后才有得选 */
+  }
+
+  function initModeSwitch() {
+    var wrap = $('modeSeg');
+    if (!wrap) return;
+    wrap.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      if (!b) return;
+      state.mode = (b.dataset.v === 'simple') ? 'simple' : 'bazi';
+      setSegmented('modeSeg', state.mode);
+      paintMode();
+      updateBaziHint();
+      NS.Prefs.saveSoon(collectPrefs);
+    });
+    setSegmented('modeSeg', state.mode);
+    paintMode();
+  }
+
+  /* ---------------- 用字来源筛选 ---------------- */
+
+  /**
+   * 建「用字来源」多选。
+   *
+   * 只列出**实际同步过、拿得到字集**的诗词源 —— 把 23 个源全列出来、
+   * 其中 20 个点下去等于空集，用户会以为是坏的。
+   */
+  function initSourcePicker() {
+    var box = $('srcSeg');
+    if (!box) return;
+    box.innerHTML = '';
+
+    var bySrc = NS.Poetry && NS.Poetry.charsBySource
+      ? NS.Poetry.charsBySource() : {};
+    var names = Object.keys(bySrc);
+    var items = [];
+    /* 源显示名 → 源 id。诗篇里存的是显示名（「诗经」），不是 id。 */
+    (NS.SOURCES || []).forEach(function (s) {
+      if (s.group !== 'poetry') return;
+      if (!bySrc[s.name]) return;
+      items.push({ id: s.id, name: s.name, chars: Object.keys(bySrc[s.name]).length });
+    });
+    items.sort(function (a, b) { return b.chars - a.chars; });
+
+    if (!items.length) {
+      var h0 = $('srcHint');
+      if (h0) {
+        h0.innerHTML = '<span style="color:#a9782c">还没有可用的诗词源。'
+          + '去「词库管理」同步《诗经》等诗词后，就能按书筛选用字了。</span>';
+      }
+      return;
+    }
+
+    items.forEach(function (it) {
+      var b = el('button', 'src-chip', it.name);
+      b.type = 'button';
+      b.dataset.v = it.id;
+      b.title = it.name + '：共 ' + it.chars + ' 个不同用字';
+      b.setAttribute('aria-pressed',
+        state.charSources.indexOf(it.id) >= 0 ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        var i = state.charSources.indexOf(it.id);
+        if (i >= 0) state.charSources.splice(i, 1);
+        else state.charSources.push(it.id);
+        b.setAttribute('aria-pressed', i >= 0 ? 'false' : 'true');
+        updateSourceHint();
+        NS.Prefs.saveSoon(collectPrefs);
+      });
+      box.appendChild(b);
+    });
+    updateSourceHint();
+  }
+
+  /** 实时显示「选中这些源后一共有多少字可用」—— 让约束的松紧一眼可见 */
+  function updateSourceHint() {
+    var h = $('srcHint');
+    if (!h) return;
+    if (!state.charSources.length) {
+      h.textContent = '不选 = 不限来源。选了就只从所选书的用字里取名字（可多选，多选是并集）。';
+      return;
+    }
+    var pool = NS.Generator && NS.Generator.resolveCharPool
+      ? NS.Generator.resolveCharPool(state.charSources) : null;
+    var n = pool ? Object.keys(pool).length : 0;
+    h.innerHTML = '已选 <b>' + state.charSources.length + '</b> 个来源，'
+      + '共有 <b>' + n + '</b> 个不同用字可用。'
+      + (n < 80 ? '　<span style="color:#a9782c">可用字偏少，'
+        + '可能凑不出好名字，建议多选几本。</span>' : '');
+  }
 
   /* ---------------- 初始化表单 ---------------- */
 
@@ -221,6 +347,9 @@
     /* 公历 / 农历。农历的**选择本身不用记** —— #birth 永远是公历值，
      * 启动时反推回来就行，少一份可能不一致的状态。 */
     p.calMode = (NS.LunarInput ? NS.LunarInput.mode() : 'g');
+    /* 取名模式与用字来源筛选 */
+    p.mode = state.mode;
+    p.charSources = state.charSources.slice();
     return p;
   }
 
@@ -289,6 +418,21 @@
     /* 公历/农历要在 #birth 已经写完之后才能恢复。
      * LunarInput.restore 内部会做「#birth → 农历选择」的反推。 */
     if (NS.LunarInput) NS.LunarInput.restore(p.calMode === 'l' ? 'l' : 'g');
+
+    /* 取名模式要恢复 —— 它决定了喜用神那一栏要不要显示、
+     * 以及报告里还出不出八字块。 */
+    if (p.mode === 'simple' || p.mode === 'bazi') {
+      state.mode = p.mode;
+      setSegmented('modeSeg', state.mode);
+      paintMode();
+      any = true;
+    }
+    /* 用字来源：状态先恢复，再让初始化函数把按钮按下态重建一遍 */
+    if (p.charSources && p.charSources.length) {
+      state.charSources = p.charSources.slice();
+      if (typeof initSourcePicker === 'function') initSourcePicker();
+      any = true;
+    }
     return any;
   }
 
@@ -963,6 +1107,10 @@
     return {
       surname: surname,
       surnameStrokes: strokes,
+      /* 取名模式与用字来源。模式决定评分维度（见 score.js 的 WEIGHTS），
+       * charSources 决定候选用字只从哪些书里取。 */
+      mode: state.mode,
+      charSources: state.charSources.slice(),
       surnameSyllables: info
         ? surname.split('').map(function (c, i) {
           return { char: c, pinyin: info.pinyin[i] || '', tone: info.tones[i] || 0 };
@@ -1140,6 +1288,24 @@
   }
 
   function renderBazi(info, opts) {
+    /* 简单模式不算八字，整个面板换成一个说明块 ——
+     * 留个空面板或者一堆「—」会让人以为算不出来。 */
+    if (opts.mode === 'simple') {
+      var sp = el('div', 'panel bazi-panel');
+      var st = el('div', 'section-title');
+      st.appendChild(el('span', null, '简单取名模式'));
+      st.appendChild(el('span', 'tag-mini', '不看八字五行'));
+      sp.appendChild(st);
+      var sm = el('p', 'hint');
+      sm.style.margin = '0';
+      sm.innerHTML = '按你的选择，本次<b>不使用生辰八字</b> —— '
+        + '五行、三才五格、姓名卦都不参与，也不显示。评分只看：'
+        + '<b>寓意 · 音韵 · 字形 · 谐音 · 出处 · 现代感 · 偏旁契合度</b>。'
+        + '想要八字补益，把上面「取名模式」切回「八字模式」即可。';
+      sp.appendChild(sm);
+      return sp;
+    }
+
     var panel = el('div', 'panel bazi-panel');
     var title = el('div', 'section-title');
     title.appendChild(el('span', null, '八字与喜用神'));
@@ -1812,7 +1978,6 @@
 
     /* 八字面板 */
     stack.appendChild(renderBazi(opts._baziInfo, opts));
-
     /* 工具条 */
     var bar = el('div', 'result-bar');
     var meta = el('div', 'meta');
@@ -1820,6 +1985,23 @@
       stats.scanned.toLocaleString() + ' 组 · 命中 ' + stats.kept +
       ' 个 · 耗时 ' + stats.elapsed.toFixed(0) + ' ms';
     bar.appendChild(meta);
+
+    /* 字典补进来的部首字要告知用户 ——
+     * 不然看到一个没见过名字里的字，不知道它哪来的。 */
+    var dri = plan && plan.ctx ? plan.ctx.dictRadicalInfo : null;
+    if (dri && dri.dictAvailable && dri.added > 0) {
+      var dn = el('div', 'meta dict-note');
+      dn.innerHTML = '已从《新华字典》按所选偏旁补入 <b>' + dri.added +
+        '</b> 个字参与本次取名'
+        + (dri.skippedNoEvidence
+          ? '（另有 ' + dri.skippedNoEvidence +
+            ' 个字因「没在任何诗词里出现过」被跳过 —— '
+            + '字典含大量化学/医药专用字，没有文学使用证据的不推荐作名）'
+          : '')
+        + '。这些字<b>只是本次参与取名，还没加入字库</b>；'
+        + '想留下来去「词库管理 → 按部首找字」确认。';
+      bar.appendChild(dn);
+    }
 
     var actions = el('div', 'actions');
 
@@ -2261,6 +2443,8 @@
   function boot() {
     initSelects();
     initFuzzySelects();
+    initModeSwitch();
+    initSourcePicker();
     initSegmented('genderSeg', 'gender');
     initSegmented('lenSeg', 'length');
     initViewSwitch();
