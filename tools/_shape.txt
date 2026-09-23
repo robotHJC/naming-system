@@ -1,0 +1,3 @@
+顶层键: type,name,tags,versions,links
+files 类型: undefined 是否数组: false
+{"type":"gh","name":"mapull/chinese-dictionary","tags":{},"versions":[{"version":"202304","links":{"self":"https://data.jsdelivr.com/v1/packages/gh/mapull/chinese-dictionary@202304","stats":"https://data.jsdelivr.com/v1/stats/packages/gh/mapull/chinese-dictionary@202304"}}],"links":{"stats":"https://data.jsdelivr.com/v1/stats/packages/gh/mapull/chinese-dictionary"}}

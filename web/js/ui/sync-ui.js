@@ -669,8 +669,9 @@
 
       if (!res.available) {
         out.innerHTML = '<div class="alert">还没有字典数据，没法按部首查字。' +
-          '请在上面勾选「新华字典」并点「开始联网更新」（约 26MB，' +
-          '首次下载实测约 1 分钟）。</div>';
+          '请在上面勾选「新华字典·字表 / 多音字表 / 常用字表」' +
+          '（三项合计约 3.2MB，1 分钟内能下完）并点「开始联网更新」。' +
+          '「释义」那项是 13MB，只查字不查义可以不下。</div>';
         return;
       }
       if (!res.items.length) {
@@ -681,9 +682,21 @@
 
       SyncUI._radItems = res.items;
       var box = el('div', 'panel lex-rad-box');
+      /* 把可用信息一次说清：「适合起名」是有依据可用的数量，
+       * 而不是全部——艹 部有 932 字，不筛的话根本没法看。 */
+      var head = '共 ' + res.total + ' 个';
+      if (res.suitableTotal) {
+        head += '，其中 ' + res.suitableTotal + ' 个笔画适中、有读音与释义';
+      }
+      if (res.notableTotal) {
+        head += '（' + res.notableTotal + ' 个有依据：一级常用字或诗词里出现过）';
+      }
+      if (res.polyTotal) head += '；' + res.polyTotal + ' 个多音字';
+      if (res.blockedTotal) {
+        head += '；' + res.blockedTotal + ' 个在「不宜入名」表里（已排在后面）';
+      }
       box.appendChild(el('div', 'hint',
-        '共 ' + res.total + ' 个（其中 ' + (res.suitableTotal || 0) +
-        ' 个笔画适中），列出前 ' + res.items.length + ' 个：'));
+        head + '。已列出前 ' + res.items.length + ' 个，可滚动作梗查看全部：'));
 
       var list = el('div', 'lex-rad-list');
       res.items.forEach(function (it, i) {
@@ -693,12 +706,34 @@
         cb.setAttribute('data-i', String(i));
         lab.appendChild(cb);
         var body = el('div');
+        var badges = '';
+        /* 多音字：旧字典给不出这个信息（它的 pinyin 字段只有单读音），
+         * 现在能如实标出来 —— 读法多且都被读到的字容易被念错 */
+        if (it.poly && it.allPinyin) {
+          badges += '<i class="lr-badge poly" title="多音字：' +
+            esc(it.allPinyin.join(' / ')) + '">多音 ' +
+            esc(it.allPinyin.join('/')) + '</i>';
+        }
+        if (it.common) {
+          badges += '<i class="lr-badge common" ' +
+            'title="《通用规范汉字表》一级字表">常用</i>';
+        }
+        if (it.literary) {
+          badges += '<i class="lr-badge lit" ' +
+            'title="在已同步的诗词里出现过">诗词</i>';
+        }
+        if (it.blocked) {
+          badges += '<i class="lr-badge no" title="不宜入名：' +
+            esc(it.blockReason || '') + '">不宜 · ' +
+            esc(it.blockReason || '') + '</i>';
+        }
         body.innerHTML = '<b>' + esc(it.char) + '</b>' +
           '<span class="lr-meta">' + it.strokes + '画 · ' +
           esc(it.radical || name) + ' · ' + esc(it.pinyin || '无读音') +
-          (it.tone ? it.tone : '') + '</span>' +
-          '<span class="lr-mean">' +
-          esc(String(it.meaning).slice(0, 24)) + '</span>';
+          '</span>' +
+          '<span class="lr-mean" title="' + esc(String(it.meaning)) + '">' +
+          esc(String(it.meaning)) + '</span>' +
+          (badges ? '<span class="lr-badges">' + badges + '</span>' : '');
         lab.appendChild(body);
         list.appendChild(lab);
       });
@@ -709,23 +744,40 @@
       addBtn.type = 'button';
       addBtn.addEventListener('click', function () { SyncUI.radAddSelected(name); });
       bar.appendChild(addBtn);
-      var suitBtn = el('button', 'btn ghost', '只勾「笔画适中」的');
+      var suitBtn = el('button', 'btn ghost', '只勾「适合起名」的');
       suitBtn.type = 'button';
       suitBtn.addEventListener('click', function () {
-        Array.prototype.forEach.call(list.querySelectorAll('input[type=checkbox]'),
-          function (cb) {
-            var it = SyncUI._radItems[parseInt(cb.getAttribute('data-i'), 10)];
-            cb.checked = !!(it && it.suitable);
-          });
+        SyncUI._radCheck(list, function (it) { return it.suitable; });
       });
       bar.appendChild(suitBtn);
+      var notableBtn = el('button', 'btn ghost', '只勾「有依据」的');
+      notableBtn.type = 'button';
+      notableBtn.title = '一级常用字，或在已同步的诗词里出现过';
+      notableBtn.addEventListener('click', function () {
+        SyncUI._radCheck(list, function (it) {
+          return it.suitable && it.notable;
+        });
+      });
+      bar.appendChild(notableBtn);
       box.appendChild(bar);
       box.appendChild(el('p', 'hint',
         '加入后五行按部首推断、康熙笔画按「简体 + 部首增量」估算。' +
-        '都能在「已加入字库的字」里看到，需要时可以移除重加。'));
+        '都能在「已加入字库的字」里看到，需要时可以移除重加。' +
+        '标「不宜」的是与名字语感不符的字（凹/办/悲 这类），' +
+        '不阻止加入，只是排后面、不参与自动取名。'));
 
       out.innerHTML = '';
       out.appendChild(box);
+    },
+
+    /** 把列表里的勾选批量设为 cond(it) 为真的那些 */
+    _radCheck: function (list, cond) {
+      var items = SyncUI._radItems || [];
+      Array.prototype.forEach.call(
+        list.querySelectorAll('input[type=checkbox]'), function (cb) {
+          var it = items[parseInt(cb.getAttribute('data-i'), 10)];
+          cb.checked = !!(it && cond(it));
+        });
     },
 
     radAddSelected: function (radicalName) {

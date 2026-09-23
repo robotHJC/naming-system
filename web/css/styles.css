@@ -922,18 +922,18 @@ input::placeholder { color: #b6b0a4; }
 
 .lex-rad-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 6px;
   margin: 10px 0;
-  max-height: 340px;
+  max-height: 430px;
   overflow-y: auto;
 }
 
 .lex-rad-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 6px;
-  padding: 5px 8px;
+  padding: 6px 9px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fbfaf6;
@@ -945,9 +945,9 @@ input::placeholder { color: #b6b0a4; }
 
 .lex-rad-item b {
   font-family: var(--font-serif);
-  font-size: 16px;
+  font-size: 17px;
   color: var(--ink);
-  margin-right: 4px;
+  margin-right: 3px;
 }
 
 .lex-rad-item .lr-meta { color: var(--ink-3); font-size: 11px; }
@@ -956,17 +956,40 @@ input::placeholder { color: #b6b0a4; }
   display: block;
   color: var(--ink-2);
   font-size: 11px;
-  margin-top: 1px;
+  margin-top: 2px;
+  line-height: 1.45;
+  /* 字典释义是完整句子，卡太短会切在半句话上；两行 + 悬浮看全文 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* 徽标：多音字 / 一级常用字 / 诗词里出现过 / 不宜入名 */
+.lr-badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+
+.lr-badge {
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1.5;
+  padding: 0 5px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+  background: #f3f1ea;
   white-space: nowrap;
 }
+
+.lr-badge.poly { color: #8a5a12; border-color: #e3cfa4; background: #fbf3e2; }
+.lr-badge.common { color: #1f6b4f; border-color: #b6ddcd; background: #eaf7f1; }
+.lr-badge.lit { color: #4a5b8a; border-color: #c3cbe8; background: #eef1fa; }
+.lr-badge.no { color: #9a3b33; border-color: #e8c4c0; background: #fcefee; }
 
 /* 笔画不在 4–16 区间或没有读音/释义的，视觉上压暗：
  * 不是不能用，只是不当起名用字 */
 .lex-rad-item.dim { opacity: .52; }
 
-.lex-rad-item input { accent-color: var(--jade); }
+.lex-rad-item input { accent-color: var(--jade); margin-top: 3px; }
 
 /* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */.nc-poetry-kind {
   display: inline-block;

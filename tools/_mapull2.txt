@@ -1,0 +1,22 @@
+=== character/common 目录 ===
+  char_common.json  180KB
+  char_common_base.json  500KB
+  char_common_detail.json  7545KB
+
+=== character/polyphone.json（下载） 237KB ===
+  数组 2495 条
+  首条 {"index":6,"char":"厂","strokes":2,"pinyin":["chǎng","ān","hàn"],"frequency":0}
+  带多个读音的条目数 2495
+    {"index":6,"char":"厂","strokes":2,"pinyin":["chǎng","ān","hàn"],"frequency":0}
+    {"index":12,"char":"儿","strokes":2,"pinyin":["ér","er"],"frequency":0}
+    {"index":14,"char":"几","strokes":2,"pinyin":["jī","jǐ"],"frequency":0}
+
+character/common/common.json → HTTP 404
+=== character/common/char_common.json（下载） 173KB ===
+  数组 3500 条
+  首条 {"index":1,"char":"一","frequency":0}
+  带多个读音的条目数 0
+
+=== character/char_base.json（下载） 2709KB ===
+  解析失败 Unexpected non-whitespace character after JSON at position 120 (line 1 column 121)
+

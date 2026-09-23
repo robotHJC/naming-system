@@ -153,23 +153,56 @@
   /* ---------------- 候选池 ---------------- */
 
   /**
+   * 用字来源里有没有勾《新华字典》。
+   *
+   * 勾了才走「只在新华字典里取名」那条路 —— 那是从两万字的字典里挑字，
+   * 跟「按部首补几个字」不是一回事：前者是**整本字典当候选池**，
+   * 后者只是给一个部首多凑几个候选。必须分清，否则用户勾了字典
+   * 却只多出 120 个艹部字，跟他要的「简单在新华字典里面组合」不符。
+   */
+  function dictSourceSelected(sourceIds) {
+    if (!sourceIds || !sourceIds.length) return false;
+    for (var i = 0; i < sourceIds.length; i++) {
+      var s = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[sourceIds[i]] : null;
+      if (s && (s.dictPool || s.format === 'xhbase')) return true;
+    }
+    return false;
+  }
+
+  /**
    * 把「按词库筛选用字」的源 id 列表解析成一个字集。
    *
    * 语义：**用字必须出现在所选源里**（用户选的是这个）。
    * 多个源之间是「并集」—— 勾《诗经》和《三字经》就是两本书的字都能用；
    * 与「偏好部首」之间才是交集（两个约束都要满足）。
    *
+   * 《新华字典》这一源特殊：它不是一个「出处」，而是整个汉字表。
+   * 勾上它等于说「用字不必出自诗文，字典里有就行」——
+   * 这时字集就是字典的全部两万字，真正的裁剪交给下游的
+   * 热/常用字/诗词依据三重排序（见 expandByDict）。
+   *
    * @param {string[]} sourceIds
    * @returns {Object|null} { 字: 1 }；null 表示不筛
    */
   function resolveCharPool(sourceIds) {
     if (!sourceIds || !sourceIds.length) return null;
-    if (!NS.Poetry || !NS.Poetry.charsBySource) return null;
-    var bySrc = NS.Poetry.charsBySource();
+    var bySrc = (NS.Poetry && NS.Poetry.charsBySource)
+      ? NS.Poetry.charsBySource() : null;
     var pool = Object.create(null);
     var hitAny = false;
     sourceIds.forEach(function (id) {
       var src = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[id] : null;
+      /* 新华字典：整本字典都是它的「用字」 */
+      if (src && (src.dictPool || src.format === 'xhbase')) {
+        var lex = NS.Lexicon;
+        if (lex && lex.dict) {
+          var n = 0;
+          Object.keys(lex.dict).forEach(function (ch) { pool[ch] = 1; n++; });
+          if (n) hitAny = true;
+        }
+        return;
+      }
+      if (!bySrc) return;
       /* 诗篇里存的是**显示名**（「诗经」），不是 id */
       var name = src ? src.name : id;
       var set = bySrc[name];
@@ -183,19 +216,24 @@
   }
 
   /**
-   * 从新华字典补字时，总共最多补多少个。
+   * 从《新华字典》补字进候选池时，最多补多少个。
    *
-   * 偏旁字动辄几百个（实测字典里艹部 353 字，而内置手写表只有 48 个），
-   * 全塞进候选池会让组合数爆炸 —— 每个组合都要走一次 evaluate。
-   * 120 个字仍比内置表多一倍半，够选；而且 fromDict 已按
-   * 「适不适合起名」+ 笔画从少到多 排过序，留下的是笔画简洁的那批
-   * （简单模式本来就要「简单」）。
+   * 为什么两种模式数字差这么多：
+   *   · 部首模式（120）：偏旁字动辄几百个（实测字典里艹部 932 字，
+   *     而内置手写表只有 48 个），全塞进候选池会让组合数爆炸 ——
+   *     每个组合都要走一次 evaluate。120 个字够选，而且 fromDict 已按
+   *     「有依据 + 笔画少」排过序，留下的正是简单好用那批。
+   *   · 来源模式（400）：用户明确说了「只在新华字典里面取名」，
+   *     200 的池子太小会让名字翻来覆去就那几个。400 个字 × 每个都要
+   *     charRow 一遍，实测开销可接受，而组合裁剪由 POOL_LIMIT 兜底，
+   *     真正参与组合的还是前 100 个字。
    */
   var DICT_RADICAL_LIMIT = 120;
+  var DICT_SOURCE_LIMIT = 400;
 
-  /* 已经补过的部首。
+  /* 已经补过的「部首 + 模式」组合。
    *
-   * 必须记住，否则每次 plan() 都会再补 120 个新字 ——
+   * 必须记住，否则每次 plan() 都会再补一批新字 ——
    * fromDict 会把「已在字库」的字排除掉，所以第二次调用捞到的
    * 是**另一批**艹字，字库就这样无限膨胀下去。
    * 只在字典确实可用时才标记，否则字典后同步上就再也补不上了。 */
@@ -205,7 +243,7 @@
    * 这个字有没有「文学使用证据」—— 在已同步的诗词里至少出现过一次。
    *
    * 这是判断字典字能不能当名字用的**唯一可用依据**：
-   * 热度表只覆盖内置 490 字；对表外的 14809 字，诗歌语料
+   * 热度表只覆盖内置 490 字；对表外的字，诗歌语料
    * （诗经/楚辞/唐诗/宋词…）是唯一能区分「苯」与「兰」的信号。
    */
   function hasLiteraryUse(ch) {
@@ -216,70 +254,133 @@
   }
 
   /**
-   * 用户选了偏好部首时，从《新华字典》补进该部首的字。
+   * 从《新华字典》补字进候选池。两种触发方式，共用一套挑选逻辑
+   * （Radical.dictCandidates）：
    *
-   * 为什么必须补：radicals.js 的 RADICAL_GROUPS 是**手写表，只覆盖
-   * 内置 278 字**（文件头自己写明了），于是「草字头」只有 48 个可选字 ——
-   * 全是 芊芷菡茉茵菁萱蕙蕴薇蕾 这类古风字。用户的需求是「带某些
-   * 偏旁部首、但不要太古文」，只靠内置表永远做不到。
-   * 新华字典里艹部的字有上千个，才是真正的候选池。
+   *   1. **来源模式**：用户把「新华字典」勾成了用字来源（ctx.dictPool）
+   *      → 从整本字典里挑，这才是真正的「只在新华字典里取名」。
+   *      没有别的来源约束，按热度排（按笔画排会挑出一堆「一丁七丈上不」）。
+   *   2. **部首模式**：用户只选了偏好部首 → 按部首挑，按笔画排。
+   *      为什么必须补：radicals.js 的 RADICAL_GROUPS 是**手写表，只覆盖
+   *      内置 278 字**，于是「草字头」只有 48 个可选字 ——
+   *      全是 芊芷菡茉茵菁萱蕙蕴薇蕾 这类古风字。用户的需求是
+   *      「带某些偏旁部首、但不要太古文」，只靠内置表永远做不到，
+   *      而字典里艹部有 932 字，才是真正的候选池。
+   *
+   * 两种同时成立时是**交集**：整本字典 ∩ 部首。
+   *
+   * 质量门（两道，缺一不可）：
+   *   · suitable —— 简体笔画 4–16、有读音、有释义；
+   *   · notable  —— 一级常用字 或 在已同步的诗词里出现过。
+   * 字典是两万字的全量汉字表，含「苯」「苊」「芤」这类化学/医药专用字。
+   * 实测不放这道门，立刻会输出「李苛苯」「李苞苊」这种名字。
+   * notable 必须两选一而不是只看常用字表：实测 芷/菡/萏/茹/芸/芮/芊/萱
+   * 都不在 3500 一级字表里（它们在二级字表），却是公认的好名字用字；
+   * 反过来 茬/芭/苞 在表里却不是好名字用字。两个信号互补。
+   * 代价：只同步字典、没同步诗词时能补的字会少很多 —— 这是诚实的，
+   * 那种情况下确实缺少依据。
    *
    * 字典字**只在内存里**进字库（不落盘）：想留下来就去
    * 「词库管理 → 按部首找字」手工确认加入。这样既能生成名字，
    * 又不会把未核对的字（康熙笔画是推算的）静默写进持久字库。
    *
-   * 幂等：重复调用不会重复添加（靠 CHAR_DB 查重）。
-   * @returns {number} 本次补进了几个字
+   * 本轮**实际想要**的字集记在 ctx.dictCharSet 上。buildPool 用它
+   * 反过来把上一轮补的、这一轮不再需要的临时字排除掉 ——
+   * 用户把「草字头」改成「三点水」时，旧那批艹字必须立刻退出，
+   * 否则名字会从用户已经取消的部首里冒出来。
+   *
+   * @returns {number} 本次新补进字库的字数
    */
-  function expandByDictRadicals(ctx) {
-    if (!ctx.preferRadicals || !ctx.preferRadicals.length) return 0;
-    if (!NS.Radical || !NS.Radical.fromDict || !NS.Lexicon) return 0;
+  function expandByDict(ctx) {
+    var R = NS.Radical;
+    var lex = NS.Lexicon;
+    ctx.dictCharSet = Object.create(null);
+    if (!R || !R.dictCandidates || !lex || !lex.dict) return 0;
 
-    var added = 0;
-    var budget = DICT_RADICAL_LIMIT;
-    var skippedNoEvidence = 0;
+    var rads = ctx.preferRadicals || [];
+    var asPool = !!ctx.dictPool;
+    if (!asPool && !rads.length) return 0;   /* 没触发条件：保持内置字库 */
+
+    var key = (asPool ? 'P' : '') + '|' + rads.slice().sort().join(',');
+    var budget = asPool ? DICT_SOURCE_LIMIT : DICT_RADICAL_LIMIT;
     var available = false;
-    ctx.preferRadicals.forEach(function (name) {
-      if (budget <= 0) return;
-      if (_expandedRadicals[name]) return;
-      var res;
-      try { res = NS.Radical.fromDict(name, { limit: budget }); }
-      catch (e) { return; }
-      /* available=false 表示字典还没同步 —— 这时保持内置表的行为，
-       * 不报错也不静默失败（界面上另有「还没同步字典」的提示）。
-       * 不标 _expandedRadicals，等字典同步后再试。 */
-      if (!res || !res.available) return;
-      available = true;
-      _expandedRadicals[name] = 1;
-      (res.items || []).forEach(function (it) {
-        if (budget <= 0) return;
-        if (NS.CHAR_DB[it.char]) return;
-        if (!it.suitable) return;
-        /* **必须有文学使用证据**：这个字得在已同步的诗词里出现过。
-         *
-         * 字典是一万六千字的全量汉字表（含「苯」「苊」「芤」这类
-         * 化学/医药专用字），而我们对表外字没有任何可靠的质量数据 ——
-         * 热度表只盖 490 字，热度估值又只能靠诗歌语料。
-         * 实测不放这道门，立刻会输出「李苛苯」「李苞苊」这种名字；
-         * 放上之后，只有真正被历代诗文用过的字才能进来。
-         * 代价：只同步字典、没同步诗词时几乎补不进字 ——
-         * 这是诚实的，那种情况下也确实没有依据。 */
-        if (!hasLiteraryUse(it.char)) { skippedNoEvidence++; return; }
-        var entry = NS.Lexicon.lookupChar(it.char);
-        if (!entry || entry.missing) return;
-        entry.gender = '中性';
-        entry.styles = [];
-        /* 界面据此提示「这个字来自新华字典，还没加入字库」 */
-        entry.__fromDict = true;
-        NS.CHAR_DB[it.char] = entry;
-        NS.CHAR_LIST.push(entry);
-        budget--;
-        added++;
+    var items = [];
+    var seen = Object.create(null);
+
+    if (rads.length) {
+      /* 每个部首单独取够配额再合并 —— 一次取前 N 条会被第一个部首占满 */
+      var per = asPool
+        ? Math.ceil(budget / rads.length) : DICT_RADICAL_LIMIT;
+      rads.forEach(function (name) {
+        var res;
+        try { res = R.fromDict(name, { limit: per }); }
+        catch (e) { return; }
+        /* available=false 表示字典还没同步 —— 这时保持内置表的行为，
+         * 不报错也不静默失败（界面上另有「还没同步字典」的提示）。 */
+        if (!res || !res.available) return;
+        available = true;
+        (res.items || []).forEach(function (it) {
+          if (seen[it.char]) return;
+          seen[it.char] = 1;
+          items.push(it);
+        });
       });
+    } else {
+      var c = R.dictCandidates({ order: 'heat' });
+      available = c.available;
+      items = c.items || [];
+    }
+    if (!available) return 0;
+
+    /* 这一组（模式 + 部首）是否已经补过字。
+     * 补过就只**重建本轮想要的字集**，不再往字库里添字 ——
+     * 否则每次 plan() 都会再捞一批新字进来。 */
+    var already = !!_expandedRadicals[key];
+    var added = 0;
+    var wantedN = 0;
+    var skippedNoEvidence = 0;
+    items.forEach(function (it) {
+      if (wantedN >= budget) return;
+      ctx.dictCharSet[it.char] = 1;
+      wantedN++;
+      if (NS.CHAR_DB[it.char]) return;   /* 已在库里（含上一轮补的） */
+      if (!it.suitable) return;
+      /* 质量门三关：
+       *  1. suitable —— 笔画 4–16、有读音、有释义、**不在不宜入名表里**；
+       *  2. notable  —— 一级常用字 或 诗词里出现过；
+       *  3. 没给部首（整本字典当来源）时**必须**有诗词依据。
+       *
+       * 第 3 关是实测调出来的：一级字表里有 2755 个字「有依据但从来没在
+       * 诗词里出现过」（凹 叭 办 币 电 订 叼 歹 邓 队…），
+       * 放它们进来会把 400 个名额占掉一大半，池子立刻变脏。
+       * 反过来，给了部首时不能再要求诗词依据 —— 部首本身已经把范围
+       * 收得很窄（艹 部 932 字里只有 7 个是「仅在诗词里出现过」），
+       * 再卡就没有字可用了。
+       */
+      if (!it.notable) { skippedNoEvidence++; return; }
+      if (!rads.length && !it.literary) { skippedNoEvidence++; return; }
+      if (already) return;
+      var entry = NS.Lexicon.lookupChar(it.char);
+      if (!entry || entry.missing) return;
+      entry.gender = '中性';
+      entry.styles = [];
+      /* 界面据此提示「这个字来自新华字典，还没加入字库」。
+       * 用户真去「加入字库」后这个标记会随新条目一起被覆盖掉，
+       * 所以它同时也是「临时字」的标记。 */
+      entry.__fromDict = true;
+      entry.__dictPool = true;
+      NS.CHAR_DB[it.char] = entry;
+      NS.CHAR_LIST.push(entry);
+      added++;
     });
+    _expandedRadicals[key] = 1;
+
     ctx.dictRadicalInfo = {
-      added: added, skippedNoEvidence: skippedNoEvidence,
-      dictAvailable: available
+      added: added,
+      skippedNoEvidence: skippedNoEvidence,
+      dictAvailable: available,
+      mode: asPool ? 'source' : 'radical',
+      wanted: wantedN
     };
     return added;
   }
@@ -288,13 +389,18 @@
     var limit = POOL_LIMIT[length] || 40;
 
     /* 必须在下面对 CHAR_LIST 的遍历之前 —— 它会往 CHAR_LIST 里添字 */
-    ctx.dictRadicalAdded = expandByDictRadicals(ctx);
+    ctx.dictRadicalAdded = expandByDict(ctx);
 
     var rows = [];
     var surnameChars = ctx.surname.split('');
 
     NS.CHAR_LIST.forEach(function (c) {
       if (ctx.taboo[c.char]) return;
+      /* 字典补进来的临时字：只有本轮还想要的才参与。
+       * 用户把部首从「草字头」换成「三点水」时，上一轮那批艹字
+       * 已经躺在 CHAR_LIST 里了，不拦的话名字会从用户
+       * 已经取消的部首里冒出来。 */
+      if (c.__dictPool && !ctx.dictCharSet[c.char]) return;
       if (surnameChars.indexOf(c.char) >= 0) return;
       /* 按词库筛选用字：勾了《诗经》就只从《诗经》出现过的字里选。
        * 放在性别判断之前 —— 它是**来源限制**，不是打分项。 */
@@ -350,6 +456,8 @@
     /* 用字来源筛选在这里解析，不在 buildContext 里 ——
      * 要扫全部诗篇，而 buildContext 每次评分都会被叫到。 */
     ctx.charPool = resolveCharPool(ctx.charSources);
+    /* 「只在新华字典里取名」：整本字典当候选池，见 expandByDict */
+    ctx.dictPool = dictSourceSelected(ctx.charSources);
     var length = Math.max(1, Math.min(opts.length || 2, 4));
     var built = buildPool(ctx, length);
 
@@ -523,12 +631,15 @@
     POOL_LIMIT: POOL_LIMIT,
     CAP_STEPS: CAP_STEPS,
     DICT_RADICAL_LIMIT: DICT_RADICAL_LIMIT,
+    DICT_SOURCE_LIMIT: DICT_SOURCE_LIMIT,
     plan: plan,
     buildPool: buildPool,
     /* 导出给界面用：显示「按当前词库筛选，可用 X 字」，
      * 以及给测试直接验证筛选语义。 */
     resolveCharPool: resolveCharPool,
-    expandByDictRadicals: expandByDictRadicals,
+    dictSourceSelected: dictSourceSelected,
+    expandByDict: expandByDict,
+    hasLiteraryUse: hasLiteraryUse,
     /** 清掉「已扩过的部首」记录 —— 测试与「重新同步字典后想再扩」时需要 */
     resetDictRadicals: function () {
       _expandedRadicals = Object.create(null);

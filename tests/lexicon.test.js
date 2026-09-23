@@ -23,6 +23,9 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/cities.js', 'data/sichuan.js', 'data/nickname.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'data/nayin.js',
+  /* namefilter.js 是「不宜入名」的人工字表，radical.dictCandidates 靠它
+   * 把「凹叭办抱悲」这类字挡在字典候选池外 */
+  'data/namefilter.js',
   'core/wuxing.js', 'core/calendar.js', 'core/bazi.js', 'core/wuge.js',
   'core/pinyin.js', 'core/poetry-lib.js', 'core/score.js', 'core/generator.js',
   'core/net.js', 'core/infer.js', 'core/dialect.js',

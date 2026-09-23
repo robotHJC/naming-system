@@ -255,22 +255,50 @@
   }
 
   /**
-   * 联网查询：从已同步的《新华字典》里列出某个部首下的字。
-   *
-   * 这是「联网找最合适的字」的实现方式 —— 字典给出了每个字的部首与简体笔画，
-   * 因此可以按部首反查。返回的候选带着素材（笔画/拼音/释义），
-   * 让用户自己判断要不要收进字库。
-   *
-   * @param {string} name 分组名（如 '艹'）
-   * @param {Object} [opt] { minStrokes, maxStrokes, limit, excludeInLib }
-   * @returns {{available:boolean, items:Array, total:number}}
+   * 把「分组名」或「界面标签」都归一成分组名。
+   * 界面上偏旁选择器用的是 label（草字头 / 三点水），
+   * 而字典里的部首字段是 艹 / 水，中间必须转一道。
    */
-  function fromDict(name, opt) {
+  function resolveName(name) {
+    var idx = nameIndex();
+    if (idx[name]) return name;
+    var groups = NS.RADICAL_GROUPS || [];
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].label === name) return groups[i].name;
+    }
+    return name;
+  }
+
+  /** 这个字在已同步的诗词里出现过吗 —— 区分「苯」与「兰」的唯一可用信号 */
+  function hasLiteraryUse(ch) {
+    var P = NS.Poetry;
+    if (!P || !P.index) return false;
+    var ids = P.index[ch];
+    return !!(ids && ids.length);
+  }
+
+  /**
+   * 从新华字典挑候选字 —— 「按部首找字」与「只在新华字典里取名」
+   * 共用这**同一套**逻辑。
+   *
+   * 分开写两份必然跑偏：一边按「笔画少」排、一边按「热门」排，
+   * 用户会看到同一个部首在两个地方给出完全不同的字。
+   *
+   * 排序：适不适合起名 → 有没有依据（一级常用字 / 诗词里出现过）→ 笔画少 → 码位。
+   * 艹 部在字典里有 932 字，按码位排前排全是 艽芁艻艿 这种没人用的字；
+   * 有依据的排前面，前 20 个就正好是 艺节芒芋芭芬芙花芥芦芹苇芜芯芽苞范苟茄茎苛苦茅苗。
+   *
+   * @param {Object} [opt]
+   *   aliases      部首写法集合（已用 aliasOf 展开）；不传 = 不限部首
+   *   excludeInLib 排除字库里已有的字（默认 true）
+   *   minStrokes / maxStrokes  适不适合起名的笔画区间（默认 4–16）
+   *   order        'strokes'（默认，浏览用）| 'heat'（整本字典当来源时用）
+   * @returns {{available:boolean, items:Array}}
+   */
+  function dictCandidates(opt) {
     opt = opt || {};
     var min = opt.minStrokes === undefined ? 4 : opt.minStrokes;
     var max = opt.maxStrokes === undefined ? 16 : opt.maxStrokes;
-    var limit = opt.limit || 120;
-
     var lex = NS.Lexicon;
     var dict = lex && lex.dict;
     /* 注意：ensureLoaded() 之后 lex.dict 是个**空对象**而不是 null，
@@ -278,18 +306,16 @@
      * 否则没同步字典时会提示「字典里没找到这个部首」而不是
      * 「还没同步字典」，把用户往错误方向引。 */
     var dictCount = (lex && lex.status) ? (lex.status().dictCount || 0) : 0;
-    if (!dict || !dictCount) {
-      return { available: false, items: [], total: 0, suitableTotal: 0 };
-    }
+    if (!dict || !dictCount) return { available: false, items: [] };
 
-    var want = aliasOf(name);
+    var want = opt.aliases || null;
     var looks = [];
     Object.keys(dict).forEach(function (ch) {
       if (ch.length !== 1) return;
       var d = dict[ch];
       if (!d) return;
       var rad = d[1];
-      if (!rad || want.indexOf(rad) < 0) return;
+      if (want && (!rad || want.indexOf(rad) < 0)) return;
       /* 字库里已有的不重复列出 */
       if (opt.excludeInLib !== false && NS.CHAR_DB[ch]) return;
       var py = (lex.pinyinMap && lex.pinyinMap[ch]) || null;
@@ -298,11 +324,26 @@
        * 结果只同步字典、没同步拼音表时，全部候选都被划成不适合（实测 0/92）。 */
       var pinyin = d[2] || (py ? py.pinyin : '');
       var strokes = d[0];
-      var meaning = NS.Infer && NS.Infer.cleanExplanation
-        ? NS.Infer.cleanExplanation(d[3] || '') : (d[3] || '');
-      /* 字典释义常以「（形声。从辵…)」这类六书说明开头，对选字没帮助，
-       * 而且会把界面上的释义占满（实测全是「(形声」）。 */
-      meaning = String(meaning).replace(/^\s*[（(][^）)]*[）)]\s*/, '').trim();
+      /* 释义清洗只走 Lexicon.cleanMeaning 一套规则（配平拆括号 + 压行 + 截断）。
+       * 以前这里先跑 Infer.cleanExplanation 再自己拿正则去括号：
+       * 前者会按第一个句号截断，后者会在内层括号的 ) 上提前收尾，
+       * 「苟」的释义就被切成了「声。本义:草名。又:菜名) 同本义。」 */
+      var meaning = lex.cleanMeaning
+        ? lex.cleanMeaning(d[3] || '')
+        : String(d[3] || '').replace(/\s+/g, ' ').trim();
+
+      var allPy = (lex.readingsOf && lex.readingsOf(ch)) || [];
+      var poly = !!(lex.isPolyphone && lex.isPolyphone(ch));
+      var common = !!(lex.isCommon && lex.isCommon(ch));
+      var lit = hasLiteraryUse(ch);
+      /* 冷热度：内置热度表只盖 490 字，其余靠诗词频次估。 */
+      var heat = NS.heatOf ? NS.heatOf(ch) : 0;
+      /* 「不宜入名」人工表（data/namefilter.js）。
+       * 「不」「把」「办」「抱」这些字在诗词里出现次数极高、又是一级常用字，
+       * 任何统计量都拦不住 —— 实测不做这一步，整本字典取名会输出
+       * 「李层抱」「李悲到」。 */
+      var blk = NS.nameCharBlock ? NS.nameCharBlock(ch) : { blocked: false };
+
       looks.push({
         char: ch,
         strokes: strokes,
@@ -310,21 +351,73 @@
         pinyin: pinyin,
         tone: py ? py.tone : 0,
         meaning: meaning,
-        /* 适不适合起名：笔画 4–16、有读音、有释义 */
-        suitable: strokes >= min && strokes <= max && !!meaning && !!pinyin
+        /* 多音字：这是旧字典源给不出的信息，现在能如实标出来 */
+        poly: poly,
+        allPinyin: allPy.length > 1 ? allPy : null,
+        /* 《通用规范汉字表》一级字表（3500 字）—— 注意它只是参考，不是门槛：
+         * 芷/菡/萏/茹/芸/芮/芊/萱 都不在这个表里，却都是好名字用字。 */
+        common: common,
+        /* 诗词里出现过 —— 与上一列构成「有没有依据」 */
+        literary: lit,
+        /* 逐读音释义，界面上展开看细节用 */
+        meanings: (lex.meaningsOf && lex.meaningsOf(ch)) || [],
+        heat: heat,
+        blocked: blk.blocked,
+        blockReason: blk.reason || '',
+        notable: common || lit,
+        /* 适不适合起名：笔画 4–16、有读音、有释义、且不在「不宜入名」表里。
+         * blocked 单独留一份，界面可以显示「为什么没推荐它」。 */
+        suitable: !blk.blocked && strokes >= min && strokes <= max &&
+          !!meaning && !!pinyin
       });
     });
 
+    /* order='heat' 用于「整本字典当用字来源」：
+     * 那时没有部首约束，按笔画排会挑出一堆「一丁七丈上不」这类。
+     * 按热排才能得到 涵轩萱桸桦… 这样真正像名字的字。 */
+    var byHeat = opt.order === 'heat';
     looks.sort(function (a, b) {
       if (a.suitable !== b.suitable) return a.suitable ? -1 : 1;
+      /* 有依据的排前面：一级常用字 / 诗词里出现过 */
+      if (a.notable !== b.notable) return a.notable ? -1 : 1;
+      if (byHeat && b.heat !== a.heat) return b.heat - a.heat;
       if (a.strokes !== b.strokes) return a.strokes - b.strokes;
       return a.char.localeCompare(b.char);
     });
 
+    return { available: true, items: looks };
+  }
+
+  /**
+   * 联网查询：列出某个部首下的字。
+   *
+   * @param {string} name 分组名（'艹'）或界面标签（'草字头'）
+   * @param {Object} [opt] { minStrokes, maxStrokes, limit, excludeInLib }
+   * @returns {{available:boolean, items:Array, total:number}}
+   */
+  function fromDict(name, opt) {
+    opt = opt || {};
+    var limit = opt.limit || 120;
+    var resolved = resolveName(name);
+    var r = dictCandidates({
+      aliases: aliasOf(resolved),
+      excludeInLib: opt.excludeInLib,
+      minStrokes: opt.minStrokes,
+      maxStrokes: opt.maxStrokes
+    });
+    if (!r.available) {
+      return { available: false, items: [], total: 0, suitableTotal: 0 };
+    }
+    var looks = r.items;
     return {
       available: true,
+      name: resolved,
       total: looks.length,
       suitableTotal: looks.filter(function (x) { return x.suitable; }).length,
+      notableTotal: looks.filter(function (x) { return x.suitable && x.notable; })
+        .length,
+      polyTotal: looks.filter(function (x) { return x.poly; }).length,
+      blockedTotal: looks.filter(function (x) { return x.blocked; }).length,
       items: looks.slice(0, limit)
     };
   }
@@ -343,7 +436,10 @@
     wuxingMap: wuxingMap,
     pickerList: pickerList,
     aliasOf: aliasOf,
+    resolveName: resolveName,
     fromDict: fromDict,
+    dictCandidates: dictCandidates,
+    hasLiteraryUse: hasLiteraryUse,
     reset: reset
   };
 

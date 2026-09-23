@@ -29,6 +29,107 @@
       (cp >= 0xf900 && cp <= 0xfaff);          /* 兼容汉字 */
   }
 
+  /* 每个读音最多留几条释义、每条多长。
+   * 释义原始文件 13MB，不截断会把本地存储撑得很大、读一次很慢，
+   * 而界面上也只需要「一眼看懂这个字什么意思」。 */
+  var MAX_EXP_PER_READING = 3;
+  var MAX_EXP_LEN = 90;
+
+  /**
+   * 解析 mapull/chinese-dictionary 的两种 JSON 形态。
+   *
+   * char_base.json 与 char_detail.json 是**逗号分隔的对象序列**，
+   * 没有外层方括号（char_base 有 21057 行对象）；
+   * polyphone.json 与 char_common.json 则是标准 JSON 数组。
+   * 两种都要能吃，所以先看首字符再决定怎么解。
+   */
+  function parseJsonSeq(text) {
+    var t = String(text || '').trim();
+    if (!t) return [];
+    if (t.charAt(0) === '[') return JSON.parse(t);
+    return JSON.parse('[' + t.replace(/[\s,]+$/, '') + ']');
+  }
+
+  /**
+   * 拆掉开头那个**配平**的括号，返回括号内内容与括号之后的剩余。
+   *
+   * 为什么不能用正则：`/^[（(][^）)]*[）)]/` 会在**内层**括号的 `)` 上提前收尾。
+   * 「苟」的释义是
+   *   (形声。从艸,句(勾)声。本义:草名。又:菜名) 同本义。
+   * 正则只吃到「句(勾)」的 `)`，于是释义被切成
+   *   「声。本义:草名。又:菜名) 同本义。」
+   * 这种半截话，还带一个孤零零的右括号。必须按嵌套深度配平。
+   *
+   * @returns {{text:string, rest:string}|null} null = 不以括号开头、或括号不闭合
+   */
+  function splitParen(t) {
+    var c0 = t.charAt(0);
+    if (c0 !== '(' && c0 !== '（') return null;
+    var depth = 0;
+    for (var i = 0; i < t.length; i++) {
+      var c = t.charAt(i);
+      if (c === '(' || c === '（') depth++;
+      else if (c === ')' || c === '）') {
+        depth--;
+        if (depth === 0) {
+          return {
+            text: t.slice(1, i).trim(),
+            rest: t.slice(i + 1).replace(/^[。，、;；:：\s]+/, '').trim()
+          };
+        }
+      }
+    }
+    return null;   /* 括号不闭合，不动它 */
+  }
+
+  /**
+   * 释义清洗：压成一行、拆掉字典的六书说明括号、超长截断。
+   *
+   * 父注（六书说明）的两种形态：
+   *   「(指事。“一”是汉字部首之一。本义:数词…)」—— 括号里就是全部内容 → 拆括号留内容
+   *   「（形声。从辵，也声）曲折连绵」—— 括号只是开头 → 丢掉括号，留后面的正文
+   *
+   * 但括号后面若是「同本义。」「同上。」这类**没有信息量**的话，
+   * 真正的内容反而在括号里 —— 这时取括号内。实测「苇」的释义是
+   * 「(形声。从艸,韦声。本义:芦苇) 同本义。」，取后者等于什么都没说。
+   */
+  var CONTENTLESS = /^(同本义|同前|同上|见上|亦作|参见|详见)/;
+
+  function cleanExp(s) {
+    if (!s) return '';
+    var t = String(s).replace(/\s+/g, ' ').trim();
+    var p = splitParen(t);
+    if (p) {
+      if (p.rest && !CONTENTLESS.test(p.rest)) t = p.rest;
+      else if (p.text) t = p.text;
+      else t = p.rest;
+    }
+    if (t.length > MAX_EXP_LEN) t = t.slice(0, MAX_EXP_LEN) + '…';
+    return t;
+  }
+
+  /**
+   * 拼音归一化 —— 必须在**入库时**做，不能等到用的时候。
+   *
+   * 上游数据把 ASCII 的 g 写成拉丁小写字母 ɡ (U+0261) ——
+   * mapull 字表里「工」就是 "ɡōnɡ"，两个字母都是 U+0261，20928 字里有 2574 字中招。
+   * 这类同形字母会让声母判断和鼻韵母识别（ang/eng/ong 一个都认不出来）
+   * 静默失效：不报错，只是「音韵分」莫名偏低。
+   * 顺带把 ɑ (U+0251) 换成 a；实测三份数据里只出现 1 次。
+   *
+   * 带调元音（ā á ǎ à …）本来就不在 ASCII 区，不受影响。
+   */
+  function normPinyin(p) {
+    var s = String(p == null ? '' : p).trim();
+    if (!s) return '';
+    s = s.replace(/\u0261/g, 'g').replace(/\u0251/g, 'a');
+    /* 上游个别条目拼音字段里混进了汉字（实测 char_detail 有 2 条），
+     * 拼音必须是字母串，出现汉字就整条丢弃 —— 留着比丢掉更糟，
+     * 后面按首字母取声母会拿到一个汉字。 */
+    if (/[\u3400-\u9fff\uf900-\ufaff]/.test(s)) return '';
+    return s;
+  }
+
   /* 快照内置繁简表：load 顺序保证此刻 NS.FAN_JIAN 还是内置版本，
    * 「清空联网数据」时要还原到它。 */
   var FAN_JIAN_BUILTIN = Object.create(null);
@@ -42,12 +143,30 @@
    * 那是整个 object store 清空，会把**候选池**（跟联网词库毫无关系的
    * 用户数据）也一并删掉。用户一个个挑出来的名字丢了是真损失。 */
   var STORE_KEYS = ['pinyinMap', 'dict', 'poems', 'customChars',
-    'meta', 'fantiMap', 'shupinMap', 'dialectWords'];
+    'meta', 'fantiMap', 'shupinMap', 'dialectWords',
+    /* 下面四个来自 mapull/chinese-dictionary 的新华字典源 */
+    'pinyinAll', 'polyMap', 'commonSet', 'meanings'];
 
   var Lexicon = {
     pinyinMap: null,      /* { 字: {pinyin, tone} } */
     dict: null,           /* { 字: [简体笔画, 部首, 带调拼音, 释义] } */
     customChars: [],      /* 用户/联网加入字库的字 */
+    /* —— 以下四份来自新华字典字表，解决「旧源信息不够」的问题 —— */
+    /* { 字: [全部读音] }。旧源只给第一个读音，多音字根本看不出来。 */
+    pinyinAll: null,
+    /* { 字: [全部读音] }，只收录**多音字**。
+     * 与 pinyinAll 的区别：pinyinAll 是「所有字的读音」，
+     * 这个是「确实是多音字的那些字」—— 界面上要标「多音字」徽标，
+     * 拿长度 > 1 去判也能得到同样结果，但单独一份更直白、也更省一次遍历。 */
+    polyMap: null,
+    /* { 字: 1 } —— 《通用规范汉字表》一级字表（3500 字）。
+     * 这是判断「这个字常不常见」的权威依据，用来当字典取名的质量闸门。
+     * 光靠它不够（实测 茬/芭/苞 在表内但不是好名字，
+     * 而 芷/菡/芸/芮 不在表内却是好名字），要与诗歌语料组合用。 */
+    commonSet: null,
+    /* { 字: [{pinyin, exp:[释义…]}] } —— **逐读音**的释义。
+     * 旧源的释义是一整块文本、分不出哪个读音对应哪条义项。 */
+    meanings: null,
     /* 每次字库数据变化就 +1。依赖字库的派生索引（如同音替换的反查表）
      * 靠它判断缓存是否失效，不必在每次取用时重算一遍。 */
     dataVersion: 0,
@@ -55,6 +174,75 @@
     meta: null,           /* { lastSync, schema, sources: {id: {...}} } */
     /* 上一次启动时丢弃了不兼容的本地数据（用于界面提示），null 表示没发生 */
     discardNotice: null,
+
+    /* ---------------- 查询 ---------------- */
+
+    /** 某字的全部读音；没有多读音数据时退回单读音字典 */
+    readingsOf: function (ch) {
+      if (Lexicon.pinyinAll && Lexicon.pinyinAll[ch]) {
+        return Lexicon.pinyinAll[ch].slice();
+      }
+      var d = Lexicon.dict && Lexicon.dict[ch];
+      if (d && d[2]) return [d[2]];
+      var py = Lexicon.pinyinMap && Lexicon.pinyinMap[ch];
+      return py ? [py.pinyin] : [];
+    },
+
+    /** 是不是多音字（需要多音字表或字表里读音数 > 1） */
+    isPolyphone: function (ch) {
+      if (Lexicon.polyMap && Lexicon.polyMap[ch]) return true;
+      var r = Lexicon.readingsOf(ch);
+      return r.length > 1;
+    },
+
+    /** 是不是《通用规范汉字表》一级字表的常用字 */
+    isCommon: function (ch) {
+      return !!(Lexicon.commonSet && Lexicon.commonSet[ch]);
+    },
+
+    /** 某字的逐读音释义；没有就返回空数组 */
+    meaningsOf: function (ch) {
+      return (Lexicon.meanings && Lexicon.meanings[ch]) || [];
+    },
+
+    /**
+     * 公一版释义清洗，供界面 / 部首浏览复用**同一套规则**。
+     * 之前 radical.fromDict 自己用正则去括号，且又叠了一层
+     * Infer.cleanExplanation（它会按第一个句号截断、还带 slice(0,40) 的
+     * 兵方案），结果把「苟」的释义切成了半截话。规则只留一份。
+     */
+    cleanMeaning: function (s) {
+      return cleanExp(s);
+    },
+
+    /**
+     * 取某字某个读音的简短释义（拼成一行，用于列表里显示一句话）。
+     *
+     * 为什么要指定读音：字表（char_base）与释义（char_detail）的读音**排序不一致**
+     * —— 行 在字表里首读音是 xíng，在释义里第一条却是 háng。
+     * 不按读音去匹配，列表里就会出现「首读音 xíng，释义却是 háng 的」这种错位。
+     * 匹配不到时退回第一条。
+     */
+    briefMeaning: function (ch, pinyin) {
+      var prons = (Lexicon.meanings && Lexicon.meanings[ch]) || [];
+      if (!prons.length) return '';
+      var hit = null;
+      for (var i = 0; i < prons.length; i++) {
+        if (pinyin && prons[i].pinyin === pinyin) { hit = prons[i]; break; }
+      }
+      if (!hit) hit = prons[0];
+      var exp = hit.exp || [];
+      /* 「同本义。」「同上。」这类条目在列表里没有信息量（它的先行词在上一条
+       * 义项里），所以往后找第一条真正有内容的。全都没有就用第一条。 */
+      var one = '';
+      for (var j = 0; j < exp.length; j++) {
+        if (!/^(同本义|同上|见上|亦作)/.test(exp[j])) { one = exp[j]; break; }
+      }
+      if (!one) one = exp[0] || '';
+      /* 列表里只占一行，压到 60 字以内 */
+      if (one.length > 60) one = one.slice(0, 60) + '…';
+      return one;
+    },
 
     /* ---------------- 解析 ---------------- */
 
@@ -101,7 +289,7 @@
           return s.trim();
         }).filter(Boolean);
         if (!readings.length) continue;
-        var p = NS.Pinyin.stripTone(readings[0]);
+        var p = NS.Pinyin.stripTone(normPinyin(readings[0]));
         if (!p.plain) continue;
         map[ch] = { pinyin: p.plain, tone: p.tone };
         count++;
@@ -109,10 +297,108 @@
       return { map: map, count: count };
     },
 
+    /* =================================================================
+     * 新华字典（mapull/chinese-dictionary）
+     *
+     * 四份数据，各管一件事：
+     *   xhbase   字表   → dict（笔画/部首/首读音）+ pinyinAll（**全部读音**）
+     *   xhpoly   多音字 → polyMap
+     *   xhcommon 常用字 → commonSet
+     *   xhdetail 释义   → meanings（逐读音）+ dict 的释义字段
+     * ================================================================= */
+
+    /**
+     * 字表（character/char_base.json）
+     * 字段：char / strokes / pinyin[] / radicals / structure
+     *
+     * **必须保留已有释义**：同步按体积从大到小排，释义（13MB）会先入库，
+     * 这里直接覆盖 dict 会把刚存好的释义清掉。
+     */
+    parseXhBase: function (text) {
+      var arr = parseJsonSeq(text);
+      var map = Object.create(null);
+      var all = Object.create(null);
+      var count = 0;
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length !== 1 || !isCJKIdeograph(ch.charCodeAt(0))) return;
+        if (map[ch]) return;
+        var pys = (item.pinyin || []).map(normPinyin).filter(Boolean);
+        map[ch] = [
+          parseInt(item.strokes, 10) || 0,
+          String(item.radicals || '').slice(0, 2),
+          pys[0] || '',
+          ''                       /* 释义留给 xhdetail 填 */
+        ];
+        if (pys.length) all[ch] = pys;
+        count++;
+      });
+      return { map: map, all: all, count: count };
+    },
+
+    /**
+     * 多音字表（character/polyphone.json）
+     * 字段：char / strokes / pinyin[] / frequency
+     * 只有音数 >= 2 的才会收进来。
+     */
+    parseXhPoly: function (text) {
+      var arr = parseJsonSeq(text);
+      var m = Object.create(null);
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length !== 1) return;
+        var pys = (item.pinyin || []).map(normPinyin).filter(Boolean);
+        if (pys.length < 2) return;
+        m[ch] = pys;
+      });
+      return { map: m, count: Object.keys(m).length };
+    },
+
+    /** 常用字表（character/common/char_common.json）——《通用规范汉字表》一级字表 */
+    parseXhCommon: function (text) {
+      var arr = parseJsonSeq(text);
+      var m = Object.create(null);
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length === 1) m[ch] = 1;
+      });
+      return { map: m, count: Object.keys(m).length };
+    },
+
+    /**
+     * 逐读音释义（character/char_detail.json）
+     * 结构：{ char, pronunciations: [ { pinyin, explanations:[{content}], words:[…] } ] }
+     *
+     * 这是比旧源强的地方：**释义按读音分列** ——
+     * 旧源是一整块文本，分不出哪个读音对应哪条义项。
+     */
+    parseXhDetail: function (text) {
+      var arr = parseJsonSeq(text);
+      var map = Object.create(null);
+      var count = 0;
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length !== 1) return;
+        var out = [];
+        (item.pronunciations || []).forEach(function (pr) {
+          var exps = (pr.explanations || []).map(function (e) {
+            return cleanExp(e && e.content);
+          }).filter(Boolean).slice(0, MAX_EXP_PER_READING);
+          if (!exps.length) return;
+          out.push({ pinyin: normPinyin(pr.pinyin), exp: exps });
+        });
+        if (!out.length) return;
+        map[ch] = out;
+        count++;
+      });
+      return { map: map, count: count };
+    },
+
     /**
      * 解析 pwxcoo/chinese-xinhua 的 word.json
      * 字段：word / strokes / pinyin / radicals / explanation
      * 为省空间，入库时压缩成 [简体笔画, 部首, 带调拼音, 释义]
+     * （旧源，保留解析器以便兼容已同步过的本地数据）
      */
     parseXinhua: function (text) {
       var arr = JSON.parse(text);
@@ -126,7 +412,7 @@
         map[w] = [
           parseInt(item.strokes, 10) || 0,
           String(item.radicals || '').slice(0, 2),
-          String(item.pinyin || '').split(/[,，]/)[0].trim(),
+          normPinyin(String(item.pinyin || '').split(/[,，]/)[0]),
           NS.Infer.cleanExplanation(item.explanation).slice(0, MEANING_MAX)
         ];
         count++;
@@ -245,6 +531,86 @@
       return NS.Poetry.addPoems(poems.slice(0, room));
     },
 
+    /* ---- 新华字典四份数据入库 ---- */
+
+    /**
+     * 字表：填 dict（笔画/部首/首读音）与 pinyinAll（全部读音）。
+     * **保留已有释义** —— 同步按体积从大到小排，释义（13MB）先入库，
+     * 直接覆盖会把刚存好的释义清掉。
+     */
+    applyXhBase: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        var e = res.map[ch];
+        var prev = Lexicon.dict[ch];
+        if (prev && prev[3]) e[3] = prev[3];
+        /* 有逐读音释义时，按**本字的主体读音**重取一句，
+         * 避面「首读音 xíng、释义却是 háng 的」错位 */
+        var brief = Lexicon.briefMeaning(ch, e[2]);
+        if (brief) e[3] = brief;
+        if (!prev) n++;
+        Lexicon.dict[ch] = e;
+      });
+      Object.keys(res.all).forEach(function (ch) {
+        Lexicon.pinyinAll[ch] = res.all[ch];
+      });
+      Lexicon.dataVersion++;
+      Lexicon.applySimplifiedStrokes();
+      return n;
+    },
+
+    /** 多音字表：填 polyMap（顺带补 pinyinAll，字表没同步时也能拿到全部读音） */
+    applyXhPoly: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        if (!Lexicon.polyMap[ch]) n++;
+        Lexicon.polyMap[ch] = res.map[ch];
+        if (!Lexicon.pinyinAll[ch]) Lexicon.pinyinAll[ch] = res.map[ch];
+      });
+      Lexicon.dataVersion++;
+      return n;
+    },
+
+    /** 常用字表：填 commonSet */
+    applyXhCommon: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        if (!Lexicon.commonSet[ch]) n++;
+        Lexicon.commonSet[ch] = 1;
+      });
+      return n;
+    },
+
+    /**
+     * 逐读音释义：填 meanings，并把第一读音的释义写进 dict ——
+     * 这样「按部首找字」在只下载了释义、没下载字表时也有一句话可看。
+     */
+    applyXhDetail: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        var prons = res.map[ch];
+        Lexicon.meanings[ch] = prons;
+        var first = prons[0];
+        if (!first || !first.exp.length) return;
+        var prev = Lexicon.dict[ch];
+        /* 字表已入库时，dict[2] 才是字的主体读音，按它对齐；
+         * 字表还没到时用释义的第一条。 */
+        var brief = Lexicon.briefMeaning(ch, prev && prev[2]) ||
+          first.exp.slice(0, 2).join('；');
+        if (prev) prev[3] = brief;
+        else {
+          Lexicon.dict[ch] = [0, '', first.pinyin || '', brief];
+        }
+        n++;
+      });
+      Lexicon.dataVersion++;
+      return n;
+    },
+
     /** 把自定义字（联网加入的）挂进字库，让取名流程能用上 */
     applyCustomChars: function () {
       Lexicon.customChars.forEach(function (entry) {
@@ -343,7 +709,11 @@
       function isTextSource(s) {
         return !(s.format === 'fanti' || s.format === 'pinyin' ||
           s.format === 'xinhua' || s.format === 'shupin' ||
-          s.format === 'fangyan');
+          s.format === 'fangyan' ||
+          /* 新华字典四份数据也都不是「诗文」，
+           * 不排除的话会被当成「文本源」而自动勾上繁简表 */
+          s.format === 'xhbase' || s.format === 'xhpoly' ||
+          s.format === 'xhcommon' || s.format === 'xhdetail');
       }
       var autoAdded = [];
       if (sources.some(isTextSource) &&
@@ -413,6 +783,14 @@
         var xh = Lexicon.parseXinhua(text);
         added = Lexicon.applyDict(xh.map);
         /* applyDict 内部已经回填过简体笔画，这里不必再叫一次 */
+      } else if (src.format === 'xhbase') {
+        added = Lexicon.applyXhBase(Lexicon.parseXhBase(text));
+      } else if (src.format === 'xhpoly') {
+        added = Lexicon.applyXhPoly(Lexicon.parseXhPoly(text));
+      } else if (src.format === 'xhcommon') {
+        added = Lexicon.applyXhCommon(Lexicon.parseXhCommon(text));
+      } else if (src.format === 'xhdetail') {
+        added = Lexicon.applyXhDetail(Lexicon.parseXhDetail(text));
       } else if (src.format === 'shupin') {
         var sp = NS.Dialect.parseShupin(text);
         added = NS.Dialect.applyShupin(sp.map);
@@ -457,7 +835,9 @@
           NS.Store.get('pinyinMap'), NS.Store.get('dict'),
           NS.Store.get('poems'), NS.Store.get('customChars'),
           NS.Store.get('meta'), NS.Store.get('fantiMap'),
-          NS.Store.get('shupinMap'), NS.Store.get('dialectWords')
+          NS.Store.get('shupinMap'), NS.Store.get('dialectWords'),
+          NS.Store.get('pinyinAll'), NS.Store.get('polyMap'),
+          NS.Store.get('commonSet'), NS.Store.get('meanings')
         ]);
       }).then(function (r) {
         Lexicon.pinyinMap = r[0] || Object.create(null);
@@ -465,6 +845,13 @@
         Lexicon.customChars = r[3] || [];
         Lexicon.meta = r[4] || {};
         Lexicon.fantiMap = r[5] || Object.create(null);
+        /* 新华字典四份数据。老版本存过的是 undefined，
+         * 这里给空对象，下面的读取一律走 isPolyphone/isCommon，
+         * 它们能正确处理空表。 */
+        Lexicon.pinyinAll = r[8] || Object.create(null);
+        Lexicon.polyMap = r[9] || Object.create(null);
+        Lexicon.commonSet = r[10] || Object.create(null);
+        Lexicon.meanings = r[11] || Object.create(null);
 
         /* 方言数据：蜀拼字表与方言词汇 */
         if (r[6] && Object.keys(r[6]).length) NS.Dialect.applyShupin(r[6]);
@@ -535,6 +922,16 @@
         fantiCount: Lexicon.fantiMap ? Object.keys(Lexicon.fantiMap).length : 0,
         shupinCount: NS.Dialect.status().shupinCount,
         dialectWords: NS.Dialect.status().dialectWords,
+        /* 新华字典四份数据的覆盖量 —— 界面靠它判断
+         * 「能不能按部首浏览」「要不要提示去下载释义」 */
+        pinyinAllCount: Lexicon.pinyinAll
+          ? Object.keys(Lexicon.pinyinAll).length : 0,
+        polyCount: Lexicon.polyMap
+          ? Object.keys(Lexicon.polyMap).length : 0,
+        commonCount: Lexicon.commonSet
+          ? Object.keys(Lexicon.commonSet).length : 0,
+        meaningCount: Lexicon.meanings
+          ? Object.keys(Lexicon.meanings).length : 0,
         dialectReady: NS.Dialect.status().available,
         lastSync: (Lexicon.meta && Lexicon.meta.lastSync) || null,
         backend: NS.Store.getBackend(),
@@ -560,6 +957,10 @@
         Lexicon.dict = Object.create(null);
         Lexicon.customChars = [];
         Lexicon.fantiMap = Object.create(null);
+        Lexicon.pinyinAll = Object.create(null);
+        Lexicon.polyMap = Object.create(null);
+        Lexicon.commonSet = Object.create(null);
+        Lexicon.meanings = Object.create(null);
         NS.Dialect.reset();
         Lexicon.meta = {};
         Lexicon.discardNotice = null;
@@ -588,6 +989,10 @@
     if (!Lexicon.dict) Lexicon.dict = Object.create(null);
     if (!Lexicon.customChars) Lexicon.customChars = [];
     if (!Lexicon.fantiMap) Lexicon.fantiMap = Object.create(null);
+    if (!Lexicon.pinyinAll) Lexicon.pinyinAll = Object.create(null);
+    if (!Lexicon.polyMap) Lexicon.polyMap = Object.create(null);
+    if (!Lexicon.commonSet) Lexicon.commonSet = Object.create(null);
+    if (!Lexicon.meanings) Lexicon.meanings = Object.create(null);
   }
 
   function persist() {
@@ -597,6 +1002,10 @@
       NS.Store.set('dict', Lexicon.dict),
       NS.Store.set('customChars', Lexicon.customChars),
       NS.Store.set('fantiMap', Lexicon.fantiMap),
+      NS.Store.set('pinyinAll', Lexicon.pinyinAll),
+      NS.Store.set('polyMap', Lexicon.polyMap),
+      NS.Store.set('commonSet', Lexicon.commonSet),
+      NS.Store.set('meanings', Lexicon.meanings),
       NS.Store.set('shupinMap', NS.Dialect.shupinMap || Object.create(null)),
       NS.Store.set('dialectWords', NS.Dialect.dialectWords || []),
       NS.Store.set('poems', NS.RAW_POEMS.slice(NS.Poetry.builtinCount)

@@ -11,6 +11,9 @@ const BASE = path.join(__dirname, '..', 'web', 'js');
   'data/homophone.js', 'data/popularity.js', 'data/radicals.js',
   'data/radical-hints.js', 'data/namewords.js', 'data/era-chars.js',
   'data/nayin.js', 'data/shuli81.js', 'data/nameblock.js',
+  /* namefilter.js 是「不宜入名」的人工字表，radical.dictCandidates 靠它
+   * 把「凹叭办抱悲」这类字挡在字典候选池外 */
+  'data/namefilter.js',
   /* sources.js 提供 NS.SOURCE_BY_ID，用字来源筛选靠它把源 id 映射成显示名 */
   'data/sources.js',
   'core/wuxing.js', 'core/calendar.js', 'core/lunar.js',

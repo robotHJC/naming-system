@@ -929,18 +929,18 @@ input::placeholder { color: #b6b0a4; }
 
 .lex-rad-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 6px;
   margin: 10px 0;
-  max-height: 340px;
+  max-height: 430px;
   overflow-y: auto;
 }
 
 .lex-rad-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 6px;
-  padding: 5px 8px;
+  padding: 6px 9px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fbfaf6;
@@ -952,9 +952,9 @@ input::placeholder { color: #b6b0a4; }
 
 .lex-rad-item b {
   font-family: var(--font-serif);
-  font-size: 16px;
+  font-size: 17px;
   color: var(--ink);
-  margin-right: 4px;
+  margin-right: 3px;
 }
 
 .lex-rad-item .lr-meta { color: var(--ink-3); font-size: 11px; }
@@ -963,17 +963,40 @@ input::placeholder { color: #b6b0a4; }
   display: block;
   color: var(--ink-2);
   font-size: 11px;
-  margin-top: 1px;
+  margin-top: 2px;
+  line-height: 1.45;
+  /* 字典释义是完整句子，卡太短会切在半句话上；两行 + 悬浮看全文 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* 徽标：多音字 / 一级常用字 / 诗词里出现过 / 不宜入名 */
+.lr-badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+
+.lr-badge {
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1.5;
+  padding: 0 5px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+  background: #f3f1ea;
   white-space: nowrap;
 }
+
+.lr-badge.poly { color: #8a5a12; border-color: #e3cfa4; background: #fbf3e2; }
+.lr-badge.common { color: #1f6b4f; border-color: #b6ddcd; background: #eaf7f1; }
+.lr-badge.lit { color: #4a5b8a; border-color: #c3cbe8; background: #eef1fa; }
+.lr-badge.no { color: #9a3b33; border-color: #e8c4c0; background: #fcefee; }
 
 /* 笔画不在 4–16 区间或没有读音/释义的，视觉上压暗：
  * 不是不能用，只是不当起名用字 */
 .lex-rad-item.dim { opacity: .52; }
 
-.lex-rad-item input { accent-color: var(--jade); }
+.lex-rad-item input { accent-color: var(--jade); margin-top: 3px; }
 
 /* 出处分级标签：「出处成词」才是最硬的出处，「同篇」只是同在一首诗里 */.nc-poetry-kind {
   display: inline-block;
@@ -2881,18 +2904,38 @@ details.more > summary:hover { color: var(--jade); }
        系统除了内置字库，还会从《新华字典》里把该部首的字补进来 ——
        内置的偏旁表是手写的，只覆盖 278 字，<b>草字头只有 47 个字</b>
        （<code>芊芷菡茉茵菁萱蕙蕴薇蕾</code> 这类，所以挑来挑去都是古风的）；
-       而字典里草字头有 <b>304 个字</b>，才是真正的候选池。</p>
-    <p style="margin-top:8px"><b>但补进来的字要过一道闸门</b>：它必须在
-       <b>已同步的诗词里至少出现过一次</b>。原因是字典是一万六千字的全量汉字表，
-       含大量化学、医药专用字；而我们对内置 490 字之外的任何字
-       <b>都没有可靠的质量数据</b>，唯一能区分「苯」和「兰」的信号就是
-       它有没有被历代诗文用过。这道闸门是实测加的 —— 不加的话，
-       系统会输出「李苛苯」（苯＝苯，化学名词）、「李苞苊」（苊＝苊，化工原料）
-       这类根本不是名字的字。</p>
+       而字典里草字头有 <b>932 个字</b>（三点水 1027、宝盖头 110、走之底 209），
+       才是真正的候选池。</p>
+    <p style="margin-top:8px">「词库管理 → 按部首找字」里把这些字
+       <b>全部列出来</b>，每个字带<b>简体笔画、部首、拼音、完整释义</b>，
+       并标出 <b>多音字</b>（附全部读音，如 行 → xíng/háng/hàng/héng）、
+       <b>一级常用字</b>、<b>诗词里出现过</b>。<b>有用的排在前面</b> ——
+       否则艹 部按字典顺序排开头会是 <code>艽芁艻艿芀艼</code> 这种没人用的字。</p>
+    <p style="margin-top:8px"><b>但补进来的字要过三道闸门</b>：① 简体笔画 4–16、
+       有读音、有释义；② 是《通用规范汉字表》一级常用字，或在
+       <b>已同步的诗词里至少出现过一次</b>；③ <b>不在「不宜入名」表里</b>。
+       第 ② 条是因为字典是 2 万字的全量汉字表，含大量化学、医药专用字，
+       而我们对内置 490 字之外的任何字都没有别的质量数据。
+       第 ③ 条是实测补的：光靠 ② 拦不住「不」「把」「办」「抱」——
+       它们在诗词里出现次数极高、又是一级常用字，热度也高，
+       <b>高频 ≠ 适合当名字</b>；不拦的话会输出「李层抱」「李悲到」。
+       这份表是人工列的（<code>data/namefilter.js</code>，按语法词、
+       日常动作、器物、身体、贬义等分类），<b>只影响自动取名，
+       不影响你手工加入字库</b>。</p>
+    <p style="margin-top:8px"><b>关于「只用新华字典取名」</b>　在
+       「用字来源」里勾上<b>新华字典·字表</b>，就等于说「用字不必出自诗文，
+       字典里有就行」——系统会从整本字典里按热度挑字组合。
+       这时如果再选偏好部首（草字头／氵／宀／辶…），取的是两者的<b>交集</b>，
+       也就成了「只在新华字典里、且带这些偏旁的字里取名」。
+       这种模式下<b>必须有诗词依据</b>：一级常用字里有 2755 个字
+       从来没在诗词里出现过（凹 叭 办 币 电 订 叼 歹 邓 队…），
+       放它们进来会把候选名额占掉一大半。</p>
     <p style="margin-top:8px"><b>一个如实说明</b>：只同步了字典、没同步诗词时，
-       这道闸门会让几乎什么都补不进来 —— 这是对的，那种情况下确实没有依据。
+       闸门会让几乎什么都补不进来 —— 这是对的，那种情况下确实没有依据。
        诗词源默认就是开的，同步之后这个功能才有威力。另外字典字没有风格标签，
-       所以匹配不了「风格偏好」，挑出来的字也会比内置字库里那些更朴素。</p>
+       所以匹配不了「风格偏好」，挑出来的字也会比内置字库里那些更朴素。
+       同步字典只需要<b>字表 + 多音字表 + 常用字表</b>三项（约 3.2MB）；
+       「释义」那项 13MB，只查字不查义可以不下。</p>
     <p><b>关于地支刑冲合害</b>　八字原来只算五行力量，没看地支之间的关系。
        但「子午冲」「卯戌合」「申子辰三合水局」这些是传统命理判断命局松紧的基本依据，
        所以现在如实列出来：<b>六冲</b>（子午、丑未、寅申、卯酉、辰戌、巳亥）、
@@ -5043,6 +5086,147 @@ details.more > summary:hover { color: var(--jade); }
 </script>
 <script>
 /* =========================================================================
+ * namefilter.js —— 「不宜入名」的单字表
+ *
+ * 为什么需要它
+ * ---------------------------------------------------------------
+ * 引入《新华字典》（2.1 万字）当用字来源之后，实测出来的真问题：
+ * 让「有依据」的字进候选池（一级常用字 或 诗词里出现过）、
+ * 按热度排序取前 400 个，池子长这样：
+ *
+ *   安岸凹奥巴叭扒把白百办半邦包抱悲本比彼币必边便别宾丙不布
+ *   残灿仓草册岑层曾朝车澈琛宸晨承诚澄尺斥仇丑出初楚处床吹春…
+ *
+ * 一半是好字，一半是「凹叭扒把办半抱悲不布斥仇丑出吹」。
+ * 逐字看每个都没毛病 —— 常用字、拼音正常、笔画不多，
+ * 现有的每一道自动判据都拦不住：
+ *   「不」在诗词里出现次数极高、是一级常用字、热度 55；
+ *   「把」「办」「抱」同理。**高频 ≠ 适合当名字。**
+ *
+ * 这类字的共同点是「它们是语法词、日常动作词或器物词」，
+ * 而不是「意象」。判断这一点需要语义知识，统计量代替不了，
+ * 所以只能人工列表 —— 与 data/era-chars.js、data/nameblock.js 同一套做法。
+ *
+ * 与 nameblock.js 的分工
+ * ---------------------------------------------------------------
+ *   nameblock.js        管**整名**是常用词（博士、斯文）→ 降权 16 分
+ *   era-chars.js        管**单字**年代感过时（氏、卿、佾）→ 降权 6 分/字
+ *   namefilter.js（本文件）管**单字**根本不该进名字 → 直接从候选池剔除
+ * 前两个是「扣分」，因为那些字凑巧也能用；本文件是「剔除」，
+ * 因为「凹」「叭」「办」无论跟谁配都不像名字，留在池里只是占位置。
+ *
+ * 收录标准（这条线很重要，别放宽）
+ * ---------------------------------------------------------------
+ * 收：语法词（虚词/代词/连词/介词/副词）、否定词、日常动作动词、
+ *     日常器物与生活名词、身体部位、亲属与身份泛称、贬义与消极字、
+ *     不能单独成象的时间/数量/方位字、纯数字。
+ *
+ * **刻意不收**（看着像上面几类，其实是好名字用字；实测踩过这些坑）：
+ *   意象名词  山水云雪雨风月星花草木竹松鹤鹿鱼鸟泉岸洲渚
+ *   抽象雅词  知 思 念 怀 慕 望 归 安 和 宁 清 澈 澄 朗 承 诚 定 立
+ *   传统用字  之 子 其 若（王羲之、林若）千 万 百 一 三（马千里）
+ *   身份/器物 军 兵 商 官 城 庄 田 楼 桥 路 门 户 友 主 曾 开 关 飞
+ *              （建军、张路、飞 都是真在用的名字用字）
+ *   判断标准：**这个字放进「李X」里，别人会不会以为你写错了。**
+ *   会 → 收。只是不时髦 → 交给 era-chars.js 去降权。
+ *
+ * 覆盖面
+ * ---------------------------------------------------------------
+ * 这是**高频污染字**的清单，不是穷举 —— 2.1 万字里还有一些
+ * （尤其二级字表的日用字）没盖到。但实测接进「按部首找字」与
+ * 「整本字典取名」两条路后，候选池与生成结果里都不再出现这类字。
+ * 后续要补，判断标准照上面那条线走。
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+  var NS = (global.NS = global.NS || {});
+
+  /* 分组只为了可读与可维护 —— 值会保留下来，
+   * 界面上可以据此告诉用户「这个字为什么没被推荐」。
+   * 每组说明就是收录理由，改动时请一并更新。 */
+  var GROUPS = {
+    /* 虚词 / 代词 / 连词 / 介词 / 副词 —— 「李而」「李乎」「李则」 */
+    '语法词': '不兮而乎矣焉哉耶也者之其以为或与且乃亦则所尔汝吾我' +
+      '谁何那这此彼他它自各每某皆尽只但却更又还就才再很太最都已' +
+      '将把被给让使由往及并虽故因既况夫盖岂弗勿毋到比便曾独别',
+
+    /* 否定 / 禁戒 —— 「李无」「李莫」「李未」 */
+    '否定词': '无莫未非否免',
+
+    /* 日常动作 —— 「李吹」「李抱」「李起」 */
+    '动作动词': '吃喝说看听拿放打买卖走跑睡坐站叫喊找想认觉试受问' +
+      '求要得该能会敢请谢帮换变做干写读唱跳停等送带提拉推举抬搬用' +
+      '教讲谈算记忘怕累哭骂吵闹偷抢骗扔丢捡爬掉挂撞碰掐拧拽摔跌藏' +
+      '躲逃拦挡逗欺抱起烧消吹来归',
+
+    /* 名词 / 形容词里「不能单独成象」的那批 —— 实测占掉候选池名额最多的就是它们 */
+    '非意象名词': '公今木火内气切五夭引布处古旧末目鸟去石市台头外未' +
+      '存地多共合回众低角连声识纵服昏径卷空命奈朋往物炙度宫故挂徊' +
+      '食室首挑昼宾匪离眠索毫徘排梢淘欲溅啼感鼓楼蓦阙塞睡磋麾醒流' +
+      '好关皇浪鸠',
+
+    /* 日常器物 / 生活场所 —— 「李床」「李灯」「李墙」 */
+    '器物名词': '钱饭菜车床灯桌椅纸笔锅碗杯盘刀枪炮弹衣裤鞋帽袋箱' +
+      '窗墙屋灶盆桶勺筷罐缸绳钉锤锁伞扇票账债税费价街巷村庄镇店厂' +
+      '矿井沟渠坝房院尺酒帘炉茴',
+
+    /* 身体 / 生理 —— 这类字套在人名上最「出戏」 */
+    '身体生理': '头脸眼耳鼻嘴牙舌手脚腿肚背腰血骨肉皮毛喉颈肩膝肘' +
+      '腹胸胆胃肝肺肾肠汗泪尿屎屁痰脓疮疤痘痣瘤',
+
+    /* 亲属 / 身份 / 泛称 —— 「李哥」「李妈」「李员」 */
+    '称谓泛称': '爸妈哥姐弟妹爷奶叔姨舅姑婶嫂崽娃妮朋友伴侣客邻伙' +
+      '群队员工匪贼犯囚奴仆佣农匠徒吏差役',
+
+    /* 贬义 / 消极 —— 这一组最不能漏，漏一个就是「李悲到」 */
+    '贬义消极': '悲恨苦病痛死亡杀伤仇丑歹残破败输罪恶灾祸烦累穷困' +
+      '溃崩毒凶难愁衰朽腐烂臭脏乱罚刑狱疾疫疯傻蠢笨弱懦卑贱贫愚痴' +
+      '拙钝毁焚殃孽冤妒羞辱耻慌恐惧怖惊骇忧闷燥躁虐暴蛮横歪斜瘫瘸' +
+      '瞎聋哑凋寂枯',
+
+    /* 时间 / 数量 / 方位 —— 「李昨」「李层」「李间」 */
+    '时间数量方位': '昨年日时分秒号刻前后边旁上下左右里外内间半满些' +
+      '个只条块件双对层批次回遍顿阵堆排列串束颗颗粒滴幅页段末尾底' +
+      '顶侧沿端尽',
+
+    /* 纯数字 —— 没有意象可言 */
+    '数字': '二四六七八九十零两几壹贰叁肆伍陆柒捌玖拾',
+
+    /* 叹词 / 拟声 —— 字形本身就破碎 */
+    '叹词拟声': '啊呀哎唉哦噢喔咦嗯嘿哈嘻呵哟呦哇啪哗咚铛叮砰唔呃嘶' +
+      '吱叽咕嘟吧吗呐'
+  };
+
+  /* 拼成一个字符集；去空格、去重复。 */
+  var SET = Object.create(null);
+  var LIST = '';
+  Object.keys(GROUPS).forEach(function (k) {
+    var s = GROUPS[k].replace(/\s+/g, '');
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (SET[ch]) continue;
+      SET[ch] = k;          /* 值保留分组名，界面可以解释「为什么不宜入名」 */
+      LIST += ch;
+    }
+  });
+
+  NS.NAME_BLOCK_CHARS = LIST;
+  NS.NAME_BLOCK_SET = SET;
+  NS.NAME_BLOCK_GROUPS = GROUPS;
+
+  /**
+   * 这个字是否不宜入名。
+   * @param {string} ch 单字
+   * @returns {{blocked:boolean, reason:string}} reason 是分组名，未命中为空串
+   */
+  NS.nameCharBlock = function (ch) {
+    var why = ch ? SET[ch] : null;
+    return { blocked: !!why, reason: why || '' };
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* =========================================================================
  * fanti.js —— 繁体 → 简体 归一化表
  *
  * 为什么需要：
@@ -5509,18 +5693,78 @@ details.more > summary:hover { color: var(--jade); }
       urls: gh('AlienKevin/sichuanhua', 'main', 'fangyan.tsv')
     },
 
-    /* ---------------- 字典：汉字属性 ---------------- */
+    /* ---------------- 字典：汉字属性 ----------------
+     *
+     * 数据源从 pwxcoo/chinese-xinhua 换成了 mapull/chinese-dictionary。
+     * 换的原因（都是实测出来的）：
+     *   1. 旧源的 pinyin 字段**只有单读音**，16142 条里 0 条带多读音分隔符 ——
+     *      「行」只有 xínɡ 没有 háng，所以「是不是多音字」这个信息
+     *      在旧数据里根本不存在，无法满足「标注多音字」的需求。
+     *   2. 旧源的拼音用了 U+0261（ɡ，拉丁字母）而不是 ASCII 的 g，
+     *      这会让鼻音韵尾检测（/(ng|n)$/）静默失效。
+     *   3. 新源 21057 字（旧源 14809），且多一份《通用规范汉字表》
+     *      常用字表 —— 那是判断「这个字常不常见」的权威依据。
+     *   4. 总体积更小（字表 2.8MB + 多音字 0.24MB + 常用字 0.18MB，
+     *      释义 13MB 且可选；旧源是单个 27MB）。
+     *
+     * 拆成四个源而不是一个，是为了：
+     *   · 复用现有的「一个源一个文件 + 多镜像」机制，不必改下载层；
+     *   · 用户可以只下载前三项（约 3.2MB）就能取名，
+     *     释义（13MB）纯粹是「按部首找字」时查看用的，可以不下。
+     */
     {
-      id: 'xinhua',
+      id: 'xhbase',
       group: 'dict',
-      name: '新华字典（部首/笔画/释义）',
-      format: 'xinhua',
-      size: 27354320,
+      name: '新华字典·字表（2.1 万字）',
+      format: 'xhbase',
+      size: 2891776,
+      defaultOn: true,
+      big: true,
+      desc: '约 2.1 万个汉字的**全部读音**、部首、笔画与字形结构。' +
+        '这是「按部首找字」与「从字典取名」的基础。体积约 2.8 MB。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/char_base.json')
+    },
+    {
+      id: 'xhpoly',
+      group: 'dict',
+      name: '新华字典·多音字表（2495 字）',
+      format: 'xhpoly',
+      size: 253952,
+      defaultOn: true,
+      desc: '2495 个多音字及其全部读音（行 → xíng/háng/hàng/héng，' +
+        '若 → ruò/rě，菲 → fēi/fěi）。用来标注「这个字有几种读法」——' +
+        '读法多且都常用的字容易被念错，取名时应避开。很小，建议开着。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/polyphone.json')
+    },
+    {
+      id: 'xhcommon',
+      group: 'dict',
+      name: '新华字典·常用字表（3500 字）',
+      format: 'xhcommon',
+      size: 184320,
+      defaultOn: true,
+      desc: '《通用规范汉字表》一级字表 3500 字。' +
+        '字典里有 2 万多字，不筛的话会挑出「苯」「苊」「芤」这类' +
+        '化学、医药专用字 —— 它们确实在字典里，但根本不是名字。' +
+        '很小，建议开着。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/common/char_common.json')
+    },
+    {
+      id: 'xhdetail',
+      group: 'dict',
+      name: '新华字典·释义（逐读音，13 MB）',
+      format: 'xhdetail',
+      size: 13032448,
       defaultOn: false,
       big: true,
-      desc: '约 1.6 万个汉字的部首、简体笔画、释义。' +
-        '用于把字库之外的字联网加进来。体积较大，首次下载约需 30 秒～2 分钟。',
-      urls: gh('pwxcoo/chinese-xinhua', 'master', 'data/word.json')
+      desc: '每个字**按读音分列**的释义与例词，供「按部首找字」时查看字义。' +
+        '体积约 13 MB，首次下载较慢。' +
+        '**只取名字的话可以不下载** —— 前三项就够了。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/char_detail.json')
     }
   ];
 
@@ -9447,23 +9691,56 @@ details.more > summary:hover { color: var(--jade); }
   /* ---------------- 候选池 ---------------- */
 
   /**
+   * 用字来源里有没有勾《新华字典》。
+   *
+   * 勾了才走「只在新华字典里取名」那条路 —— 那是从两万字的字典里挑字，
+   * 跟「按部首补几个字」不是一回事：前者是**整本字典当候选池**，
+   * 后者只是给一个部首多凑几个候选。必须分清，否则用户勾了字典
+   * 却只多出 120 个艹部字，跟他要的「简单在新华字典里面组合」不符。
+   */
+  function dictSourceSelected(sourceIds) {
+    if (!sourceIds || !sourceIds.length) return false;
+    for (var i = 0; i < sourceIds.length; i++) {
+      var s = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[sourceIds[i]] : null;
+      if (s && (s.dictPool || s.format === 'xhbase')) return true;
+    }
+    return false;
+  }
+
+  /**
    * 把「按词库筛选用字」的源 id 列表解析成一个字集。
    *
    * 语义：**用字必须出现在所选源里**（用户选的是这个）。
    * 多个源之间是「并集」—— 勾《诗经》和《三字经》就是两本书的字都能用；
    * 与「偏好部首」之间才是交集（两个约束都要满足）。
    *
+   * 《新华字典》这一源特殊：它不是一个「出处」，而是整个汉字表。
+   * 勾上它等于说「用字不必出自诗文，字典里有就行」——
+   * 这时字集就是字典的全部两万字，真正的裁剪交给下游的
+   * 热/常用字/诗词依据三重排序（见 expandByDict）。
+   *
    * @param {string[]} sourceIds
    * @returns {Object|null} { 字: 1 }；null 表示不筛
    */
   function resolveCharPool(sourceIds) {
     if (!sourceIds || !sourceIds.length) return null;
-    if (!NS.Poetry || !NS.Poetry.charsBySource) return null;
-    var bySrc = NS.Poetry.charsBySource();
+    var bySrc = (NS.Poetry && NS.Poetry.charsBySource)
+      ? NS.Poetry.charsBySource() : null;
     var pool = Object.create(null);
     var hitAny = false;
     sourceIds.forEach(function (id) {
       var src = NS.SOURCE_BY_ID ? NS.SOURCE_BY_ID[id] : null;
+      /* 新华字典：整本字典都是它的「用字」 */
+      if (src && (src.dictPool || src.format === 'xhbase')) {
+        var lex = NS.Lexicon;
+        if (lex && lex.dict) {
+          var n = 0;
+          Object.keys(lex.dict).forEach(function (ch) { pool[ch] = 1; n++; });
+          if (n) hitAny = true;
+        }
+        return;
+      }
+      if (!bySrc) return;
       /* 诗篇里存的是**显示名**（「诗经」），不是 id */
       var name = src ? src.name : id;
       var set = bySrc[name];
@@ -9477,19 +9754,24 @@ details.more > summary:hover { color: var(--jade); }
   }
 
   /**
-   * 从新华字典补字时，总共最多补多少个。
+   * 从《新华字典》补字进候选池时，最多补多少个。
    *
-   * 偏旁字动辄几百个（实测字典里艹部 353 字，而内置手写表只有 48 个），
-   * 全塞进候选池会让组合数爆炸 —— 每个组合都要走一次 evaluate。
-   * 120 个字仍比内置表多一倍半，够选；而且 fromDict 已按
-   * 「适不适合起名」+ 笔画从少到多 排过序，留下的是笔画简洁的那批
-   * （简单模式本来就要「简单」）。
+   * 为什么两种模式数字差这么多：
+   *   · 部首模式（120）：偏旁字动辄几百个（实测字典里艹部 932 字，
+   *     而内置手写表只有 48 个），全塞进候选池会让组合数爆炸 ——
+   *     每个组合都要走一次 evaluate。120 个字够选，而且 fromDict 已按
+   *     「有依据 + 笔画少」排过序，留下的正是简单好用那批。
+   *   · 来源模式（400）：用户明确说了「只在新华字典里面取名」，
+   *     200 的池子太小会让名字翻来覆去就那几个。400 个字 × 每个都要
+   *     charRow 一遍，实测开销可接受，而组合裁剪由 POOL_LIMIT 兜底，
+   *     真正参与组合的还是前 100 个字。
    */
   var DICT_RADICAL_LIMIT = 120;
+  var DICT_SOURCE_LIMIT = 400;
 
-  /* 已经补过的部首。
+  /* 已经补过的「部首 + 模式」组合。
    *
-   * 必须记住，否则每次 plan() 都会再补 120 个新字 ——
+   * 必须记住，否则每次 plan() 都会再补一批新字 ——
    * fromDict 会把「已在字库」的字排除掉，所以第二次调用捞到的
    * 是**另一批**艹字，字库就这样无限膨胀下去。
    * 只在字典确实可用时才标记，否则字典后同步上就再也补不上了。 */
@@ -9499,7 +9781,7 @@ details.more > summary:hover { color: var(--jade); }
    * 这个字有没有「文学使用证据」—— 在已同步的诗词里至少出现过一次。
    *
    * 这是判断字典字能不能当名字用的**唯一可用依据**：
-   * 热度表只覆盖内置 490 字；对表外的 14809 字，诗歌语料
+   * 热度表只覆盖内置 490 字；对表外的字，诗歌语料
    * （诗经/楚辞/唐诗/宋词…）是唯一能区分「苯」与「兰」的信号。
    */
   function hasLiteraryUse(ch) {
@@ -9510,70 +9792,133 @@ details.more > summary:hover { color: var(--jade); }
   }
 
   /**
-   * 用户选了偏好部首时，从《新华字典》补进该部首的字。
+   * 从《新华字典》补字进候选池。两种触发方式，共用一套挑选逻辑
+   * （Radical.dictCandidates）：
    *
-   * 为什么必须补：radicals.js 的 RADICAL_GROUPS 是**手写表，只覆盖
-   * 内置 278 字**（文件头自己写明了），于是「草字头」只有 48 个可选字 ——
-   * 全是 芊芷菡茉茵菁萱蕙蕴薇蕾 这类古风字。用户的需求是「带某些
-   * 偏旁部首、但不要太古文」，只靠内置表永远做不到。
-   * 新华字典里艹部的字有上千个，才是真正的候选池。
+   *   1. **来源模式**：用户把「新华字典」勾成了用字来源（ctx.dictPool）
+   *      → 从整本字典里挑，这才是真正的「只在新华字典里取名」。
+   *      没有别的来源约束，按热度排（按笔画排会挑出一堆「一丁七丈上不」）。
+   *   2. **部首模式**：用户只选了偏好部首 → 按部首挑，按笔画排。
+   *      为什么必须补：radicals.js 的 RADICAL_GROUPS 是**手写表，只覆盖
+   *      内置 278 字**，于是「草字头」只有 48 个可选字 ——
+   *      全是 芊芷菡茉茵菁萱蕙蕴薇蕾 这类古风字。用户的需求是
+   *      「带某些偏旁部首、但不要太古文」，只靠内置表永远做不到，
+   *      而字典里艹部有 932 字，才是真正的候选池。
+   *
+   * 两种同时成立时是**交集**：整本字典 ∩ 部首。
+   *
+   * 质量门（两道，缺一不可）：
+   *   · suitable —— 简体笔画 4–16、有读音、有释义；
+   *   · notable  —— 一级常用字 或 在已同步的诗词里出现过。
+   * 字典是两万字的全量汉字表，含「苯」「苊」「芤」这类化学/医药专用字。
+   * 实测不放这道门，立刻会输出「李苛苯」「李苞苊」这种名字。
+   * notable 必须两选一而不是只看常用字表：实测 芷/菡/萏/茹/芸/芮/芊/萱
+   * 都不在 3500 一级字表里（它们在二级字表），却是公认的好名字用字；
+   * 反过来 茬/芭/苞 在表里却不是好名字用字。两个信号互补。
+   * 代价：只同步字典、没同步诗词时能补的字会少很多 —— 这是诚实的，
+   * 那种情况下确实缺少依据。
    *
    * 字典字**只在内存里**进字库（不落盘）：想留下来就去
    * 「词库管理 → 按部首找字」手工确认加入。这样既能生成名字，
    * 又不会把未核对的字（康熙笔画是推算的）静默写进持久字库。
    *
-   * 幂等：重复调用不会重复添加（靠 CHAR_DB 查重）。
-   * @returns {number} 本次补进了几个字
+   * 本轮**实际想要**的字集记在 ctx.dictCharSet 上。buildPool 用它
+   * 反过来把上一轮补的、这一轮不再需要的临时字排除掉 ——
+   * 用户把「草字头」改成「三点水」时，旧那批艹字必须立刻退出，
+   * 否则名字会从用户已经取消的部首里冒出来。
+   *
+   * @returns {number} 本次新补进字库的字数
    */
-  function expandByDictRadicals(ctx) {
-    if (!ctx.preferRadicals || !ctx.preferRadicals.length) return 0;
-    if (!NS.Radical || !NS.Radical.fromDict || !NS.Lexicon) return 0;
+  function expandByDict(ctx) {
+    var R = NS.Radical;
+    var lex = NS.Lexicon;
+    ctx.dictCharSet = Object.create(null);
+    if (!R || !R.dictCandidates || !lex || !lex.dict) return 0;
 
-    var added = 0;
-    var budget = DICT_RADICAL_LIMIT;
-    var skippedNoEvidence = 0;
+    var rads = ctx.preferRadicals || [];
+    var asPool = !!ctx.dictPool;
+    if (!asPool && !rads.length) return 0;   /* 没触发条件：保持内置字库 */
+
+    var key = (asPool ? 'P' : '') + '|' + rads.slice().sort().join(',');
+    var budget = asPool ? DICT_SOURCE_LIMIT : DICT_RADICAL_LIMIT;
     var available = false;
-    ctx.preferRadicals.forEach(function (name) {
-      if (budget <= 0) return;
-      if (_expandedRadicals[name]) return;
-      var res;
-      try { res = NS.Radical.fromDict(name, { limit: budget }); }
-      catch (e) { return; }
-      /* available=false 表示字典还没同步 —— 这时保持内置表的行为，
-       * 不报错也不静默失败（界面上另有「还没同步字典」的提示）。
-       * 不标 _expandedRadicals，等字典同步后再试。 */
-      if (!res || !res.available) return;
-      available = true;
-      _expandedRadicals[name] = 1;
-      (res.items || []).forEach(function (it) {
-        if (budget <= 0) return;
-        if (NS.CHAR_DB[it.char]) return;
-        if (!it.suitable) return;
-        /* **必须有文学使用证据**：这个字得在已同步的诗词里出现过。
-         *
-         * 字典是一万六千字的全量汉字表（含「苯」「苊」「芤」这类
-         * 化学/医药专用字），而我们对表外字没有任何可靠的质量数据 ——
-         * 热度表只盖 490 字，热度估值又只能靠诗歌语料。
-         * 实测不放这道门，立刻会输出「李苛苯」「李苞苊」这种名字；
-         * 放上之后，只有真正被历代诗文用过的字才能进来。
-         * 代价：只同步字典、没同步诗词时几乎补不进字 ——
-         * 这是诚实的，那种情况下也确实没有依据。 */
-        if (!hasLiteraryUse(it.char)) { skippedNoEvidence++; return; }
-        var entry = NS.Lexicon.lookupChar(it.char);
-        if (!entry || entry.missing) return;
-        entry.gender = '中性';
-        entry.styles = [];
-        /* 界面据此提示「这个字来自新华字典，还没加入字库」 */
-        entry.__fromDict = true;
-        NS.CHAR_DB[it.char] = entry;
-        NS.CHAR_LIST.push(entry);
-        budget--;
-        added++;
+    var items = [];
+    var seen = Object.create(null);
+
+    if (rads.length) {
+      /* 每个部首单独取够配额再合并 —— 一次取前 N 条会被第一个部首占满 */
+      var per = asPool
+        ? Math.ceil(budget / rads.length) : DICT_RADICAL_LIMIT;
+      rads.forEach(function (name) {
+        var res;
+        try { res = R.fromDict(name, { limit: per }); }
+        catch (e) { return; }
+        /* available=false 表示字典还没同步 —— 这时保持内置表的行为，
+         * 不报错也不静默失败（界面上另有「还没同步字典」的提示）。 */
+        if (!res || !res.available) return;
+        available = true;
+        (res.items || []).forEach(function (it) {
+          if (seen[it.char]) return;
+          seen[it.char] = 1;
+          items.push(it);
+        });
       });
+    } else {
+      var c = R.dictCandidates({ order: 'heat' });
+      available = c.available;
+      items = c.items || [];
+    }
+    if (!available) return 0;
+
+    /* 这一组（模式 + 部首）是否已经补过字。
+     * 补过就只**重建本轮想要的字集**，不再往字库里添字 ——
+     * 否则每次 plan() 都会再捞一批新字进来。 */
+    var already = !!_expandedRadicals[key];
+    var added = 0;
+    var wantedN = 0;
+    var skippedNoEvidence = 0;
+    items.forEach(function (it) {
+      if (wantedN >= budget) return;
+      ctx.dictCharSet[it.char] = 1;
+      wantedN++;
+      if (NS.CHAR_DB[it.char]) return;   /* 已在库里（含上一轮补的） */
+      if (!it.suitable) return;
+      /* 质量门三关：
+       *  1. suitable —— 笔画 4–16、有读音、有释义、**不在不宜入名表里**；
+       *  2. notable  —— 一级常用字 或 诗词里出现过；
+       *  3. 没给部首（整本字典当来源）时**必须**有诗词依据。
+       *
+       * 第 3 关是实测调出来的：一级字表里有 2755 个字「有依据但从来没在
+       * 诗词里出现过」（凹 叭 办 币 电 订 叼 歹 邓 队…），
+       * 放它们进来会把 400 个名额占掉一大半，池子立刻变脏。
+       * 反过来，给了部首时不能再要求诗词依据 —— 部首本身已经把范围
+       * 收得很窄（艹 部 932 字里只有 7 个是「仅在诗词里出现过」），
+       * 再卡就没有字可用了。
+       */
+      if (!it.notable) { skippedNoEvidence++; return; }
+      if (!rads.length && !it.literary) { skippedNoEvidence++; return; }
+      if (already) return;
+      var entry = NS.Lexicon.lookupChar(it.char);
+      if (!entry || entry.missing) return;
+      entry.gender = '中性';
+      entry.styles = [];
+      /* 界面据此提示「这个字来自新华字典，还没加入字库」。
+       * 用户真去「加入字库」后这个标记会随新条目一起被覆盖掉，
+       * 所以它同时也是「临时字」的标记。 */
+      entry.__fromDict = true;
+      entry.__dictPool = true;
+      NS.CHAR_DB[it.char] = entry;
+      NS.CHAR_LIST.push(entry);
+      added++;
     });
+    _expandedRadicals[key] = 1;
+
     ctx.dictRadicalInfo = {
-      added: added, skippedNoEvidence: skippedNoEvidence,
-      dictAvailable: available
+      added: added,
+      skippedNoEvidence: skippedNoEvidence,
+      dictAvailable: available,
+      mode: asPool ? 'source' : 'radical',
+      wanted: wantedN
     };
     return added;
   }
@@ -9582,13 +9927,18 @@ details.more > summary:hover { color: var(--jade); }
     var limit = POOL_LIMIT[length] || 40;
 
     /* 必须在下面对 CHAR_LIST 的遍历之前 —— 它会往 CHAR_LIST 里添字 */
-    ctx.dictRadicalAdded = expandByDictRadicals(ctx);
+    ctx.dictRadicalAdded = expandByDict(ctx);
 
     var rows = [];
     var surnameChars = ctx.surname.split('');
 
     NS.CHAR_LIST.forEach(function (c) {
       if (ctx.taboo[c.char]) return;
+      /* 字典补进来的临时字：只有本轮还想要的才参与。
+       * 用户把部首从「草字头」换成「三点水」时，上一轮那批艹字
+       * 已经躺在 CHAR_LIST 里了，不拦的话名字会从用户
+       * 已经取消的部首里冒出来。 */
+      if (c.__dictPool && !ctx.dictCharSet[c.char]) return;
       if (surnameChars.indexOf(c.char) >= 0) return;
       /* 按词库筛选用字：勾了《诗经》就只从《诗经》出现过的字里选。
        * 放在性别判断之前 —— 它是**来源限制**，不是打分项。 */
@@ -9644,6 +9994,8 @@ details.more > summary:hover { color: var(--jade); }
     /* 用字来源筛选在这里解析，不在 buildContext 里 ——
      * 要扫全部诗篇，而 buildContext 每次评分都会被叫到。 */
     ctx.charPool = resolveCharPool(ctx.charSources);
+    /* 「只在新华字典里取名」：整本字典当候选池，见 expandByDict */
+    ctx.dictPool = dictSourceSelected(ctx.charSources);
     var length = Math.max(1, Math.min(opts.length || 2, 4));
     var built = buildPool(ctx, length);
 
@@ -9817,12 +10169,15 @@ details.more > summary:hover { color: var(--jade); }
     POOL_LIMIT: POOL_LIMIT,
     CAP_STEPS: CAP_STEPS,
     DICT_RADICAL_LIMIT: DICT_RADICAL_LIMIT,
+    DICT_SOURCE_LIMIT: DICT_SOURCE_LIMIT,
     plan: plan,
     buildPool: buildPool,
     /* 导出给界面用：显示「按当前词库筛选，可用 X 字」，
      * 以及给测试直接验证筛选语义。 */
     resolveCharPool: resolveCharPool,
-    expandByDictRadicals: expandByDictRadicals,
+    dictSourceSelected: dictSourceSelected,
+    expandByDict: expandByDict,
+    hasLiteraryUse: hasLiteraryUse,
     /** 清掉「已扩过的部首」记录 —— 测试与「重新同步字典后想再扩」时需要 */
     resetDictRadicals: function () {
       _expandedRadicals = Object.create(null);
@@ -10994,6 +11349,107 @@ details.more > summary:hover { color: var(--jade); }
       (cp >= 0xf900 && cp <= 0xfaff);          /* 兼容汉字 */
   }
 
+  /* 每个读音最多留几条释义、每条多长。
+   * 释义原始文件 13MB，不截断会把本地存储撑得很大、读一次很慢，
+   * 而界面上也只需要「一眼看懂这个字什么意思」。 */
+  var MAX_EXP_PER_READING = 3;
+  var MAX_EXP_LEN = 90;
+
+  /**
+   * 解析 mapull/chinese-dictionary 的两种 JSON 形态。
+   *
+   * char_base.json 与 char_detail.json 是**逗号分隔的对象序列**，
+   * 没有外层方括号（char_base 有 21057 行对象）；
+   * polyphone.json 与 char_common.json 则是标准 JSON 数组。
+   * 两种都要能吃，所以先看首字符再决定怎么解。
+   */
+  function parseJsonSeq(text) {
+    var t = String(text || '').trim();
+    if (!t) return [];
+    if (t.charAt(0) === '[') return JSON.parse(t);
+    return JSON.parse('[' + t.replace(/[\s,]+$/, '') + ']');
+  }
+
+  /**
+   * 拆掉开头那个**配平**的括号，返回括号内内容与括号之后的剩余。
+   *
+   * 为什么不能用正则：`/^[（(][^）)]*[）)]/` 会在**内层**括号的 `)` 上提前收尾。
+   * 「苟」的释义是
+   *   (形声。从艸,句(勾)声。本义:草名。又:菜名) 同本义。
+   * 正则只吃到「句(勾)」的 `)`，于是释义被切成
+   *   「声。本义:草名。又:菜名) 同本义。」
+   * 这种半截话，还带一个孤零零的右括号。必须按嵌套深度配平。
+   *
+   * @returns {{text:string, rest:string}|null} null = 不以括号开头、或括号不闭合
+   */
+  function splitParen(t) {
+    var c0 = t.charAt(0);
+    if (c0 !== '(' && c0 !== '（') return null;
+    var depth = 0;
+    for (var i = 0; i < t.length; i++) {
+      var c = t.charAt(i);
+      if (c === '(' || c === '（') depth++;
+      else if (c === ')' || c === '）') {
+        depth--;
+        if (depth === 0) {
+          return {
+            text: t.slice(1, i).trim(),
+            rest: t.slice(i + 1).replace(/^[。，、;；:：\s]+/, '').trim()
+          };
+        }
+      }
+    }
+    return null;   /* 括号不闭合，不动它 */
+  }
+
+  /**
+   * 释义清洗：压成一行、拆掉字典的六书说明括号、超长截断。
+   *
+   * 父注（六书说明）的两种形态：
+   *   「(指事。“一”是汉字部首之一。本义:数词…)」—— 括号里就是全部内容 → 拆括号留内容
+   *   「（形声。从辵，也声）曲折连绵」—— 括号只是开头 → 丢掉括号，留后面的正文
+   *
+   * 但括号后面若是「同本义。」「同上。」这类**没有信息量**的话，
+   * 真正的内容反而在括号里 —— 这时取括号内。实测「苇」的释义是
+   * 「(形声。从艸,韦声。本义:芦苇) 同本义。」，取后者等于什么都没说。
+   */
+  var CONTENTLESS = /^(同本义|同前|同上|见上|亦作|参见|详见)/;
+
+  function cleanExp(s) {
+    if (!s) return '';
+    var t = String(s).replace(/\s+/g, ' ').trim();
+    var p = splitParen(t);
+    if (p) {
+      if (p.rest && !CONTENTLESS.test(p.rest)) t = p.rest;
+      else if (p.text) t = p.text;
+      else t = p.rest;
+    }
+    if (t.length > MAX_EXP_LEN) t = t.slice(0, MAX_EXP_LEN) + '…';
+    return t;
+  }
+
+  /**
+   * 拼音归一化 —— 必须在**入库时**做，不能等到用的时候。
+   *
+   * 上游数据把 ASCII 的 g 写成拉丁小写字母 ɡ (U+0261) ——
+   * mapull 字表里「工」就是 "ɡōnɡ"，两个字母都是 U+0261，20928 字里有 2574 字中招。
+   * 这类同形字母会让声母判断和鼻韵母识别（ang/eng/ong 一个都认不出来）
+   * 静默失效：不报错，只是「音韵分」莫名偏低。
+   * 顺带把 ɑ (U+0251) 换成 a；实测三份数据里只出现 1 次。
+   *
+   * 带调元音（ā á ǎ à …）本来就不在 ASCII 区，不受影响。
+   */
+  function normPinyin(p) {
+    var s = String(p == null ? '' : p).trim();
+    if (!s) return '';
+    s = s.replace(/\u0261/g, 'g').replace(/\u0251/g, 'a');
+    /* 上游个别条目拼音字段里混进了汉字（实测 char_detail 有 2 条），
+     * 拼音必须是字母串，出现汉字就整条丢弃 —— 留着比丢掉更糟，
+     * 后面按首字母取声母会拿到一个汉字。 */
+    if (/[\u3400-\u9fff\uf900-\ufaff]/.test(s)) return '';
+    return s;
+  }
+
   /* 快照内置繁简表：load 顺序保证此刻 NS.FAN_JIAN 还是内置版本，
    * 「清空联网数据」时要还原到它。 */
   var FAN_JIAN_BUILTIN = Object.create(null);
@@ -11007,12 +11463,30 @@ details.more > summary:hover { color: var(--jade); }
    * 那是整个 object store 清空，会把**候选池**（跟联网词库毫无关系的
    * 用户数据）也一并删掉。用户一个个挑出来的名字丢了是真损失。 */
   var STORE_KEYS = ['pinyinMap', 'dict', 'poems', 'customChars',
-    'meta', 'fantiMap', 'shupinMap', 'dialectWords'];
+    'meta', 'fantiMap', 'shupinMap', 'dialectWords',
+    /* 下面四个来自 mapull/chinese-dictionary 的新华字典源 */
+    'pinyinAll', 'polyMap', 'commonSet', 'meanings'];
 
   var Lexicon = {
     pinyinMap: null,      /* { 字: {pinyin, tone} } */
     dict: null,           /* { 字: [简体笔画, 部首, 带调拼音, 释义] } */
     customChars: [],      /* 用户/联网加入字库的字 */
+    /* —— 以下四份来自新华字典字表，解决「旧源信息不够」的问题 —— */
+    /* { 字: [全部读音] }。旧源只给第一个读音，多音字根本看不出来。 */
+    pinyinAll: null,
+    /* { 字: [全部读音] }，只收录**多音字**。
+     * 与 pinyinAll 的区别：pinyinAll 是「所有字的读音」，
+     * 这个是「确实是多音字的那些字」—— 界面上要标「多音字」徽标，
+     * 拿长度 > 1 去判也能得到同样结果，但单独一份更直白、也更省一次遍历。 */
+    polyMap: null,
+    /* { 字: 1 } —— 《通用规范汉字表》一级字表（3500 字）。
+     * 这是判断「这个字常不常见」的权威依据，用来当字典取名的质量闸门。
+     * 光靠它不够（实测 茬/芭/苞 在表内但不是好名字，
+     * 而 芷/菡/芸/芮 不在表内却是好名字），要与诗歌语料组合用。 */
+    commonSet: null,
+    /* { 字: [{pinyin, exp:[释义…]}] } —— **逐读音**的释义。
+     * 旧源的释义是一整块文本、分不出哪个读音对应哪条义项。 */
+    meanings: null,
     /* 每次字库数据变化就 +1。依赖字库的派生索引（如同音替换的反查表）
      * 靠它判断缓存是否失效，不必在每次取用时重算一遍。 */
     dataVersion: 0,
@@ -11020,6 +11494,75 @@ details.more > summary:hover { color: var(--jade); }
     meta: null,           /* { lastSync, schema, sources: {id: {...}} } */
     /* 上一次启动时丢弃了不兼容的本地数据（用于界面提示），null 表示没发生 */
     discardNotice: null,
+
+    /* ---------------- 查询 ---------------- */
+
+    /** 某字的全部读音；没有多读音数据时退回单读音字典 */
+    readingsOf: function (ch) {
+      if (Lexicon.pinyinAll && Lexicon.pinyinAll[ch]) {
+        return Lexicon.pinyinAll[ch].slice();
+      }
+      var d = Lexicon.dict && Lexicon.dict[ch];
+      if (d && d[2]) return [d[2]];
+      var py = Lexicon.pinyinMap && Lexicon.pinyinMap[ch];
+      return py ? [py.pinyin] : [];
+    },
+
+    /** 是不是多音字（需要多音字表或字表里读音数 > 1） */
+    isPolyphone: function (ch) {
+      if (Lexicon.polyMap && Lexicon.polyMap[ch]) return true;
+      var r = Lexicon.readingsOf(ch);
+      return r.length > 1;
+    },
+
+    /** 是不是《通用规范汉字表》一级字表的常用字 */
+    isCommon: function (ch) {
+      return !!(Lexicon.commonSet && Lexicon.commonSet[ch]);
+    },
+
+    /** 某字的逐读音释义；没有就返回空数组 */
+    meaningsOf: function (ch) {
+      return (Lexicon.meanings && Lexicon.meanings[ch]) || [];
+    },
+
+    /**
+     * 公一版释义清洗，供界面 / 部首浏览复用**同一套规则**。
+     * 之前 radical.fromDict 自己用正则去括号，且又叠了一层
+     * Infer.cleanExplanation（它会按第一个句号截断、还带 slice(0,40) 的
+     * 兵方案），结果把「苟」的释义切成了半截话。规则只留一份。
+     */
+    cleanMeaning: function (s) {
+      return cleanExp(s);
+    },
+
+    /**
+     * 取某字某个读音的简短释义（拼成一行，用于列表里显示一句话）。
+     *
+     * 为什么要指定读音：字表（char_base）与释义（char_detail）的读音**排序不一致**
+     * —— 行 在字表里首读音是 xíng，在释义里第一条却是 háng。
+     * 不按读音去匹配，列表里就会出现「首读音 xíng，释义却是 háng 的」这种错位。
+     * 匹配不到时退回第一条。
+     */
+    briefMeaning: function (ch, pinyin) {
+      var prons = (Lexicon.meanings && Lexicon.meanings[ch]) || [];
+      if (!prons.length) return '';
+      var hit = null;
+      for (var i = 0; i < prons.length; i++) {
+        if (pinyin && prons[i].pinyin === pinyin) { hit = prons[i]; break; }
+      }
+      if (!hit) hit = prons[0];
+      var exp = hit.exp || [];
+      /* 「同本义。」「同上。」这类条目在列表里没有信息量（它的先行词在上一条
+       * 义项里），所以往后找第一条真正有内容的。全都没有就用第一条。 */
+      var one = '';
+      for (var j = 0; j < exp.length; j++) {
+        if (!/^(同本义|同上|见上|亦作)/.test(exp[j])) { one = exp[j]; break; }
+      }
+      if (!one) one = exp[0] || '';
+      /* 列表里只占一行，压到 60 字以内 */
+      if (one.length > 60) one = one.slice(0, 60) + '…';
+      return one;
+    },
 
     /* ---------------- 解析 ---------------- */
 
@@ -11066,7 +11609,7 @@ details.more > summary:hover { color: var(--jade); }
           return s.trim();
         }).filter(Boolean);
         if (!readings.length) continue;
-        var p = NS.Pinyin.stripTone(readings[0]);
+        var p = NS.Pinyin.stripTone(normPinyin(readings[0]));
         if (!p.plain) continue;
         map[ch] = { pinyin: p.plain, tone: p.tone };
         count++;
@@ -11074,10 +11617,108 @@ details.more > summary:hover { color: var(--jade); }
       return { map: map, count: count };
     },
 
+    /* =================================================================
+     * 新华字典（mapull/chinese-dictionary）
+     *
+     * 四份数据，各管一件事：
+     *   xhbase   字表   → dict（笔画/部首/首读音）+ pinyinAll（**全部读音**）
+     *   xhpoly   多音字 → polyMap
+     *   xhcommon 常用字 → commonSet
+     *   xhdetail 释义   → meanings（逐读音）+ dict 的释义字段
+     * ================================================================= */
+
+    /**
+     * 字表（character/char_base.json）
+     * 字段：char / strokes / pinyin[] / radicals / structure
+     *
+     * **必须保留已有释义**：同步按体积从大到小排，释义（13MB）会先入库，
+     * 这里直接覆盖 dict 会把刚存好的释义清掉。
+     */
+    parseXhBase: function (text) {
+      var arr = parseJsonSeq(text);
+      var map = Object.create(null);
+      var all = Object.create(null);
+      var count = 0;
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length !== 1 || !isCJKIdeograph(ch.charCodeAt(0))) return;
+        if (map[ch]) return;
+        var pys = (item.pinyin || []).map(normPinyin).filter(Boolean);
+        map[ch] = [
+          parseInt(item.strokes, 10) || 0,
+          String(item.radicals || '').slice(0, 2),
+          pys[0] || '',
+          ''                       /* 释义留给 xhdetail 填 */
+        ];
+        if (pys.length) all[ch] = pys;
+        count++;
+      });
+      return { map: map, all: all, count: count };
+    },
+
+    /**
+     * 多音字表（character/polyphone.json）
+     * 字段：char / strokes / pinyin[] / frequency
+     * 只有音数 >= 2 的才会收进来。
+     */
+    parseXhPoly: function (text) {
+      var arr = parseJsonSeq(text);
+      var m = Object.create(null);
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length !== 1) return;
+        var pys = (item.pinyin || []).map(normPinyin).filter(Boolean);
+        if (pys.length < 2) return;
+        m[ch] = pys;
+      });
+      return { map: m, count: Object.keys(m).length };
+    },
+
+    /** 常用字表（character/common/char_common.json）——《通用规范汉字表》一级字表 */
+    parseXhCommon: function (text) {
+      var arr = parseJsonSeq(text);
+      var m = Object.create(null);
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length === 1) m[ch] = 1;
+      });
+      return { map: m, count: Object.keys(m).length };
+    },
+
+    /**
+     * 逐读音释义（character/char_detail.json）
+     * 结构：{ char, pronunciations: [ { pinyin, explanations:[{content}], words:[…] } ] }
+     *
+     * 这是比旧源强的地方：**释义按读音分列** ——
+     * 旧源是一整块文本，分不出哪个读音对应哪条义项。
+     */
+    parseXhDetail: function (text) {
+      var arr = parseJsonSeq(text);
+      var map = Object.create(null);
+      var count = 0;
+      arr.forEach(function (item) {
+        var ch = String(item.char || '');
+        if (ch.length !== 1) return;
+        var out = [];
+        (item.pronunciations || []).forEach(function (pr) {
+          var exps = (pr.explanations || []).map(function (e) {
+            return cleanExp(e && e.content);
+          }).filter(Boolean).slice(0, MAX_EXP_PER_READING);
+          if (!exps.length) return;
+          out.push({ pinyin: normPinyin(pr.pinyin), exp: exps });
+        });
+        if (!out.length) return;
+        map[ch] = out;
+        count++;
+      });
+      return { map: map, count: count };
+    },
+
     /**
      * 解析 pwxcoo/chinese-xinhua 的 word.json
      * 字段：word / strokes / pinyin / radicals / explanation
      * 为省空间，入库时压缩成 [简体笔画, 部首, 带调拼音, 释义]
+     * （旧源，保留解析器以便兼容已同步过的本地数据）
      */
     parseXinhua: function (text) {
       var arr = JSON.parse(text);
@@ -11091,7 +11732,7 @@ details.more > summary:hover { color: var(--jade); }
         map[w] = [
           parseInt(item.strokes, 10) || 0,
           String(item.radicals || '').slice(0, 2),
-          String(item.pinyin || '').split(/[,，]/)[0].trim(),
+          normPinyin(String(item.pinyin || '').split(/[,，]/)[0]),
           NS.Infer.cleanExplanation(item.explanation).slice(0, MEANING_MAX)
         ];
         count++;
@@ -11210,6 +11851,86 @@ details.more > summary:hover { color: var(--jade); }
       return NS.Poetry.addPoems(poems.slice(0, room));
     },
 
+    /* ---- 新华字典四份数据入库 ---- */
+
+    /**
+     * 字表：填 dict（笔画/部首/首读音）与 pinyinAll（全部读音）。
+     * **保留已有释义** —— 同步按体积从大到小排，释义（13MB）先入库，
+     * 直接覆盖会把刚存好的释义清掉。
+     */
+    applyXhBase: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        var e = res.map[ch];
+        var prev = Lexicon.dict[ch];
+        if (prev && prev[3]) e[3] = prev[3];
+        /* 有逐读音释义时，按**本字的主体读音**重取一句，
+         * 避面「首读音 xíng、释义却是 háng 的」错位 */
+        var brief = Lexicon.briefMeaning(ch, e[2]);
+        if (brief) e[3] = brief;
+        if (!prev) n++;
+        Lexicon.dict[ch] = e;
+      });
+      Object.keys(res.all).forEach(function (ch) {
+        Lexicon.pinyinAll[ch] = res.all[ch];
+      });
+      Lexicon.dataVersion++;
+      Lexicon.applySimplifiedStrokes();
+      return n;
+    },
+
+    /** 多音字表：填 polyMap（顺带补 pinyinAll，字表没同步时也能拿到全部读音） */
+    applyXhPoly: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        if (!Lexicon.polyMap[ch]) n++;
+        Lexicon.polyMap[ch] = res.map[ch];
+        if (!Lexicon.pinyinAll[ch]) Lexicon.pinyinAll[ch] = res.map[ch];
+      });
+      Lexicon.dataVersion++;
+      return n;
+    },
+
+    /** 常用字表：填 commonSet */
+    applyXhCommon: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        if (!Lexicon.commonSet[ch]) n++;
+        Lexicon.commonSet[ch] = 1;
+      });
+      return n;
+    },
+
+    /**
+     * 逐读音释义：填 meanings，并把第一读音的释义写进 dict ——
+     * 这样「按部首找字」在只下载了释义、没下载字表时也有一句话可看。
+     */
+    applyXhDetail: function (res) {
+      ensureLoaded();
+      var n = 0;
+      Object.keys(res.map).forEach(function (ch) {
+        var prons = res.map[ch];
+        Lexicon.meanings[ch] = prons;
+        var first = prons[0];
+        if (!first || !first.exp.length) return;
+        var prev = Lexicon.dict[ch];
+        /* 字表已入库时，dict[2] 才是字的主体读音，按它对齐；
+         * 字表还没到时用释义的第一条。 */
+        var brief = Lexicon.briefMeaning(ch, prev && prev[2]) ||
+          first.exp.slice(0, 2).join('；');
+        if (prev) prev[3] = brief;
+        else {
+          Lexicon.dict[ch] = [0, '', first.pinyin || '', brief];
+        }
+        n++;
+      });
+      Lexicon.dataVersion++;
+      return n;
+    },
+
     /** 把自定义字（联网加入的）挂进字库，让取名流程能用上 */
     applyCustomChars: function () {
       Lexicon.customChars.forEach(function (entry) {
@@ -11308,7 +12029,11 @@ details.more > summary:hover { color: var(--jade); }
       function isTextSource(s) {
         return !(s.format === 'fanti' || s.format === 'pinyin' ||
           s.format === 'xinhua' || s.format === 'shupin' ||
-          s.format === 'fangyan');
+          s.format === 'fangyan' ||
+          /* 新华字典四份数据也都不是「诗文」，
+           * 不排除的话会被当成「文本源」而自动勾上繁简表 */
+          s.format === 'xhbase' || s.format === 'xhpoly' ||
+          s.format === 'xhcommon' || s.format === 'xhdetail');
       }
       var autoAdded = [];
       if (sources.some(isTextSource) &&
@@ -11378,6 +12103,14 @@ details.more > summary:hover { color: var(--jade); }
         var xh = Lexicon.parseXinhua(text);
         added = Lexicon.applyDict(xh.map);
         /* applyDict 内部已经回填过简体笔画，这里不必再叫一次 */
+      } else if (src.format === 'xhbase') {
+        added = Lexicon.applyXhBase(Lexicon.parseXhBase(text));
+      } else if (src.format === 'xhpoly') {
+        added = Lexicon.applyXhPoly(Lexicon.parseXhPoly(text));
+      } else if (src.format === 'xhcommon') {
+        added = Lexicon.applyXhCommon(Lexicon.parseXhCommon(text));
+      } else if (src.format === 'xhdetail') {
+        added = Lexicon.applyXhDetail(Lexicon.parseXhDetail(text));
       } else if (src.format === 'shupin') {
         var sp = NS.Dialect.parseShupin(text);
         added = NS.Dialect.applyShupin(sp.map);
@@ -11422,7 +12155,9 @@ details.more > summary:hover { color: var(--jade); }
           NS.Store.get('pinyinMap'), NS.Store.get('dict'),
           NS.Store.get('poems'), NS.Store.get('customChars'),
           NS.Store.get('meta'), NS.Store.get('fantiMap'),
-          NS.Store.get('shupinMap'), NS.Store.get('dialectWords')
+          NS.Store.get('shupinMap'), NS.Store.get('dialectWords'),
+          NS.Store.get('pinyinAll'), NS.Store.get('polyMap'),
+          NS.Store.get('commonSet'), NS.Store.get('meanings')
         ]);
       }).then(function (r) {
         Lexicon.pinyinMap = r[0] || Object.create(null);
@@ -11430,6 +12165,13 @@ details.more > summary:hover { color: var(--jade); }
         Lexicon.customChars = r[3] || [];
         Lexicon.meta = r[4] || {};
         Lexicon.fantiMap = r[5] || Object.create(null);
+        /* 新华字典四份数据。老版本存过的是 undefined，
+         * 这里给空对象，下面的读取一律走 isPolyphone/isCommon，
+         * 它们能正确处理空表。 */
+        Lexicon.pinyinAll = r[8] || Object.create(null);
+        Lexicon.polyMap = r[9] || Object.create(null);
+        Lexicon.commonSet = r[10] || Object.create(null);
+        Lexicon.meanings = r[11] || Object.create(null);
 
         /* 方言数据：蜀拼字表与方言词汇 */
         if (r[6] && Object.keys(r[6]).length) NS.Dialect.applyShupin(r[6]);
@@ -11500,6 +12242,16 @@ details.more > summary:hover { color: var(--jade); }
         fantiCount: Lexicon.fantiMap ? Object.keys(Lexicon.fantiMap).length : 0,
         shupinCount: NS.Dialect.status().shupinCount,
         dialectWords: NS.Dialect.status().dialectWords,
+        /* 新华字典四份数据的覆盖量 —— 界面靠它判断
+         * 「能不能按部首浏览」「要不要提示去下载释义」 */
+        pinyinAllCount: Lexicon.pinyinAll
+          ? Object.keys(Lexicon.pinyinAll).length : 0,
+        polyCount: Lexicon.polyMap
+          ? Object.keys(Lexicon.polyMap).length : 0,
+        commonCount: Lexicon.commonSet
+          ? Object.keys(Lexicon.commonSet).length : 0,
+        meaningCount: Lexicon.meanings
+          ? Object.keys(Lexicon.meanings).length : 0,
         dialectReady: NS.Dialect.status().available,
         lastSync: (Lexicon.meta && Lexicon.meta.lastSync) || null,
         backend: NS.Store.getBackend(),
@@ -11525,6 +12277,10 @@ details.more > summary:hover { color: var(--jade); }
         Lexicon.dict = Object.create(null);
         Lexicon.customChars = [];
         Lexicon.fantiMap = Object.create(null);
+        Lexicon.pinyinAll = Object.create(null);
+        Lexicon.polyMap = Object.create(null);
+        Lexicon.commonSet = Object.create(null);
+        Lexicon.meanings = Object.create(null);
         NS.Dialect.reset();
         Lexicon.meta = {};
         Lexicon.discardNotice = null;
@@ -11553,6 +12309,10 @@ details.more > summary:hover { color: var(--jade); }
     if (!Lexicon.dict) Lexicon.dict = Object.create(null);
     if (!Lexicon.customChars) Lexicon.customChars = [];
     if (!Lexicon.fantiMap) Lexicon.fantiMap = Object.create(null);
+    if (!Lexicon.pinyinAll) Lexicon.pinyinAll = Object.create(null);
+    if (!Lexicon.polyMap) Lexicon.polyMap = Object.create(null);
+    if (!Lexicon.commonSet) Lexicon.commonSet = Object.create(null);
+    if (!Lexicon.meanings) Lexicon.meanings = Object.create(null);
   }
 
   function persist() {
@@ -11562,6 +12322,10 @@ details.more > summary:hover { color: var(--jade); }
       NS.Store.set('dict', Lexicon.dict),
       NS.Store.set('customChars', Lexicon.customChars),
       NS.Store.set('fantiMap', Lexicon.fantiMap),
+      NS.Store.set('pinyinAll', Lexicon.pinyinAll),
+      NS.Store.set('polyMap', Lexicon.polyMap),
+      NS.Store.set('commonSet', Lexicon.commonSet),
+      NS.Store.set('meanings', Lexicon.meanings),
       NS.Store.set('shupinMap', NS.Dialect.shupinMap || Object.create(null)),
       NS.Store.set('dialectWords', NS.Dialect.dialectWords || []),
       NS.Store.set('poems', NS.RAW_POEMS.slice(NS.Poetry.builtinCount)
@@ -11909,22 +12673,50 @@ details.more > summary:hover { color: var(--jade); }
   }
 
   /**
-   * 联网查询：从已同步的《新华字典》里列出某个部首下的字。
-   *
-   * 这是「联网找最合适的字」的实现方式 —— 字典给出了每个字的部首与简体笔画，
-   * 因此可以按部首反查。返回的候选带着素材（笔画/拼音/释义），
-   * 让用户自己判断要不要收进字库。
-   *
-   * @param {string} name 分组名（如 '艹'）
-   * @param {Object} [opt] { minStrokes, maxStrokes, limit, excludeInLib }
-   * @returns {{available:boolean, items:Array, total:number}}
+   * 把「分组名」或「界面标签」都归一成分组名。
+   * 界面上偏旁选择器用的是 label（草字头 / 三点水），
+   * 而字典里的部首字段是 艹 / 水，中间必须转一道。
    */
-  function fromDict(name, opt) {
+  function resolveName(name) {
+    var idx = nameIndex();
+    if (idx[name]) return name;
+    var groups = NS.RADICAL_GROUPS || [];
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].label === name) return groups[i].name;
+    }
+    return name;
+  }
+
+  /** 这个字在已同步的诗词里出现过吗 —— 区分「苯」与「兰」的唯一可用信号 */
+  function hasLiteraryUse(ch) {
+    var P = NS.Poetry;
+    if (!P || !P.index) return false;
+    var ids = P.index[ch];
+    return !!(ids && ids.length);
+  }
+
+  /**
+   * 从新华字典挑候选字 —— 「按部首找字」与「只在新华字典里取名」
+   * 共用这**同一套**逻辑。
+   *
+   * 分开写两份必然跑偏：一边按「笔画少」排、一边按「热门」排，
+   * 用户会看到同一个部首在两个地方给出完全不同的字。
+   *
+   * 排序：适不适合起名 → 有没有依据（一级常用字 / 诗词里出现过）→ 笔画少 → 码位。
+   * 艹 部在字典里有 932 字，按码位排前排全是 艽芁艻艿 这种没人用的字；
+   * 有依据的排前面，前 20 个就正好是 艺节芒芋芭芬芙花芥芦芹苇芜芯芽苞范苟茄茎苛苦茅苗。
+   *
+   * @param {Object} [opt]
+   *   aliases      部首写法集合（已用 aliasOf 展开）；不传 = 不限部首
+   *   excludeInLib 排除字库里已有的字（默认 true）
+   *   minStrokes / maxStrokes  适不适合起名的笔画区间（默认 4–16）
+   *   order        'strokes'（默认，浏览用）| 'heat'（整本字典当来源时用）
+   * @returns {{available:boolean, items:Array}}
+   */
+  function dictCandidates(opt) {
     opt = opt || {};
     var min = opt.minStrokes === undefined ? 4 : opt.minStrokes;
     var max = opt.maxStrokes === undefined ? 16 : opt.maxStrokes;
-    var limit = opt.limit || 120;
-
     var lex = NS.Lexicon;
     var dict = lex && lex.dict;
     /* 注意：ensureLoaded() 之后 lex.dict 是个**空对象**而不是 null，
@@ -11932,18 +12724,16 @@ details.more > summary:hover { color: var(--jade); }
      * 否则没同步字典时会提示「字典里没找到这个部首」而不是
      * 「还没同步字典」，把用户往错误方向引。 */
     var dictCount = (lex && lex.status) ? (lex.status().dictCount || 0) : 0;
-    if (!dict || !dictCount) {
-      return { available: false, items: [], total: 0, suitableTotal: 0 };
-    }
+    if (!dict || !dictCount) return { available: false, items: [] };
 
-    var want = aliasOf(name);
+    var want = opt.aliases || null;
     var looks = [];
     Object.keys(dict).forEach(function (ch) {
       if (ch.length !== 1) return;
       var d = dict[ch];
       if (!d) return;
       var rad = d[1];
-      if (!rad || want.indexOf(rad) < 0) return;
+      if (want && (!rad || want.indexOf(rad) < 0)) return;
       /* 字库里已有的不重复列出 */
       if (opt.excludeInLib !== false && NS.CHAR_DB[ch]) return;
       var py = (lex.pinyinMap && lex.pinyinMap[ch]) || null;
@@ -11952,11 +12742,26 @@ details.more > summary:hover { color: var(--jade); }
        * 结果只同步字典、没同步拼音表时，全部候选都被划成不适合（实测 0/92）。 */
       var pinyin = d[2] || (py ? py.pinyin : '');
       var strokes = d[0];
-      var meaning = NS.Infer && NS.Infer.cleanExplanation
-        ? NS.Infer.cleanExplanation(d[3] || '') : (d[3] || '');
-      /* 字典释义常以「（形声。从辵…)」这类六书说明开头，对选字没帮助，
-       * 而且会把界面上的释义占满（实测全是「(形声」）。 */
-      meaning = String(meaning).replace(/^\s*[（(][^）)]*[）)]\s*/, '').trim();
+      /* 释义清洗只走 Lexicon.cleanMeaning 一套规则（配平拆括号 + 压行 + 截断）。
+       * 以前这里先跑 Infer.cleanExplanation 再自己拿正则去括号：
+       * 前者会按第一个句号截断，后者会在内层括号的 ) 上提前收尾，
+       * 「苟」的释义就被切成了「声。本义:草名。又:菜名) 同本义。」 */
+      var meaning = lex.cleanMeaning
+        ? lex.cleanMeaning(d[3] || '')
+        : String(d[3] || '').replace(/\s+/g, ' ').trim();
+
+      var allPy = (lex.readingsOf && lex.readingsOf(ch)) || [];
+      var poly = !!(lex.isPolyphone && lex.isPolyphone(ch));
+      var common = !!(lex.isCommon && lex.isCommon(ch));
+      var lit = hasLiteraryUse(ch);
+      /* 冷热度：内置热度表只盖 490 字，其余靠诗词频次估。 */
+      var heat = NS.heatOf ? NS.heatOf(ch) : 0;
+      /* 「不宜入名」人工表（data/namefilter.js）。
+       * 「不」「把」「办」「抱」这些字在诗词里出现次数极高、又是一级常用字，
+       * 任何统计量都拦不住 —— 实测不做这一步，整本字典取名会输出
+       * 「李层抱」「李悲到」。 */
+      var blk = NS.nameCharBlock ? NS.nameCharBlock(ch) : { blocked: false };
+
       looks.push({
         char: ch,
         strokes: strokes,
@@ -11964,21 +12769,73 @@ details.more > summary:hover { color: var(--jade); }
         pinyin: pinyin,
         tone: py ? py.tone : 0,
         meaning: meaning,
-        /* 适不适合起名：笔画 4–16、有读音、有释义 */
-        suitable: strokes >= min && strokes <= max && !!meaning && !!pinyin
+        /* 多音字：这是旧字典源给不出的信息，现在能如实标出来 */
+        poly: poly,
+        allPinyin: allPy.length > 1 ? allPy : null,
+        /* 《通用规范汉字表》一级字表（3500 字）—— 注意它只是参考，不是门槛：
+         * 芷/菡/萏/茹/芸/芮/芊/萱 都不在这个表里，却都是好名字用字。 */
+        common: common,
+        /* 诗词里出现过 —— 与上一列构成「有没有依据」 */
+        literary: lit,
+        /* 逐读音释义，界面上展开看细节用 */
+        meanings: (lex.meaningsOf && lex.meaningsOf(ch)) || [],
+        heat: heat,
+        blocked: blk.blocked,
+        blockReason: blk.reason || '',
+        notable: common || lit,
+        /* 适不适合起名：笔画 4–16、有读音、有释义、且不在「不宜入名」表里。
+         * blocked 单独留一份，界面可以显示「为什么没推荐它」。 */
+        suitable: !blk.blocked && strokes >= min && strokes <= max &&
+          !!meaning && !!pinyin
       });
     });
 
+    /* order='heat' 用于「整本字典当用字来源」：
+     * 那时没有部首约束，按笔画排会挑出一堆「一丁七丈上不」这类。
+     * 按热排才能得到 涵轩萱桸桦… 这样真正像名字的字。 */
+    var byHeat = opt.order === 'heat';
     looks.sort(function (a, b) {
       if (a.suitable !== b.suitable) return a.suitable ? -1 : 1;
+      /* 有依据的排前面：一级常用字 / 诗词里出现过 */
+      if (a.notable !== b.notable) return a.notable ? -1 : 1;
+      if (byHeat && b.heat !== a.heat) return b.heat - a.heat;
       if (a.strokes !== b.strokes) return a.strokes - b.strokes;
       return a.char.localeCompare(b.char);
     });
 
+    return { available: true, items: looks };
+  }
+
+  /**
+   * 联网查询：列出某个部首下的字。
+   *
+   * @param {string} name 分组名（'艹'）或界面标签（'草字头'）
+   * @param {Object} [opt] { minStrokes, maxStrokes, limit, excludeInLib }
+   * @returns {{available:boolean, items:Array, total:number}}
+   */
+  function fromDict(name, opt) {
+    opt = opt || {};
+    var limit = opt.limit || 120;
+    var resolved = resolveName(name);
+    var r = dictCandidates({
+      aliases: aliasOf(resolved),
+      excludeInLib: opt.excludeInLib,
+      minStrokes: opt.minStrokes,
+      maxStrokes: opt.maxStrokes
+    });
+    if (!r.available) {
+      return { available: false, items: [], total: 0, suitableTotal: 0 };
+    }
+    var looks = r.items;
     return {
       available: true,
+      name: resolved,
       total: looks.length,
       suitableTotal: looks.filter(function (x) { return x.suitable; }).length,
+      notableTotal: looks.filter(function (x) { return x.suitable && x.notable; })
+        .length,
+      polyTotal: looks.filter(function (x) { return x.poly; }).length,
+      blockedTotal: looks.filter(function (x) { return x.blocked; }).length,
       items: looks.slice(0, limit)
     };
   }
@@ -11997,7 +12854,10 @@ details.more > summary:hover { color: var(--jade); }
     wuxingMap: wuxingMap,
     pickerList: pickerList,
     aliasOf: aliasOf,
+    resolveName: resolveName,
     fromDict: fromDict,
+    dictCandidates: dictCandidates,
+    hasLiteraryUse: hasLiteraryUse,
     reset: reset
   };
 
@@ -15060,8 +15920,9 @@ details.more > summary:hover { color: var(--jade); }
 
       if (!res.available) {
         out.innerHTML = '<div class="alert">还没有字典数据，没法按部首查字。' +
-          '请在上面勾选「新华字典」并点「开始联网更新」（约 26MB，' +
-          '首次下载实测约 1 分钟）。</div>';
+          '请在上面勾选「新华字典·字表 / 多音字表 / 常用字表」' +
+          '（三项合计约 3.2MB，1 分钟内能下完）并点「开始联网更新」。' +
+          '「释义」那项是 13MB，只查字不查义可以不下。</div>';
         return;
       }
       if (!res.items.length) {
@@ -15072,9 +15933,21 @@ details.more > summary:hover { color: var(--jade); }
 
       SyncUI._radItems = res.items;
       var box = el('div', 'panel lex-rad-box');
+      /* 把可用信息一次说清：「适合起名」是有依据可用的数量，
+       * 而不是全部——艹 部有 932 字，不筛的话根本没法看。 */
+      var head = '共 ' + res.total + ' 个';
+      if (res.suitableTotal) {
+        head += '，其中 ' + res.suitableTotal + ' 个笔画适中、有读音与释义';
+      }
+      if (res.notableTotal) {
+        head += '（' + res.notableTotal + ' 个有依据：一级常用字或诗词里出现过）';
+      }
+      if (res.polyTotal) head += '；' + res.polyTotal + ' 个多音字';
+      if (res.blockedTotal) {
+        head += '；' + res.blockedTotal + ' 个在「不宜入名」表里（已排在后面）';
+      }
       box.appendChild(el('div', 'hint',
-        '共 ' + res.total + ' 个（其中 ' + (res.suitableTotal || 0) +
-        ' 个笔画适中），列出前 ' + res.items.length + ' 个：'));
+        head + '。已列出前 ' + res.items.length + ' 个，可滚动作梗查看全部：'));
 
       var list = el('div', 'lex-rad-list');
       res.items.forEach(function (it, i) {
@@ -15084,12 +15957,34 @@ details.more > summary:hover { color: var(--jade); }
         cb.setAttribute('data-i', String(i));
         lab.appendChild(cb);
         var body = el('div');
+        var badges = '';
+        /* 多音字：旧字典给不出这个信息（它的 pinyin 字段只有单读音），
+         * 现在能如实标出来 —— 读法多且都被读到的字容易被念错 */
+        if (it.poly && it.allPinyin) {
+          badges += '<i class="lr-badge poly" title="多音字：' +
+            esc(it.allPinyin.join(' / ')) + '">多音 ' +
+            esc(it.allPinyin.join('/')) + '</i>';
+        }
+        if (it.common) {
+          badges += '<i class="lr-badge common" ' +
+            'title="《通用规范汉字表》一级字表">常用</i>';
+        }
+        if (it.literary) {
+          badges += '<i class="lr-badge lit" ' +
+            'title="在已同步的诗词里出现过">诗词</i>';
+        }
+        if (it.blocked) {
+          badges += '<i class="lr-badge no" title="不宜入名：' +
+            esc(it.blockReason || '') + '">不宜 · ' +
+            esc(it.blockReason || '') + '</i>';
+        }
         body.innerHTML = '<b>' + esc(it.char) + '</b>' +
           '<span class="lr-meta">' + it.strokes + '画 · ' +
           esc(it.radical || name) + ' · ' + esc(it.pinyin || '无读音') +
-          (it.tone ? it.tone : '') + '</span>' +
-          '<span class="lr-mean">' +
-          esc(String(it.meaning).slice(0, 24)) + '</span>';
+          '</span>' +
+          '<span class="lr-mean" title="' + esc(String(it.meaning)) + '">' +
+          esc(String(it.meaning)) + '</span>' +
+          (badges ? '<span class="lr-badges">' + badges + '</span>' : '');
         lab.appendChild(body);
         list.appendChild(lab);
       });
@@ -15100,23 +15995,40 @@ details.more > summary:hover { color: var(--jade); }
       addBtn.type = 'button';
       addBtn.addEventListener('click', function () { SyncUI.radAddSelected(name); });
       bar.appendChild(addBtn);
-      var suitBtn = el('button', 'btn ghost', '只勾「笔画适中」的');
+      var suitBtn = el('button', 'btn ghost', '只勾「适合起名」的');
       suitBtn.type = 'button';
       suitBtn.addEventListener('click', function () {
-        Array.prototype.forEach.call(list.querySelectorAll('input[type=checkbox]'),
-          function (cb) {
-            var it = SyncUI._radItems[parseInt(cb.getAttribute('data-i'), 10)];
-            cb.checked = !!(it && it.suitable);
-          });
+        SyncUI._radCheck(list, function (it) { return it.suitable; });
       });
       bar.appendChild(suitBtn);
+      var notableBtn = el('button', 'btn ghost', '只勾「有依据」的');
+      notableBtn.type = 'button';
+      notableBtn.title = '一级常用字，或在已同步的诗词里出现过';
+      notableBtn.addEventListener('click', function () {
+        SyncUI._radCheck(list, function (it) {
+          return it.suitable && it.notable;
+        });
+      });
+      bar.appendChild(notableBtn);
       box.appendChild(bar);
       box.appendChild(el('p', 'hint',
         '加入后五行按部首推断、康熙笔画按「简体 + 部首增量」估算。' +
-        '都能在「已加入字库的字」里看到，需要时可以移除重加。'));
+        '都能在「已加入字库的字」里看到，需要时可以移除重加。' +
+        '标「不宜」的是与名字语感不符的字（凹/办/悲 这类），' +
+        '不阻止加入，只是排后面、不参与自动取名。'));
 
       out.innerHTML = '';
       out.appendChild(box);
+    },
+
+    /** 把列表里的勾选批量设为 cond(it) 为真的那些 */
+    _radCheck: function (list, cond) {
+      var items = SyncUI._radItems || [];
+      Array.prototype.forEach.call(
+        list.querySelectorAll('input[type=checkbox]'), function (cb) {
+          var it = items[parseInt(cb.getAttribute('data-i'), 10)];
+          cb.checked = !!(it && cond(it));
+        });
     },
 
     radAddSelected: function (radicalName) {

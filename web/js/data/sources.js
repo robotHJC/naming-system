@@ -347,18 +347,78 @@
       urls: gh('AlienKevin/sichuanhua', 'main', 'fangyan.tsv')
     },
 
-    /* ---------------- 字典：汉字属性 ---------------- */
+    /* ---------------- 字典：汉字属性 ----------------
+     *
+     * 数据源从 pwxcoo/chinese-xinhua 换成了 mapull/chinese-dictionary。
+     * 换的原因（都是实测出来的）：
+     *   1. 旧源的 pinyin 字段**只有单读音**，16142 条里 0 条带多读音分隔符 ——
+     *      「行」只有 xínɡ 没有 háng，所以「是不是多音字」这个信息
+     *      在旧数据里根本不存在，无法满足「标注多音字」的需求。
+     *   2. 旧源的拼音用了 U+0261（ɡ，拉丁字母）而不是 ASCII 的 g，
+     *      这会让鼻音韵尾检测（/(ng|n)$/）静默失效。
+     *   3. 新源 21057 字（旧源 14809），且多一份《通用规范汉字表》
+     *      常用字表 —— 那是判断「这个字常不常见」的权威依据。
+     *   4. 总体积更小（字表 2.8MB + 多音字 0.24MB + 常用字 0.18MB，
+     *      释义 13MB 且可选；旧源是单个 27MB）。
+     *
+     * 拆成四个源而不是一个，是为了：
+     *   · 复用现有的「一个源一个文件 + 多镜像」机制，不必改下载层；
+     *   · 用户可以只下载前三项（约 3.2MB）就能取名，
+     *     释义（13MB）纯粹是「按部首找字」时查看用的，可以不下。
+     */
     {
-      id: 'xinhua',
+      id: 'xhbase',
       group: 'dict',
-      name: '新华字典（部首/笔画/释义）',
-      format: 'xinhua',
-      size: 27354320,
+      name: '新华字典·字表（2.1 万字）',
+      format: 'xhbase',
+      size: 2891776,
+      defaultOn: true,
+      big: true,
+      desc: '约 2.1 万个汉字的**全部读音**、部首、笔画与字形结构。' +
+        '这是「按部首找字」与「从字典取名」的基础。体积约 2.8 MB。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/char_base.json')
+    },
+    {
+      id: 'xhpoly',
+      group: 'dict',
+      name: '新华字典·多音字表（2495 字）',
+      format: 'xhpoly',
+      size: 253952,
+      defaultOn: true,
+      desc: '2495 个多音字及其全部读音（行 → xíng/háng/hàng/héng，' +
+        '若 → ruò/rě，菲 → fēi/fěi）。用来标注「这个字有几种读法」——' +
+        '读法多且都常用的字容易被念错，取名时应避开。很小，建议开着。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/polyphone.json')
+    },
+    {
+      id: 'xhcommon',
+      group: 'dict',
+      name: '新华字典·常用字表（3500 字）',
+      format: 'xhcommon',
+      size: 184320,
+      defaultOn: true,
+      desc: '《通用规范汉字表》一级字表 3500 字。' +
+        '字典里有 2 万多字，不筛的话会挑出「苯」「苊」「芤」这类' +
+        '化学、医药专用字 —— 它们确实在字典里，但根本不是名字。' +
+        '很小，建议开着。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/common/char_common.json')
+    },
+    {
+      id: 'xhdetail',
+      group: 'dict',
+      name: '新华字典·释义（逐读音，13 MB）',
+      format: 'xhdetail',
+      size: 13032448,
       defaultOn: false,
       big: true,
-      desc: '约 1.6 万个汉字的部首、简体笔画、释义。' +
-        '用于把字库之外的字联网加进来。体积较大，首次下载约需 30 秒～2 分钟。',
-      urls: gh('pwxcoo/chinese-xinhua', 'master', 'data/word.json')
+      desc: '每个字**按读音分列**的释义与例词，供「按部首找字」时查看字义。' +
+        '体积约 13 MB，首次下载较慢。' +
+        '**只取名字的话可以不下载** —— 前三项就够了。',
+      urls: gh('mapull/chinese-dictionary', 'master',
+        'character/char_detail.json')
     }
   ];
 
